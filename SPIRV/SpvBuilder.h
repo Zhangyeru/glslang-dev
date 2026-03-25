@@ -218,6 +218,7 @@ public:
     Id makeCooperativeMatrixTypeNV(Id component, Id scope, Id rows, Id cols);
     Id makeCooperativeMatrixTypeWithSameShape(Id component, Id otherType);
     Id makeCooperativeVectorTypeNV(Id componentType, Id components);
+    Id makeCooperativeVectorTypeAD(Id componentType, Id components);
     Id makeGenericType(spv::Op opcode, std::vector<spv::IdImmediate>& operands);
 
     // SPIR-V NonSemantic Shader DebugInfo Instructions
@@ -314,7 +315,11 @@ public:
         return getTypeClass(typeId) == OpTypeCooperativeMatrixKHR || getTypeClass(typeId) == OpTypeCooperativeMatrixNV;
     }
     bool isTensorViewType(Id typeId)   const { return getTypeClass(typeId) == OpTypeTensorViewNV; }
-    bool isCooperativeVectorType(Id typeId)const { return getTypeClass(typeId) == OpTypeCooperativeVectorNV; }
+    bool isCooperativeVectorType(Id typeId)const
+    {
+        return getTypeClass(typeId) == OpTypeCooperativeVectorNV || getTypeClass(typeId) == OpTypeCooperativeVectorAD;
+    }
+    bool isCooperativeVectorADType(Id typeId)const { return getTypeClass(typeId) == OpTypeCooperativeVectorAD; }
     bool isAggregateType(Id typeId)    const
         { return isArrayType(typeId) || isStructType(typeId) || isCooperativeMatrixType(typeId); }
     bool isImageType(Id typeId)        const { return getTypeClass(typeId) == OpTypeImage; }

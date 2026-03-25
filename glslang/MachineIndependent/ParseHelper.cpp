@@ -550,7 +550,7 @@ TIntermTyped* TParseContext::handleBracketDereference(const TSourceLoc& loc, TIn
     variableCheck(base);
 
     if (! base->isArray() && ! base->isMatrix() && ! base->isVector() && ! base->getType().isCoopMat() &&
-        ! base->isReference() && ! base->getType().isCoopVecNV()) {
+        ! base->isReference() && ! base->getType().isCoopVec()) {
         if (base->getAsSymbolNode())
             error(loc, " left of '[' is not of type array, matrix, or vector ", base->getAsSymbolNode()->getName().c_str(), "");
         else
@@ -971,7 +971,7 @@ TIntermTyped* TParseContext::handleDotDereference(const TSourceLoc& loc, TInterm
             const char* feature = ".length() on vectors and matrices";
             requireProfile(loc, ~EEsProfile, feature);
             profileRequires(loc, ~EEsProfile, 420, E_GL_ARB_shading_language_420pack, feature);
-        } else if (!base->getType().isCoopMat() && !base->getType().isCoopVecNV()) {
+        } else if (!base->getType().isCoopMat() && !base->getType().isCoopVec()) {
             bool enhanced = intermediate.getEnhancedMsgs();
             error(loc, "does not operate on this type:", field.c_str(), base->getType().getCompleteString(enhanced).c_str());
             return base;
@@ -1513,7 +1513,7 @@ TIntermTyped* TParseContext::handleFunctionCall(const TSourceLoc& loc, TFunction
 
             handleCoopMat2FunctionCall(loc, fnCandidate, result, arguments);
 
-            if (result->getAsTyped()->getType().isCoopVecNV() &&
+            if (result->getAsTyped()->getType().isCoopVec() &&
                !result->getAsTyped()->getType().isParameterized()) {
                 if (auto unaryNode = result->getAsUnaryNode())
                     result->setType(unaryNode->getOperand()->getAsTyped()->getType());
@@ -2041,7 +2041,7 @@ TIntermTyped* TParseContext::handleLengthMethod(const TSourceLoc& loc, TFunction
             length = type.getMatrixCols();
         else if (type.isVector())
             length = type.getVectorSize();
-        else if (type.isCoopMat() || type.isCoopVecNV())
+        else if (type.isCoopMat() || type.isCoopVec())
             return intermediate.addBuiltInFunctionCall(loc, EOpArrayLength, true, intermNode, TType(EbtInt));
         else {
             // we should not get here, because earlier semantic checking should have prevented this path
@@ -7576,7 +7576,7 @@ const TFunction* TParseContext::findFunction400(const TSourceLoc& loc, const TFu
             return false;
         if (from.isCoopMat() && to.isCoopMat())
             return from.sameCoopMatBaseType(to);
-        if (from.isCoopVecNV() && to.isCoopVecNV())
+        if (from.isCoopVec() && to.isCoopVec())
             return from.sameCoopVecBaseType(to);
         return intermediate.canImplicitlyPromote(from.getBasicType(), to.getBasicType());
     };
@@ -7666,7 +7666,7 @@ const TFunction* TParseContext::findFunctionExplicitTypes(const TSourceLoc& loc,
             return false;
         if (from.isCoopMat() && to.isCoopMat())
             return from.sameCoopMatBaseType(to);
-        if (from.isCoopVecNV() && to.isCoopVecNV())
+        if (from.isCoopVec() && to.isCoopVec())
             return from.sameCoopVecBaseType(to);
         return intermediate.canImplicitlyPromote(from.getBasicType(), to.getBasicType());
     };
@@ -8284,7 +8284,7 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
         if (!publicType.typeParameters || publicType.typeParameters->arraySizes->getNumDims() > 7) {
             error(loc, "expected 1-7 type parameters", identifier.c_str(), "");
         }
-    } else if (type.isCoopVecNV()) {
+    } else if (type.isCoopVec()) {
         intermediate.setUseVulkanMemoryModel();
         intermediate.setUseStorageBuffer();
 
@@ -9137,7 +9137,13 @@ TIntermTyped* TParseContext::constructBuiltIn(const TType& type, TOperator op, T
         }
 
     case EOpConstructCooperativeVectorNV:
-        if (!node->getType().isCoopVecNV()) {
+    case EOpConstructCooperativeVectorAD:
+        if (node->getType().isCoopVec() &&
+            (type.isCoopVecNV() != node->getType().isCoopVecNV() ||
+             type.isCoopVecAD() != node->getType().isCoopVecAD())) {
+            return nullptr;
+        }
+        if (!node->getType().isCoopVec()) {
             if (type.getBasicType() != node->getType().getBasicType()) {
                 node = intermediate.addConversion(type.getBasicType(), node);
                 if (node == nullptr)

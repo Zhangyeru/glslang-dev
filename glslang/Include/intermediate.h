@@ -618,6 +618,7 @@ enum TOperator {
     EOpConstructCooperativeMatrixNV,
     EOpConstructCooperativeMatrixKHR,
     EOpConstructCooperativeVectorNV,
+    EOpConstructCooperativeVectorAD,
     EOpConstructAccStruct,
     EOpConstructGuardEnd,
 

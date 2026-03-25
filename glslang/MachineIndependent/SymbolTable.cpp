@@ -62,6 +62,8 @@ void TType::buildMangledName(TString& mangledName) const
 
     if (isCoopVecNV())
         mangledName += "coopvec";
+    else if (isCoopVecAD())
+        mangledName += "coopvecAD";
 
     switch (basicType) {
     case EbtFloat:              mangledName += 'f';      break;

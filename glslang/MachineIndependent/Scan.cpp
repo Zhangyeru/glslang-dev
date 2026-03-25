@@ -759,6 +759,7 @@ const std::unordered_map<const char*, int, str_hash, str_eq> KeywordMap {
     {"tensorViewNV",TENSORVIEWNV},
 
     {"coopvecNV",COOPVECNV},
+    {"coopvecAD",COOPVECNV},
 };
 const std::unordered_set<const char*, str_hash, str_eq> ReservedSet {
     "common",
@@ -1790,8 +1791,11 @@ int TScanContext::tokenizeIdentifier()
 
     case COOPVECNV:
         afterType = true;
+        parserToken->sType.lex.string = NewPoolTString(tokenText);
         if (parseContext.symbolTable.atBuiltInLevel() ||
-            parseContext.extensionTurnedOn(E_GL_NV_cooperative_vector))
+            (strcmp("coopvecAD", tokenText) == 0
+                 ? parseContext.extensionTurnedOn(E_GL_AD_cooperative_vector)
+                 : parseContext.extensionTurnedOn(E_GL_NV_cooperative_vector)))
             return keyword;
         return identifierOrType();
 

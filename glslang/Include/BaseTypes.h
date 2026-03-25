@@ -71,6 +71,7 @@ enum TBasicType {
     EbtTensorLayoutNV,
     EbtTensorViewNV,
     EbtCoopvecNV,
+    EbtCoopvecAD,
     // SPIR-V type defined by spirv_type
     EbtSpirvType,
 

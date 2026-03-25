@@ -537,6 +537,26 @@ Id Builder::makeCooperativeVectorTypeNV(Id componentType, Id components)
     return type->getResultId();
 }
 
+Id Builder::makeCooperativeVectorTypeAD(Id componentType, Id components)
+{
+    Instruction* type;
+    for (int t = 0; t < (int)groupedTypes[OpTypeCooperativeVectorAD].size(); ++t) {
+        type = groupedTypes[OpTypeCooperativeVectorAD][t];
+        if (type->getIdOperand(0) == componentType &&
+            type->getIdOperand(1) == components)
+            return type->getResultId();
+    }
+
+    type = new Instruction(getUniqueId(), NoType, OpTypeCooperativeVectorAD);
+    type->addIdOperand(componentType);
+    type->addIdOperand(components);
+    groupedTypes[OpTypeCooperativeVectorAD].push_back(type);
+    constantsTypesGlobals.push_back(std::unique_ptr<Instruction>(type));
+    module.mapInstruction(type);
+
+    return type->getResultId();
+}
+
 Id Builder::makeGenericType(spv::Op opcode, std::vector<spv::IdImmediate>& operands)
 {
     // try to find it
@@ -1386,6 +1406,7 @@ unsigned int Builder::getNumTypeConstituents(Id typeId) const
     case OpTypeMatrix:
         return instr->getImmediateOperand(1);
     case OpTypeCooperativeVectorNV:
+    case OpTypeCooperativeVectorAD:
     case OpTypeArray:
     {
         Id lengthId = instr->getIdOperand(1);
@@ -1425,6 +1446,7 @@ Id Builder::getScalarTypeId(Id typeId) const
     case OpTypeRuntimeArray:
     case OpTypePointer:
     case OpTypeCooperativeVectorNV:
+    case OpTypeCooperativeVectorAD:
         return getScalarTypeId(getContainedTypeId(typeId));
     default:
         assert(0);
@@ -1447,6 +1469,7 @@ Id Builder::getContainedTypeId(Id typeId, int member) const
     case OpTypeCooperativeMatrixKHR:
     case OpTypeCooperativeMatrixNV:
     case OpTypeCooperativeVectorNV:
+    case OpTypeCooperativeVectorAD:
         return instr->getIdOperand(0);
     case OpTypePointer:
         return instr->getIdOperand(1);
@@ -1895,7 +1918,7 @@ Id Builder::makeCompositeConstant(Id typeId, const std::vector<Id>& members, boo
 
     bool replicate = false;
     size_t numMembers = members.size();
-    if (useReplicatedComposites || typeClass == OpTypeCooperativeVectorNV) {
+    if (useReplicatedComposites || isCooperativeVectorType(typeId)) {
         // use replicate if all members are the same
         replicate = numMembers > 0 &&
             std::equal(members.begin() + 1, members.end(), members.begin());
@@ -1918,6 +1941,7 @@ Id Builder::makeCompositeConstant(Id typeId, const std::vector<Id>& members, boo
     case OpTypeCooperativeMatrixKHR:
     case OpTypeCooperativeMatrixNV:
     case OpTypeCooperativeVectorNV:
+    case OpTypeCooperativeVectorAD:
         if (! specConstant) {
             Id existing = findCompositeConstant(typeClass, opcode, typeId, members, numMembers);
             if (existing)

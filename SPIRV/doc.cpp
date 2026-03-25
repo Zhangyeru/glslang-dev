@@ -1056,7 +1056,9 @@ const char* CapabilityString(int info)
     case CapabilityShaderSMBuiltinsNV:      return "ShaderSMBuiltinsNV";
 
     case CapabilityCooperativeVectorNV:                     return "CooperativeVectorNV";
+    case CapabilityCooperativeVectorAD:                     return "CooperativeVectorAD";
     case CapabilityCooperativeVectorTrainingNV:             return "CooperativeVectorTrainingNV";
+    case CapabilityCooperativeVectorTrainingAD:             return "CooperativeVectorTrainingAD";
 
     case CapabilityFragmentShaderSampleInterlockEXT:        return "CapabilityFragmentShaderSampleInterlockEXT";
     case CapabilityFragmentShaderPixelInterlockEXT:         return "CapabilityFragmentShaderPixelInterlockEXT";
@@ -1605,12 +1607,19 @@ const char* OpcodeString(int op)
     case OpTensorViewSetClipNV:             return "OpTensorViewSetClipNV";
 
     case OpTypeCooperativeVectorNV:         return "OpTypeCooperativeVectorNV";
+    case OpTypeCooperativeVectorAD:         return "OpTypeCooperativeVectorAD";
     case OpCooperativeVectorMatrixMulNV:    return "OpCooperativeVectorMatrixMulNV";
+    case OpCooperativeVectorMatrixMulAD:    return "OpCooperativeVectorMatrixMulAD";
     case OpCooperativeVectorMatrixMulAddNV: return "OpCooperativeVectorMatrixMulAddNV";
+    case OpCooperativeVectorMatrixMulAddAD: return "OpCooperativeVectorMatrixMulAddAD";
     case OpCooperativeVectorLoadNV:         return "OpCooperativeVectorLoadNV";
+    case OpCooperativeVectorLoadAD:         return "OpCooperativeVectorLoadAD";
     case OpCooperativeVectorStoreNV:        return "OpCooperativeVectorStoreNV";
+    case OpCooperativeVectorStoreAD:        return "OpCooperativeVectorStoreAD";
     case OpCooperativeVectorOuterProductAccumulateNV:   return "OpCooperativeVectorOuterProductAccumulateNV";
+    case OpCooperativeVectorOuterProductAccumulateAD:   return "OpCooperativeVectorOuterProductAccumulateAD";
     case OpCooperativeVectorReduceSumAccumulateNV:      return "OpCooperativeVectorReduceSumAccumulateNV";
+    case OpCooperativeVectorReduceSumAccumulateAD:      return "OpCooperativeVectorReduceSumAccumulateAD";
 
     case OpBeginInvocationInterlockEXT:     return "OpBeginInvocationInterlockEXT";
     case OpEndInvocationInterlockEXT:       return "OpEndInvocationInterlockEXT";
@@ -1807,9 +1816,13 @@ void Parameterize()
         InstructionDesc[OpTypeTensorViewNV].setResultAndType(true, false);
         InstructionDesc[OpCooperativeMatrixStoreTensorNV].setResultAndType(false, false);
         InstructionDesc[OpTypeCooperativeVectorNV].setResultAndType(true, false);
+        InstructionDesc[OpTypeCooperativeVectorAD].setResultAndType(true, false);
         InstructionDesc[OpCooperativeVectorStoreNV].setResultAndType(false, false);
+        InstructionDesc[OpCooperativeVectorStoreAD].setResultAndType(false, false);
         InstructionDesc[OpCooperativeVectorOuterProductAccumulateNV].setResultAndType(false, false);
+        InstructionDesc[OpCooperativeVectorOuterProductAccumulateAD].setResultAndType(false, false);
         InstructionDesc[OpCooperativeVectorReduceSumAccumulateNV].setResultAndType(false, false);
+        InstructionDesc[OpCooperativeVectorReduceSumAccumulateAD].setResultAndType(false, false);
 
         // Specific additional context-dependent operands
 
@@ -3350,6 +3363,8 @@ void Parameterize()
 
         InstructionDesc[OpTypeCooperativeVectorNV].operands.push(OperandId, "'Component Type'");
         InstructionDesc[OpTypeCooperativeVectorNV].operands.push(OperandId, "'Components'");
+        InstructionDesc[OpTypeCooperativeVectorAD].operands.push(OperandId, "'Component Type'");
+        InstructionDesc[OpTypeCooperativeVectorAD].operands.push(OperandId, "'Components'");
 
         InstructionDesc[OpCooperativeVectorMatrixMulNV].operands.push(OperandId, "'Input'");
         InstructionDesc[OpCooperativeVectorMatrixMulNV].operands.push(OperandId, "'InputInterpretation'");
@@ -3362,6 +3377,8 @@ void Parameterize()
         InstructionDesc[OpCooperativeVectorMatrixMulNV].operands.push(OperandId, "'Transpose'");
         InstructionDesc[OpCooperativeVectorMatrixMulNV].operands.push(OperandId, "'MatrixStride'", true);
         InstructionDesc[OpCooperativeVectorMatrixMulNV].operands.push(OperandCooperativeMatrixOperands, "'Cooperative Matrix Operands'", true);
+        InstructionDesc[OpCooperativeVectorMatrixMulAD].operands = InstructionDesc[OpCooperativeVectorMatrixMulNV].operands;
+        InstructionDesc[OpCooperativeVectorMatrixMulAD].setResultAndType(true, true);
 
         InstructionDesc[OpCooperativeVectorMatrixMulAddNV].operands.push(OperandId, "'Input'");
         InstructionDesc[OpCooperativeVectorMatrixMulAddNV].operands.push(OperandId, "'InputInterpretation'");
@@ -3377,12 +3394,16 @@ void Parameterize()
         InstructionDesc[OpCooperativeVectorMatrixMulAddNV].operands.push(OperandId, "'Transpose'");
         InstructionDesc[OpCooperativeVectorMatrixMulAddNV].operands.push(OperandId, "'MatrixStride'", true);
         InstructionDesc[OpCooperativeVectorMatrixMulAddNV].operands.push(OperandCooperativeMatrixOperands, "'Cooperative Matrix Operands'", true);
+        InstructionDesc[OpCooperativeVectorMatrixMulAddAD].operands = InstructionDesc[OpCooperativeVectorMatrixMulAddNV].operands;
+        InstructionDesc[OpCooperativeVectorMatrixMulAddAD].setResultAndType(true, true);
 
         InstructionDesc[OpCooperativeVectorLoadNV].operands.push(OperandId, "'Pointer'");
         InstructionDesc[OpCooperativeVectorLoadNV].operands.push(OperandId, "'Offset'");
         InstructionDesc[OpCooperativeVectorLoadNV].operands.push(OperandMemoryAccess, "'Memory Access'");
         InstructionDesc[OpCooperativeVectorLoadNV].operands.push(OperandLiteralNumber, "", true);
         InstructionDesc[OpCooperativeVectorLoadNV].operands.push(OperandId, "", true);
+        InstructionDesc[OpCooperativeVectorLoadAD].operands = InstructionDesc[OpCooperativeVectorLoadNV].operands;
+        InstructionDesc[OpCooperativeVectorLoadAD].setResultAndType(true, true);
 
         InstructionDesc[OpCooperativeVectorStoreNV].operands.push(OperandId, "'Pointer'");
         InstructionDesc[OpCooperativeVectorStoreNV].operands.push(OperandId, "'Offset'");
@@ -3390,6 +3411,8 @@ void Parameterize()
         InstructionDesc[OpCooperativeVectorStoreNV].operands.push(OperandMemoryAccess, "'Memory Access'");
         InstructionDesc[OpCooperativeVectorStoreNV].operands.push(OperandLiteralNumber, "", true);
         InstructionDesc[OpCooperativeVectorStoreNV].operands.push(OperandId, "", true);
+        InstructionDesc[OpCooperativeVectorStoreAD].operands = InstructionDesc[OpCooperativeVectorStoreNV].operands;
+        InstructionDesc[OpCooperativeVectorStoreAD].setResultAndType(false, false);
 
         InstructionDesc[OpCooperativeVectorOuterProductAccumulateNV].operands.push(OperandId, "'Pointer'");
         InstructionDesc[OpCooperativeVectorOuterProductAccumulateNV].operands.push(OperandId, "'Offset'");
@@ -3398,10 +3421,14 @@ void Parameterize()
         InstructionDesc[OpCooperativeVectorOuterProductAccumulateNV].operands.push(OperandId, "'MemoryLayout'");
         InstructionDesc[OpCooperativeVectorOuterProductAccumulateNV].operands.push(OperandId, "'MatrixInterpretation'");
         InstructionDesc[OpCooperativeVectorOuterProductAccumulateNV].operands.push(OperandId, "'MatrixStride'", true);
+        InstructionDesc[OpCooperativeVectorOuterProductAccumulateAD].operands = InstructionDesc[OpCooperativeVectorOuterProductAccumulateNV].operands;
+        InstructionDesc[OpCooperativeVectorOuterProductAccumulateAD].setResultAndType(false, false);
 
         InstructionDesc[OpCooperativeVectorReduceSumAccumulateNV].operands.push(OperandId, "'Pointer'");
         InstructionDesc[OpCooperativeVectorReduceSumAccumulateNV].operands.push(OperandId, "'Offset'");
         InstructionDesc[OpCooperativeVectorReduceSumAccumulateNV].operands.push(OperandId, "'V'");
+        InstructionDesc[OpCooperativeVectorReduceSumAccumulateAD].operands = InstructionDesc[OpCooperativeVectorReduceSumAccumulateNV].operands;
+        InstructionDesc[OpCooperativeVectorReduceSumAccumulateAD].setResultAndType(false, false);
 
         InstructionDesc[OpDemoteToHelperInvocationEXT].setResultAndType(false, false);
 

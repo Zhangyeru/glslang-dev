@@ -10957,10 +10957,18 @@ yyreduce:
   case 541: /* type_specifier_nonarray: COOPVECNV  */
 #line 3558 "MachineIndependent/glslang.y"
                 {
-        parseContext.coopvecCheck((yyvsp[0].lex).loc, "coopvecNV", parseContext.symbolTable.atBuiltInLevel());
+        if (*(yyvsp[0].lex).string == "coopvecAD")
+            parseContext.coopvecADCheck((yyvsp[0].lex).loc, "coopvecAD", parseContext.symbolTable.atBuiltInLevel());
+        else
+            parseContext.coopvecCheck((yyvsp[0].lex).loc, "coopvecNV", parseContext.symbolTable.atBuiltInLevel());
         (yyval.interm.type).init((yyvsp[0].lex).loc, parseContext.symbolTable.atGlobalLevel());
-        (yyval.interm.type).basicType = EbtCoopvecNV;
-        (yyval.interm.type).coopvecNV = true;
+        if (*(yyvsp[0].lex).string == "coopvecAD") {
+            (yyval.interm.type).basicType = EbtCoopvecAD;
+            (yyval.interm.type).coopvecAD = true;
+        } else {
+            (yyval.interm.type).basicType = EbtCoopvecNV;
+            (yyval.interm.type).coopvecNV = true;
+        }
     }
 #line 10966 "MachineIndependent/glslang_tab.cpp"
     break;
@@ -12776,4 +12784,3 @@ yyreturnlab:
 }
 
 #line 4484 "MachineIndependent/glslang.y"
-

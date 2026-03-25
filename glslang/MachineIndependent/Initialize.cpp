@@ -4765,9 +4765,38 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
                                std::string("uint matrixStride);\n");
             commonBuiltins.append(func.c_str());
 
+            func = std::string("void coopVecMatMulAD(out coopvecAD result, ") +
+                   std::string("coopvecAD v, ") +
+                   std::string("int inputInterpretation, ") +
+                   std::string(basicTypes[i]) + std::string("[] matrix, ") +
+                   std::string("uint matrixOffset, ") +
+                   std::string("int matrixInterpretation, ") +
+                   std::string("uint M, ") +
+                   std::string("uint K, ") +
+                   std::string("int matrixLayout, ") +
+                   std::string("bool transpose, ") +
+                   std::string("uint matrixStride);\n");
+            commonBuiltins.append(func.c_str());
+
             for (uint32_t j = 0; j < sizeof(basicTypes)/sizeof(basicTypes[0]); ++j) {
                 func = std::string("void coopVecMatMulAddNV(out coopvecNV result, ") +
                        std::string("coopvecNV v, ") +
+                       std::string("int inputInterpretation, ") +
+                       std::string(basicTypes[i]) + std::string("[] matrix, ") +
+                       std::string("uint matrixOffset, ") +
+                       std::string("int matrixInterpretation, ") +
+                       std::string(basicTypes[j]) + std::string("[] bias, ") +
+                       std::string("uint biasOffset, ") +
+                       std::string("int biasInterpretation, ") +
+                       std::string("uint M, ") +
+                       std::string("uint K, ") +
+                       std::string("int matrixLayout, ") +
+                       std::string("bool transpose, ") +
+                       std::string("uint matrixStride);\n");
+                commonBuiltins.append(func.c_str());
+
+                func = std::string("void coopVecMatMulAddAD(out coopvecAD result, ") +
+                       std::string("coopvecAD v, ") +
                        std::string("int inputInterpretation, ") +
                        std::string(basicTypes[i]) + std::string("[] matrix, ") +
                        std::string("uint matrixOffset, ") +
@@ -4787,8 +4816,18 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
                    std::string(basicTypes[i]) +
                    std::string("[] buf, uint offset, uint stride, int matrixLayout, int matrixInterpretation);\n");
             commonBuiltins.append(func.c_str());
+
+            func = std::string("void coopVecOuterProductAccumulateAD(coopvecAD v1, coopvecAD v2, ") +
+                   std::string(basicTypes[i]) +
+                   std::string("[] buf, uint offset, uint stride, int matrixLayout, int matrixInterpretation);\n");
+            commonBuiltins.append(func.c_str());
             
             func = std::string("void coopVecReduceSumAccumulateNV(coopvecNV v, ") +
+                   std::string(basicTypes[i]) +
+                   std::string("[] buf, uint offset);\n");
+            commonBuiltins.append(func.c_str());
+
+            func = std::string("void coopVecReduceSumAccumulateAD(coopvecAD v, ") +
                    std::string(basicTypes[i]) +
                    std::string("[] buf, uint offset);\n");
             commonBuiltins.append(func.c_str());
@@ -4796,14 +4835,23 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
 
         std::string cooperativeVectorFuncs =
             "coopvecNV fma(coopvecNV, coopvecNV, coopvecNV);\n"
+            "coopvecAD fma(coopvecAD, coopvecAD, coopvecAD);\n"
             "coopvecNV min(coopvecNV, coopvecNV);\n"
+            "coopvecAD min(coopvecAD, coopvecAD);\n"
             "coopvecNV max(coopvecNV, coopvecNV);\n"
+            "coopvecAD max(coopvecAD, coopvecAD);\n"
             "coopvecNV step(coopvecNV, coopvecNV);\n"
+            "coopvecAD step(coopvecAD, coopvecAD);\n"
             "coopvecNV exp(coopvecNV);\n"            
+            "coopvecAD exp(coopvecAD);\n"
             "coopvecNV log(coopvecNV);\n"            
+            "coopvecAD log(coopvecAD);\n"
             "coopvecNV tanh(coopvecNV);\n"            
+            "coopvecAD tanh(coopvecAD);\n"
             "coopvecNV atan(coopvecNV);\n"            
+            "coopvecAD atan(coopvecAD);\n"
             "coopvecNV clamp(coopvecNV, coopvecNV, coopvecNV);\n"
+            "coopvecAD clamp(coopvecAD, coopvecAD, coopvecAD);\n"
             "\n"
             ;
 
@@ -4860,6 +4908,13 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
                                std::string(scalarAndVectorTypes[i]) + std::string("[] buf, uint offset);");
             std::string store = std::string("void coopVecStoreNV(coopvecNV v, volatile coherent ") +
                                std::string(scalarAndVectorTypes[i]) + std::string("[] buf, uint offset);");
+            commonBuiltins.append(load.c_str());
+            commonBuiltins.append(store.c_str());
+
+            load = std::string("void coopVecLoadAD(out coopvecAD v, volatile coherent ") +
+                   std::string(scalarAndVectorTypes[i]) + std::string("[] buf, uint offset);");
+            store = std::string("void coopVecStoreAD(coopvecAD v, volatile coherent ") +
+                    std::string(scalarAndVectorTypes[i]) + std::string("[] buf, uint offset);");
             commonBuiltins.append(load.c_str());
             commonBuiltins.append(store.c_str());
         }
@@ -9463,6 +9518,11 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
             symbolTable.setFunctionExtensions("coopVecMatMulAddNV",                 1, &E_GL_NV_cooperative_vector);
             symbolTable.setFunctionExtensions("coopVecOuterProductAccumulateNV",    1, &E_GL_NV_cooperative_vector);
             symbolTable.setFunctionExtensions("coopVecReduceSumAccumulateNV",       1, &E_GL_NV_cooperative_vector);
+
+            symbolTable.setFunctionExtensions("coopVecMatMulAD",                    1, &E_GL_AD_cooperative_vector);
+            symbolTable.setFunctionExtensions("coopVecMatMulAddAD",                 1, &E_GL_AD_cooperative_vector);
+            symbolTable.setFunctionExtensions("coopVecOuterProductAccumulateAD",    1, &E_GL_AD_cooperative_vector);
+            symbolTable.setFunctionExtensions("coopVecReduceSumAccumulateAD",       1, &E_GL_AD_cooperative_vector);
         }
 
         if ((profile != EEsProfile && version >= 450) || (profile == EEsProfile && version >= 320)) {
@@ -10587,11 +10647,17 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
         }
 
         symbolTable.relateToOperator("coopVecMatMulNV",              EOpCooperativeVectorMatMulNV);
+        symbolTable.relateToOperator("coopVecMatMulAD",              EOpCooperativeVectorMatMulNV);
         symbolTable.relateToOperator("coopVecMatMulAddNV",           EOpCooperativeVectorMatMulAddNV);
+        symbolTable.relateToOperator("coopVecMatMulAddAD",           EOpCooperativeVectorMatMulAddNV);
         symbolTable.relateToOperator("coopVecLoadNV",                EOpCooperativeVectorLoadNV);
+        symbolTable.relateToOperator("coopVecLoadAD",                EOpCooperativeVectorLoadNV);
         symbolTable.relateToOperator("coopVecStoreNV",               EOpCooperativeVectorStoreNV);
+        symbolTable.relateToOperator("coopVecStoreAD",               EOpCooperativeVectorStoreNV);
         symbolTable.relateToOperator("coopVecOuterProductAccumulateNV", EOpCooperativeVectorOuterProductAccumulateNV);
+        symbolTable.relateToOperator("coopVecOuterProductAccumulateAD", EOpCooperativeVectorOuterProductAccumulateNV);
         symbolTable.relateToOperator("coopVecReduceSumAccumulateNV",    EOpCooperativeVectorReduceSumAccumulateNV);
+        symbolTable.relateToOperator("coopVecReduceSumAccumulateAD",    EOpCooperativeVectorReduceSumAccumulateNV);
     }
 
     switch(language) {

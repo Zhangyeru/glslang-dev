@@ -3556,10 +3556,18 @@ type_specifier_nonarray
         $$.basicType = EbtFunction;
     }
     | COOPVECNV {
-        parseContext.coopvecCheck($1.loc, "coopvecNV", parseContext.symbolTable.atBuiltInLevel());
+        if (*$1.string == "coopvecAD")
+            parseContext.coopvecADCheck($1.loc, "coopvecAD", parseContext.symbolTable.atBuiltInLevel());
+        else
+            parseContext.coopvecCheck($1.loc, "coopvecNV", parseContext.symbolTable.atBuiltInLevel());
         $$.init($1.loc, parseContext.symbolTable.atGlobalLevel());
-        $$.basicType = EbtCoopvecNV;
-        $$.coopvecNV = true;
+        if (*$1.string == "coopvecAD") {
+            $$.basicType = EbtCoopvecAD;
+            $$.coopvecAD = true;
+        } else {
+            $$.basicType = EbtCoopvecNV;
+            $$.coopvecNV = true;
+        }
     }
     | spirv_type_specifier {
         parseContext.requireExtensions($1.loc, 1, &E_GL_EXT_spirv_intrinsics, "SPIR-V type specifier");
