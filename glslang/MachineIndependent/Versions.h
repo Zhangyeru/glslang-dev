@@ -279,6 +279,7 @@ const char* const E_GL_NV_compute_shader_derivatives            = "GL_NV_compute
 const char* const E_GL_NV_shader_texture_footprint              = "GL_NV_shader_texture_footprint";
 const char* const E_GL_NV_mesh_shader                           = "GL_NV_mesh_shader";
 const char* const E_GL_NV_cooperative_matrix                    = "GL_NV_cooperative_matrix";
+const char* const E_GL_AD_cooperative_matrix                    = "GL_AD_cooperative_matrix";
 const char* const E_GL_NV_shader_sm_builtins                    = "GL_NV_shader_sm_builtins";
 const char* const E_GL_NV_integer_cooperative_matrix            = "GL_NV_integer_cooperative_matrix";
 const char* const E_GL_NV_shader_invocation_reorder             = "GL_NV_shader_invocation_reorder";

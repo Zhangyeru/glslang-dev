@@ -10916,13 +10916,24 @@ yyreduce:
   case 537: /* type_specifier_nonarray: COOPMAT  */
 #line 3537 "MachineIndependent/glslang.y"
               {
-        parseContext.coopmatCheck((yyvsp[0].lex).loc, "coopmat", parseContext.symbolTable.atBuiltInLevel());
+        if (*(yyvsp[0].lex).string == "coopmatAD")
+            parseContext.coopmatADCheck((yyvsp[0].lex).loc, "coopmatAD", parseContext.symbolTable.atBuiltInLevel());
+        else
+            parseContext.coopmatCheck((yyvsp[0].lex).loc, "coopmat", parseContext.symbolTable.atBuiltInLevel());
         (yyval.interm.type).init((yyvsp[0].lex).loc, parseContext.symbolTable.atGlobalLevel());
-        (yyval.interm.type).basicType = EbtCoopmat;
-        (yyval.interm.type).coopmatNV = false;
-        (yyval.interm.type).coopmatKHR = true;
+        if (*(yyvsp[0].lex).string == "coopmatAD") {
+            (yyval.interm.type).basicType = EbtCoopmatAD;
+            (yyval.interm.type).coopmatNV = false;
+            (yyval.interm.type).coopmatKHR = false;
+            (yyval.interm.type).coopmatAD = true;
+        } else {
+            (yyval.interm.type).basicType = EbtCoopmat;
+            (yyval.interm.type).coopmatNV = false;
+            (yyval.interm.type).coopmatKHR = true;
+            (yyval.interm.type).coopmatAD = false;
+        }
     }
-#line 10926 "MachineIndependent/glslang_tab.cpp"
+#line 10937 "MachineIndependent/glslang_tab.cpp"
     break;
 
   case 538: /* type_specifier_nonarray: TENSORLAYOUTNV  */

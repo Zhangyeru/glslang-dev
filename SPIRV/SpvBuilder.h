@@ -216,6 +216,7 @@ public:
     Id makeSampledImageType(Id imageType);
     Id makeCooperativeMatrixTypeKHR(Id component, Id scope, Id rows, Id cols, Id use);
     Id makeCooperativeMatrixTypeNV(Id component, Id scope, Id rows, Id cols);
+    Id makeCooperativeMatrixTypeAD(Id component, Id rows, Id cols);
     Id makeCooperativeMatrixTypeWithSameShape(Id component, Id otherType);
     Id makeCooperativeVectorTypeNV(Id componentType, Id components);
     Id makeCooperativeVectorTypeAD(Id componentType, Id components);
@@ -312,8 +313,11 @@ public:
     bool isArrayType(Id typeId)        const { return getTypeClass(typeId) == OpTypeArray; }
     bool isCooperativeMatrixType(Id typeId)const
     {
-        return getTypeClass(typeId) == OpTypeCooperativeMatrixKHR || getTypeClass(typeId) == OpTypeCooperativeMatrixNV;
+        return getTypeClass(typeId) == OpTypeCooperativeMatrixKHR ||
+               getTypeClass(typeId) == OpTypeCooperativeMatrixNV ||
+               getTypeClass(typeId) == OpTypeCooperativeMatrixAD;
     }
+    bool isCooperativeMatrixADType(Id typeId)const { return getTypeClass(typeId) == OpTypeCooperativeMatrixAD; }
     bool isTensorViewType(Id typeId)   const { return getTypeClass(typeId) == OpTypeTensorViewNV; }
     bool isCooperativeVectorType(Id typeId)const
     {
@@ -510,6 +514,8 @@ public:
     Id createCooperativeMatrixLengthKHR(Id type);
     // Create an OpCooperativeMatrixLengthNV instruction
     Id createCooperativeMatrixLengthNV(Id type);
+    // Create an OpCooperativeMatrixLengthAD instruction
+    Id createCooperativeMatrixLengthAD(Id type);
 
     // Create an OpCompositeExtract instruction
     Id createCompositeExtract(Id composite, Id typeId, unsigned index);

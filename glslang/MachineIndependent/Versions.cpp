@@ -269,6 +269,7 @@ void TParseVersions::initializeExtensionBehavior()
     extensionBehavior[E_GL_EXT_spec_constant_composites]                = EBhDisable;
 
     extensionBehavior[E_GL_KHR_cooperative_matrix]                      = EBhDisable;
+    extensionBehavior[E_GL_AD_cooperative_matrix]                       = EBhDisable;
     extensionBehavior[E_GL_NV_cooperative_vector]                       = EBhDisable;
     extensionBehavior[E_GL_AD_cooperative_vector]                       = EBhDisable;
 
@@ -1421,6 +1422,14 @@ void TParseVersions::coopvecADCheck(const TSourceLoc& loc, const char* op, bool 
 {
     if (!builtIn) {
         const char* const extensions[] = {E_GL_AD_cooperative_vector};
+        requireExtensions(loc, sizeof(extensions)/sizeof(extensions[0]), extensions, op);
+    }
+}
+
+void TParseVersions::coopmatADCheck(const TSourceLoc& loc, const char* op, bool builtIn)
+{
+    if (!builtIn) {
+        const char* const extensions[] = {E_GL_AD_cooperative_matrix};
         requireExtensions(loc, sizeof(extensions)/sizeof(extensions[0]), extensions, op);
     }
 }

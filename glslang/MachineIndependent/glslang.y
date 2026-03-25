@@ -3535,11 +3535,22 @@ type_specifier_nonarray
         $$.coopmatKHR = false;
     }
     | COOPMAT {
-        parseContext.coopmatCheck($1.loc, "coopmat", parseContext.symbolTable.atBuiltInLevel());
+        if (*$1.string == "coopmatAD")
+            parseContext.coopmatADCheck($1.loc, "coopmatAD", parseContext.symbolTable.atBuiltInLevel());
+        else
+            parseContext.coopmatCheck($1.loc, "coopmat", parseContext.symbolTable.atBuiltInLevel());
         $$.init($1.loc, parseContext.symbolTable.atGlobalLevel());
-        $$.basicType = EbtCoopmat;
-        $$.coopmatNV = false;
-        $$.coopmatKHR = true;
+        if (*$1.string == "coopmatAD") {
+            $$.basicType = EbtCoopmatAD;
+            $$.coopmatNV = false;
+            $$.coopmatKHR = false;
+            $$.coopmatAD = true;
+        } else {
+            $$.basicType = EbtCoopmat;
+            $$.coopmatNV = false;
+            $$.coopmatKHR = true;
+            $$.coopmatAD = false;
+        }
     }
     | TENSORLAYOUTNV {
         parseContext.tensorLayoutViewCheck($1.loc, "tensorLayoutNV", parseContext.symbolTable.atBuiltInLevel());

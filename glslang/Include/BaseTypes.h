@@ -67,6 +67,7 @@ enum TBasicType {
     EbtRayQuery,
     EbtHitObjectNV,
     EbtCoopmat,
+    EbtCoopmatAD,
     EbtFunction,
     EbtTensorLayoutNV,
     EbtTensorViewNV,

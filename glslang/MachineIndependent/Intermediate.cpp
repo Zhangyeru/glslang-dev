@@ -822,7 +822,8 @@ TIntermTyped* TIntermediate::addConversion(TOperator op, const TType& type, TInt
     // Reject implicit conversions to cooperative matrix types
     if (node->getType().isCoopMat() &&
         op != EOpConstructCooperativeMatrixNV &&
-        op != EOpConstructCooperativeMatrixKHR)
+        op != EOpConstructCooperativeMatrixKHR &&
+        op != EOpConstructCooperativeMatrixAD)
         return nullptr;
 
     if (node->getType().isTensorLayoutNV() ||
@@ -902,6 +903,7 @@ TIntermTyped* TIntermediate::addConversion(TOperator op, const TType& type, TInt
     case EOpConstructStruct:
     case EOpConstructCooperativeMatrixNV:
     case EOpConstructCooperativeMatrixKHR:
+    case EOpConstructCooperativeMatrixAD:
     case EOpConstructCooperativeVectorNV:
     case EOpConstructCooperativeVectorAD:
 
@@ -1779,6 +1781,9 @@ TOperator TIntermediate::mapTypeToConstructorOp(const TType& type) const
 
     if (type.isCoopMatKHR())
         return EOpConstructCooperativeMatrixKHR;
+
+    if (type.isCoopMatAD())
+        return EOpConstructCooperativeMatrixAD;
 
     if (type.isCoopVecNV())
         return EOpConstructCooperativeVectorNV;
@@ -3283,12 +3288,14 @@ bool TIntermediate::promoteBinary(TIntermBinary& node)
         case EOpMul:
         case EOpMulAssign:
             // Mul not supported in NV_cooperative_matrix
-            if (left->getType().isCoopMatNV() && right->getType().isCoopMatNV()) {
+            if ((left->getType().isCoopMatNV() || left->getType().isCoopMatAD()) &&
+                (right->getType().isCoopMatNV() || right->getType().isCoopMatAD())) {
                 return false;
             }
             // NV_cooperative_matrix supports MulAssign is for mat*=scalar only.
             // KHR_cooperative_matrix supports it for mat*=mat as well.
-            if (op == EOpMulAssign && right->getType().isCoopMatNV()) {
+            if (op == EOpMulAssign &&
+                (right->getType().isCoopMatNV() || right->getType().isCoopMatAD())) {
                 return false;
             }
             // Use MatrixTimesScalar if either operand is not a matrix. Otherwise use Mul.

@@ -4611,6 +4611,34 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
             "ucoopmatNV coopMatMulAddNV(ucoopmatNV A, ucoopmatNV B, ucoopmatNV C);\n"
             );
 
+        {
+            static const char *allTypes[] =
+            {
+                "float16_t", "float", "float64_t",
+                "int8_t", "int16_t", "int", "int64_t",
+                "uint8_t", "uint16_t", "uint", "uint64_t",
+                "vec2", "vec4",
+                "ivec2", "ivec4",
+                "uvec2", "uvec4",
+                "f16vec2", "f16vec4",
+                "i8vec2", "i8vec4",
+                "i16vec2", "i16vec4",
+                "u8vec2", "u8vec4",
+                "u16vec2", "u16vec4",
+                "dvec2", "dvec4",
+                "i64vec2", "i64vec4",
+                "u64vec2", "u64vec4",
+            };
+
+            std::stringstream cooperativeMatrixADFuncs;
+            for (auto t : allTypes) {
+                cooperativeMatrixADFuncs << "void coopMatLoadAD(out coopmatAD m, volatile coherent nontemporal " << t << "[] buf, uint element, uint stride, bool colMajor);\n";
+                cooperativeMatrixADFuncs << "void coopMatStoreAD(coopmatAD m, volatile coherent nontemporal " << t << "[] buf, uint element, uint stride, bool colMajor);\n";
+            }
+            cooperativeMatrixADFuncs << "coopmatAD coopMatMulAddAD(coopmatAD A, coopmatAD B, coopmatAD C);\n";
+            stageBuiltins[EShLangCompute].append(cooperativeMatrixADFuncs.str().c_str());
+        }
+
         std::stringstream cooperativeMatrixFuncs;
 
         {
@@ -9492,6 +9520,12 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
         }
 
         {
+            symbolTable.setFunctionExtensions("coopMatLoadAD",   1, &E_GL_AD_cooperative_matrix);
+            symbolTable.setFunctionExtensions("coopMatStoreAD",  1, &E_GL_AD_cooperative_matrix);
+            symbolTable.setFunctionExtensions("coopMatMulAddAD", 1, &E_GL_AD_cooperative_matrix);
+        }
+
+        {
             symbolTable.setFunctionExtensions("coopMatLoad",   1, &E_GL_KHR_cooperative_matrix);
             symbolTable.setFunctionExtensions("coopMatStore",  1, &E_GL_KHR_cooperative_matrix);
             symbolTable.setFunctionExtensions("coopMatMulAdd", 1, &E_GL_KHR_cooperative_matrix);
@@ -10753,6 +10787,9 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
         symbolTable.relateToOperator("coopMatLoadNV",              EOpCooperativeMatrixLoadNV);
         symbolTable.relateToOperator("coopMatStoreNV",             EOpCooperativeMatrixStoreNV);
         symbolTable.relateToOperator("coopMatMulAddNV",            EOpCooperativeMatrixMulAddNV);
+        symbolTable.relateToOperator("coopMatLoadAD",              EOpCooperativeMatrixLoadNV);
+        symbolTable.relateToOperator("coopMatStoreAD",             EOpCooperativeMatrixStoreNV);
+        symbolTable.relateToOperator("coopMatMulAddAD",            EOpCooperativeMatrixMulAddNV);
 
         symbolTable.relateToOperator("coopMatLoad",                EOpCooperativeMatrixLoad);
         symbolTable.relateToOperator("coopMatStore",               EOpCooperativeMatrixStore);

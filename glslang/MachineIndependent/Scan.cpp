@@ -750,6 +750,7 @@ const std::unordered_map<const char*, int, str_hash, str_eq> KeywordMap {
     {"ucoopmatNV",UCOOPMATNV},
 
     {"coopmat",COOPMAT},
+    {"coopmatAD",COOPMAT},
 
     {"hitObjectNV",HITOBJECTNV},
     {"hitObjectAttributeNV",HITOBJECTATTRNV},
@@ -1784,8 +1785,11 @@ int TScanContext::tokenizeIdentifier()
 
     case COOPMAT:
         afterType = true;
+        parserToken->sType.lex.string = NewPoolTString(tokenText);
         if (parseContext.symbolTable.atBuiltInLevel() ||
-            parseContext.extensionTurnedOn(E_GL_KHR_cooperative_matrix))
+            (strcmp("coopmatAD", tokenText) == 0
+                 ? parseContext.extensionTurnedOn(E_GL_AD_cooperative_matrix)
+                 : parseContext.extensionTurnedOn(E_GL_KHR_cooperative_matrix)))
             return keyword;
         return identifierOrType();
 

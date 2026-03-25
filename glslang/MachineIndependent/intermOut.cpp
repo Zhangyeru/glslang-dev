@@ -643,6 +643,7 @@ bool TOutputTraverser::visitAggregate(TVisit /* visit */, TIntermAggregate* node
     case EOpConstructReference:  out.debug << "Construct reference";  break;
     case EOpConstructCooperativeMatrixNV:  out.debug << "Construct cooperative matrix NV";  break;
     case EOpConstructCooperativeMatrixKHR:  out.debug << "Construct cooperative matrix KHR";  break;
+    case EOpConstructCooperativeMatrixAD:  out.debug << "Construct cooperative matrix AD";  break;
     case EOpConstructCooperativeVectorNV:  out.debug << "Construct cooperative vector NV";  break;
     case EOpConstructCooperativeVectorAD:  out.debug << "Construct cooperative vector AD";  break;
     case EOpConstructAccStruct: out.debug << "Construct acceleration structure"; break;

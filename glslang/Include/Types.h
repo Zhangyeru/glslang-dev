@@ -1463,6 +1463,7 @@ public:
     uint32_t matrixRows  : 4;
     bool coopmatNV  : 1;
     bool coopmatKHR : 1;
+    bool coopmatAD  : 1;
     bool coopvecNV  : 1;
     bool coopvecAD  : 1;
     TArraySizes* arraySizes;
@@ -1472,9 +1473,10 @@ public:
     // SPIR-V type defined by spirv_type directive
     TSpirvType* spirvType;
 
-    bool isCoopmat() const { return coopmatNV || coopmatKHR; }
+    bool isCoopmat() const { return coopmatNV || coopmatKHR || coopmatAD; }
     bool isCoopmatNV() const { return coopmatNV; }
     bool isCoopmatKHR() const { return coopmatKHR; }
+    bool isCoopmatAD() const { return coopmatAD; }
     bool isCoopvecNV() const { return coopvecNV; }
     bool isCoopvecAD() const { return coopvecAD; }
     bool isCoopVec() const { return coopvecNV || coopvecAD; }
@@ -1495,6 +1497,7 @@ public:
         typeParameters = nullptr;
         coopmatNV = false;
         coopmatKHR = false;
+        coopmatAD = false;
         coopvecNV = false;
         coopvecAD = false;
         spirvType = nullptr;
@@ -1556,7 +1559,7 @@ public:
     // for "empty" type (no args) or simple scalar/vector/matrix
     explicit TType(TBasicType t = EbtVoid, TStorageQualifier q = EvqTemporary, int vs = 1, int mc = 0, int mr = 0,
                    bool isVector = false) :
-                            basicType(t), vectorSize(static_cast<uint32_t>(vs) & 0b1111), matrixCols(static_cast<uint32_t>(mc) & 0b1111), matrixRows(static_cast<uint32_t>(mr) & 0b1111), vector1(isVector && vs == 1), coopmatNV(false), coopmatKHR(false), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(false), coopvecAD(false),
+                            basicType(t), vectorSize(static_cast<uint32_t>(vs) & 0b1111), matrixCols(static_cast<uint32_t>(mc) & 0b1111), matrixRows(static_cast<uint32_t>(mr) & 0b1111), vector1(isVector && vs == 1), coopmatNV(false), coopmatKHR(false), coopmatAD(false), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(false), coopvecAD(false),
                             arraySizes(nullptr), structure(nullptr), fieldName(nullptr), typeName(nullptr), typeParameters(nullptr),
                             spirvType(nullptr)
                             {
@@ -1572,7 +1575,7 @@ public:
     // for explicit precision qualifier
     TType(TBasicType t, TStorageQualifier q, TPrecisionQualifier p, int vs = 1, int mc = 0, int mr = 0,
           bool isVector = false) :
-                            basicType(t), vectorSize(static_cast<uint32_t>(vs) & 0b1111), matrixCols(static_cast<uint32_t>(mc) & 0b1111), matrixRows(static_cast<uint32_t>(mr) & 0b1111), vector1(isVector && vs == 1), coopmatNV(false), coopmatKHR(false), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(false), coopvecAD(false),
+                            basicType(t), vectorSize(static_cast<uint32_t>(vs) & 0b1111), matrixCols(static_cast<uint32_t>(mc) & 0b1111), matrixRows(static_cast<uint32_t>(mr) & 0b1111), vector1(isVector && vs == 1), coopmatNV(false), coopmatKHR(false), coopmatAD(false), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(false), coopvecAD(false),
                             arraySizes(nullptr), structure(nullptr), fieldName(nullptr), typeName(nullptr), typeParameters(nullptr),
                             spirvType(nullptr)
                             {
@@ -1590,7 +1593,7 @@ public:
     // for turning a TPublicType into a TType, using a shallow copy
     explicit TType(const TPublicType& p) :
                             basicType(p.basicType),
-                            vectorSize(p.vectorSize), matrixCols(p.matrixCols), matrixRows(p.matrixRows), vector1(false), coopmatNV(p.coopmatNV), coopmatKHR(p.coopmatKHR), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(p.coopvecNV), coopvecAD(p.coopvecAD),
+                            vectorSize(p.vectorSize), matrixCols(p.matrixCols), matrixRows(p.matrixRows), vector1(false), coopmatNV(p.coopmatNV), coopmatKHR(p.coopmatKHR), coopmatAD(p.coopmatAD), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(p.coopvecNV), coopvecAD(p.coopvecAD),
                             arraySizes(p.arraySizes), structure(nullptr), fieldName(nullptr), typeName(nullptr), typeParameters(p.typeParameters),
                             spirvType(p.spirvType)
                             {
@@ -1641,13 +1644,16 @@ public:
                                         coopmatKHRUseValid = true;
                                     }
                                 }
+                                if (p.isCoopmatAD() && p.typeParameters) {
+                                    basicType = p.typeParameters->basicType;
+                                }
                                 if (p.isCoopVec() && p.typeParameters) {
                                     basicType = p.typeParameters->basicType;
                                 }
                             }
     // for construction of sampler types
     TType(const TSampler& sampler, TStorageQualifier q = EvqUniform, TArraySizes* as = nullptr) :
-        basicType(EbtSampler), vectorSize(1u), matrixCols(0u), matrixRows(0u), vector1(false), coopmatNV(false), coopmatKHR(false), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(false), coopvecAD(false),
+        basicType(EbtSampler), vectorSize(1u), matrixCols(0u), matrixRows(0u), vector1(false), coopmatNV(false), coopmatKHR(false), coopmatAD(false), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(false), coopvecAD(false),
         arraySizes(as), structure(nullptr), fieldName(nullptr), typeName(nullptr),
         sampler(sampler), typeParameters(nullptr), spirvType(nullptr)
     {
@@ -1693,6 +1699,7 @@ public:
                                     } else if (isCoopMat() || isCoopVec()) {
                                         coopmatNV = false;
                                         coopmatKHR = false;
+                                        coopmatAD = false;
                                         coopmatKHRuse = 0;
                                         coopmatKHRUseValid = false;
                                         coopvecNV = false;
@@ -1703,7 +1710,7 @@ public:
                             }
     // for making structures, ...
     TType(TTypeList* userDef, const TString& n) :
-                            basicType(EbtStruct), vectorSize(1), matrixCols(0), matrixRows(0), vector1(false), coopmatNV(false), coopmatKHR(false), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(false), coopvecAD(false),
+                            basicType(EbtStruct), vectorSize(1), matrixCols(0), matrixRows(0), vector1(false), coopmatNV(false), coopmatKHR(false), coopmatAD(false), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(false), coopvecAD(false),
                             arraySizes(nullptr), structure(userDef), fieldName(nullptr), typeParameters(nullptr),
                             spirvType(nullptr)
                             {
@@ -1713,7 +1720,7 @@ public:
                             }
     // For interface blocks
     TType(TTypeList* userDef, const TString& n, const TQualifier& q) :
-                            basicType(EbtBlock), vectorSize(1), matrixCols(0), matrixRows(0), vector1(false), coopmatNV(false), coopmatKHR(false), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(false), coopvecAD(false),
+                            basicType(EbtBlock), vectorSize(1), matrixCols(0), matrixRows(0), vector1(false), coopmatNV(false), coopmatKHR(false), coopmatAD(false), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(false), coopvecAD(false),
                             qualifier(q), arraySizes(nullptr), structure(userDef), fieldName(nullptr), typeParameters(nullptr),
                             spirvType(nullptr)
                             {
@@ -1722,7 +1729,7 @@ public:
                             }
     // for block reference (first parameter must be EbtReference)
     explicit TType(TBasicType t, const TType &p, const TString& n) :
-                            basicType(t), vectorSize(1), matrixCols(0), matrixRows(0), vector1(false), coopmatNV(false), coopmatKHR(false), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(false), coopvecAD(false),
+                            basicType(t), vectorSize(1), matrixCols(0), matrixRows(0), vector1(false), coopmatNV(false), coopmatKHR(false), coopmatAD(false), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(false), coopvecAD(false),
                             arraySizes(nullptr), structure(nullptr), fieldName(nullptr), typeName(nullptr), typeParameters(nullptr),
                             spirvType(nullptr)
                             {
@@ -1759,6 +1766,7 @@ public:
         spirvType = copyOf.spirvType;
         coopmatNV = copyOf.isCoopMatNV();
         coopmatKHR = copyOf.isCoopMatKHR();
+        coopmatAD = copyOf.isCoopMatAD();
         coopmatKHRuse = copyOf.coopmatKHRuse;
         coopmatKHRUseValid = copyOf.coopmatKHRUseValid;
         coopvecNV = copyOf.isCoopVecNV();
@@ -1894,9 +1902,10 @@ public:
     virtual bool isUnusableName() const { return isStruct() && structure == nullptr; }
     virtual bool isParameterized()  const { return typeParameters != nullptr; }
     bool isAtomic() const { return basicType == EbtAtomicUint; }
-    bool isCoopMat() const { return coopmatNV || coopmatKHR; }
+    bool isCoopMat() const { return coopmatNV || coopmatKHR || coopmatAD; }
     bool isCoopMatNV() const { return coopmatNV; }
     bool isCoopMatKHR() const { return coopmatKHR; }
+    bool isCoopMatAD() const { return coopmatAD; }
     bool isCoopVecNV() const { return coopvecNV; }
     bool isCoopVecAD() const { return coopvecAD; }
     bool isCoopVec() const { return coopvecNV || coopvecAD; }
@@ -2014,7 +2023,7 @@ public:
     }
     bool containsCoopMat() const
     {
-        return contains([](const TType* t) { return t->coopmatNV || t->coopmatKHR; } );
+        return contains([](const TType* t) { return t->coopmatNV || t->coopmatKHR || t->coopmatAD; } );
     }
     bool containsCoopVec() const
     {
@@ -2137,6 +2146,7 @@ public:
         case EbtString:            return "string";
         case EbtSpirvType:         return "spirv_type";
         case EbtCoopmat:           return "coopmat";
+        case EbtCoopmatAD:         return "coopmatAD";
         case EbtTensorLayoutNV:    return "tensorLayoutNV";
         case EbtTensorViewNV:      return "tensorViewNV";
         case EbtCoopvecNV:         return "coopvecNV";
@@ -2453,6 +2463,10 @@ public:
                 appendStr(" ");
                 appendStr("coopmat");
               }
+              if (isCoopMatAD()) {
+                appendStr(" ");
+                appendStr("coopmatAD");
+              }
               if (isTensorLayoutNV()) {
                 appendStr(" ");
                 appendStr("tensorLayoutNV");
@@ -2755,6 +2769,7 @@ public:
                   vector1 == right.vector1    &&
               isCoopMatNV() == right.isCoopMatNV() &&
               isCoopMatKHR() == right.isCoopMatKHR() &&
+              isCoopMatAD() == right.isCoopMatAD() &&
               isCoopVecNV() == right.isCoopVecNV() &&
               isCoopVecAD() == right.isCoopVecAD() &&
                sameStructType(right, lpidx, rpidx) &&
@@ -2768,6 +2783,12 @@ public:
         if (isCoopMatNV()) {
             return right.isCoopMatNV() && (getBasicType() == right.getBasicType()) && typeParameters == nullptr &&
                    right.typeParameters != nullptr;
+        }
+        if (isCoopMatAD() && right.isCoopMatAD()) {
+            return ((getBasicType() == right.getBasicType()) || (getBasicType() == EbtCoopmatAD) ||
+                    (right.getBasicType() == EbtCoopmatAD)) &&
+                   ((typeParameters == nullptr && right.typeParameters != nullptr) ||
+                    (typeParameters != nullptr && right.typeParameters == nullptr));
         }
         if (isCoopMatKHR() && right.isCoopMatKHR()) {
             return ((getBasicType() == right.getBasicType()) || (getBasicType() == EbtCoopmat) ||
@@ -2804,6 +2825,15 @@ public:
                 rv = right.getBasicType() == EbtUint || right.getBasicType() == EbtUint8 || right.getBasicType() == EbtUint16;
             else if (getBasicType() == EbtInt || getBasicType() == EbtInt8 || getBasicType() == EbtInt16)
                 rv = right.getBasicType() == EbtInt || right.getBasicType() == EbtInt8 || right.getBasicType() == EbtInt16;
+            else
+                rv = false;
+        } else if (isCoopMatAD() && right.isCoopMatAD()) {
+            if (getBasicType() == EbtFloat || getBasicType() == EbtFloat16)
+                rv = right.getBasicType() == EbtFloat || right.getBasicType() == EbtFloat16 || right.getBasicType() == EbtCoopmatAD;
+            else if (getBasicType() == EbtUint || getBasicType() == EbtUint8 || getBasicType() == EbtUint16)
+                rv = right.getBasicType() == EbtUint || right.getBasicType() == EbtUint8 || right.getBasicType() == EbtUint16 || right.getBasicType() == EbtCoopmatAD;
+            else if (getBasicType() == EbtInt || getBasicType() == EbtInt8 || getBasicType() == EbtInt16)
+                rv = right.getBasicType() == EbtInt || right.getBasicType() == EbtInt8 || right.getBasicType() == EbtInt16 || right.getBasicType() == EbtCoopmatAD;
             else
                 rv = false;
         } else if (isCoopMatKHR() && right.isCoopMatKHR()) {
@@ -2855,7 +2885,12 @@ public:
 
     bool sameCoopMatShape(const TType &right) const
     {
-        if (!isCoopMat() || !right.isCoopMat() || isCoopMatKHR() != right.isCoopMatKHR())
+        if (!isCoopMat() || !right.isCoopMat())
+            return false;
+
+        if (isCoopMatNV() != right.isCoopMatNV() ||
+            isCoopMatKHR() != right.isCoopMatKHR() ||
+            isCoopMatAD() != right.isCoopMatAD())
             return false;
 
         // Skip bit width type parameter (first array size) for coopmatNV
@@ -2976,6 +3011,7 @@ protected:
                                // from a scalar.
     bool coopmatNV       : 1;
     bool coopmatKHR      : 1;
+    bool coopmatAD       : 1;
     uint32_t coopmatKHRuse    : 3;  // Accepts one of three values: 0, 1, 2 (gl_MatrixUseA, gl_MatrixUseB, gl_MatrixUseAccumulator)
     bool coopmatKHRUseValid   : 1;  // True if coopmatKHRuse has been set
     bool coopvecNV       : 1;

@@ -127,6 +127,28 @@ spv::Capability getCooperativeVectorTrainingCapability(bool isAd)
     return isAd ? spv::CapabilityCooperativeVectorTrainingAD : spv::CapabilityCooperativeVectorTrainingNV;
 }
 
+spv::Capability getCooperativeMatrixCapability(bool isAd)
+{
+    return isAd ? spv::CapabilityCooperativeMatrixAD : spv::CapabilityCooperativeMatrixNV;
+}
+
+const char* getCooperativeMatrixExtension(bool isAd)
+{
+    return isAd ? spv::E_SPV_AD_cooperative_matrix : spv::E_SPV_NV_cooperative_matrix;
+}
+
+spv::Op getCooperativeMatrixLoadStoreOp(bool isAd, bool isStore)
+{
+    if (isAd)
+        return isStore ? spv::OpCooperativeMatrixStoreAD : spv::OpCooperativeMatrixLoadAD;
+    return isStore ? spv::OpCooperativeMatrixStoreNV : spv::OpCooperativeMatrixLoadNV;
+}
+
+spv::Op getCooperativeMatrixMulAddOp(bool isAd)
+{
+    return isAd ? spv::OpCooperativeMatrixMulAddAD : spv::OpCooperativeMatrixMulAddNV;
+}
+
 const char* getCooperativeVectorExtension(bool isAd)
 {
     return isAd ? spv::E_SPV_AD_cooperative_vector : spv::E_SPV_NV_cooperative_vector;
@@ -2655,6 +2677,8 @@ bool TGlslangToSpvTraverser::visitUnary(glslang::TVisit /* visit */, glslang::TI
 
             if (node->getOperand()->getType().isCoopMatKHR()) {
                 length = builder.createCooperativeMatrixLengthKHR(typeId);
+            } else if (node->getOperand()->getType().isCoopMatAD()) {
+                length = builder.createCooperativeMatrixLengthAD(typeId);
             } else {
                 spec_constant_op_mode_setter.turnOnSpecConstantOpMode();
                 length = builder.createCooperativeMatrixLengthNV(typeId);
@@ -3237,6 +3261,7 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
     case glslang::EOpConstructReference:
     case glslang::EOpConstructCooperativeMatrixNV:
     case glslang::EOpConstructCooperativeMatrixKHR:
+    case glslang::EOpConstructCooperativeMatrixAD:
     case glslang::EOpConstructCooperativeVectorNV:
     case glslang::EOpConstructCooperativeVectorAD:
     {
@@ -3267,6 +3292,7 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         } else if (node->getOp() == glslang::EOpConstructStruct ||
                  node->getOp() == glslang::EOpConstructCooperativeMatrixNV ||
                  node->getOp() == glslang::EOpConstructCooperativeMatrixKHR ||
+                 node->getOp() == glslang::EOpConstructCooperativeMatrixAD ||
                  node->getType().isArray() ||
                  // Handle constructing coopvec from one component here, to avoid the component
                  // getting smeared
@@ -4043,9 +4069,10 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         spv::Id typeId = builder.getContainedTypeId(builder.getTypeId(operands[0]));
         assert(builder.isCooperativeMatrixType(typeId));
         // do the op
+        const bool isAd = builder.isCooperativeMatrixADType(typeId);
         spv::Id result = node->getOp() == glslang::EOpCooperativeMatrixLoad
                        ? builder.createOp(spv::OpCooperativeMatrixLoadKHR, typeId, idImmOps)
-                       : builder.createOp(spv::OpCooperativeMatrixLoadNV, typeId, idImmOps);
+                       : builder.createOp(getCooperativeMatrixLoadStoreOp(isAd, false), typeId, idImmOps);
         // store the result to the pointer (out param 'm')
         builder.createStore(result, operands[0]);
         result = 0;
@@ -4095,7 +4122,7 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         if (node->getOp() == glslang::EOpCooperativeMatrixStore)
             builder.createNoResultOp(spv::OpCooperativeMatrixStoreKHR, idImmOps);
         else
-            builder.createNoResultOp(spv::OpCooperativeMatrixStoreNV, idImmOps);
+            builder.createNoResultOp(getCooperativeMatrixLoadStoreOp(builder.isCooperativeMatrixADType(builder.getTypeId(operands[0])), true), idImmOps);
         result = 0;
     } else if (node->getOp() == glslang::EOpRayQueryGetIntersectionTriangleVertexPositionsEXT) {
         std::vector<spv::IdImmediate> idImmOps;
@@ -5266,6 +5293,23 @@ spv::Id TGlslangToSpvTraverser::convertGlslangToSpvType(const glslang::TType& ty
         spv::Id cols = makeArraySizeId(*type.getTypeParameters()->arraySizes, 3);
 
         spvType = builder.makeCooperativeMatrixTypeNV(spvType, scope, rows, cols);
+    }
+
+    if (type.isCoopMatAD()) {
+        builder.addCapability(spv::CapabilityCooperativeMatrixAD);
+        builder.addExtension(spv::E_SPV_AD_cooperative_matrix);
+
+        if (type.getBasicType() == glslang::EbtFloat16)
+            builder.addCapability(spv::CapabilityFloat16);
+        if (type.getBasicType() == glslang::EbtUint8 ||
+            type.getBasicType() == glslang::EbtInt8) {
+            builder.addCapability(spv::CapabilityInt8);
+        }
+
+        spv::Id rows = makeArraySizeId(*type.getTypeParameters()->arraySizes, 0);
+        spv::Id cols = makeArraySizeId(*type.getTypeParameters()->arraySizes, 1);
+
+        spvType = builder.makeCooperativeMatrixTypeAD(spvType, rows, cols);
     }
 
     if (type.isCoopMatKHR()) {
@@ -8113,7 +8157,8 @@ spv::Id TGlslangToSpvTraverser::createIntWidthConversion(spv::Id operand, int ve
     } else if (vectorSize > 0)
         type = builder.makeVectorType(type, vectorSize);
     else if (builder.getOpCode(destType) == spv::OpTypeCooperativeMatrixKHR ||
-             builder.getOpCode(destType) == spv::OpTypeCooperativeMatrixNV) {
+             builder.getOpCode(destType) == spv::OpTypeCooperativeMatrixNV ||
+             builder.getOpCode(destType) == spv::OpTypeCooperativeMatrixAD) {
 
         type = builder.makeCooperativeMatrixTypeWithSameShape(type, destType);
     }
@@ -9634,7 +9679,8 @@ spv::Id TGlslangToSpvTraverser::createMiscOperation(glslang::TOperator op, spv::
         builder.createNoResultOp(spv::OpSetMeshOutputsEXT, operands);
         return 0;
     case glslang::EOpCooperativeMatrixMulAddNV:
-        opCode = spv::OpCooperativeMatrixMulAddNV;
+        opCode = builder.isCooperativeMatrixADType(typeId) ? spv::OpCooperativeMatrixMulAddAD
+                                                           : spv::OpCooperativeMatrixMulAddNV;
         break;
     case glslang::EOpHitObjectTraceRayNV:
         builder.createNoResultOp(spv::OpHitObjectTraceRayNV, operands);

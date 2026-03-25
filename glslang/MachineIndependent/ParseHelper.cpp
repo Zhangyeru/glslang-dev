@@ -4044,8 +4044,9 @@ bool TParseContext::constructorError(const TSourceLoc& loc, TIntermNode* node, T
 
     TIntermTyped* typed = node->getAsTyped();
     if (type.isCoopMat() && typed->getType().isCoopMat() &&
-        ((extensionTurnedOn(E_GL_NV_cooperative_matrix2) && !type.sameCoopMatShape(typed->getType())) ||
-         (!extensionTurnedOn(E_GL_NV_cooperative_matrix2) && !type.sameCoopMatShapeAndUse(typed->getType())))) {
+        ((type.isCoopMatAD() && !type.sameCoopMatShape(typed->getType())) ||
+         (extensionTurnedOn(E_GL_NV_cooperative_matrix2) && !type.sameCoopMatShape(typed->getType())) ||
+         (!type.isCoopMatAD() && !extensionTurnedOn(E_GL_NV_cooperative_matrix2) && !type.sameCoopMatShapeAndUse(typed->getType())))) {
         error(loc, "Cooperative matrix type parameters mismatch", constructorString.c_str(), "");
         return true;
     }
@@ -7807,6 +7808,30 @@ void TParseContext::typeParametersCheck(const TSourceLoc& loc, const TPublicType
 {
     if (parsingBuiltins)
         return;
+    if (publicType.isCoopmatAD()) {
+        if (publicType.typeParameters == nullptr) {
+            error(loc, "coopmatAD missing type parameters", "", "");
+            return;
+        }
+        switch (publicType.typeParameters->basicType) {
+        case EbtFloat:
+        case EbtFloat16:
+        case EbtInt:
+        case EbtInt8:
+        case EbtInt16:
+        case EbtUint:
+        case EbtUint8:
+        case EbtUint16:
+            break;
+        default:
+            error(loc, "coopmatAD invalid basic type", TType::getBasicString(publicType.typeParameters->basicType), "");
+            break;
+        }
+        if (publicType.typeParameters->arraySizes->getNumDims() != 2) {
+            error(loc, "coopmatAD incorrect number of type parameters", "", "");
+            return;
+        }
+    }
     if (publicType.isCoopmatKHR()) {
         if (publicType.typeParameters == nullptr) {
             error(loc, "coopmat missing type parameters", "", "");
@@ -8031,6 +8056,7 @@ void TParseContext::vkRelaxedRemapUniformMembers(const TSourceLoc& loc, const TP
                       memberType.matrixRows = type.getMatrixRows();
                       memberType.coopmatNV = type.isCoopMatNV();
                       memberType.coopmatKHR = type.isCoopMatKHR();
+                      memberType.coopmatAD = type.isCoopMatAD();
                       memberType.arraySizes = nullptr;
                       memberType.userDef = nullptr;
                       memberType.loc = loc;
@@ -8253,6 +8279,24 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
             if (!isTypeFloat(publicType.typeParameters->basicType) &&
                 !isTypeInt(publicType.typeParameters->basicType) && publicType.typeParameters->basicType != EbtSpirvType) {
                 error(loc, "expected 8, 16, 32, or 64 bit signed or unsigned integer or 16, 32, or 64 bit float type", identifier.c_str(), "");
+            }
+        }
+    }
+    else if (type.isCoopMatAD()) {
+        intermediate.setUseVulkanMemoryModel();
+        intermediate.setUseStorageBuffer();
+
+        if (!publicType.typeParameters || !publicType.typeParameters->arraySizes ||
+            publicType.typeParameters->arraySizes->getNumDims() != 2) {
+            error(loc, "expected three type parameters", identifier.c_str(), "");
+        } else {
+            if (!isTypeFloat(publicType.typeParameters->basicType) &&
+                !isTypeInt(publicType.typeParameters->basicType)) {
+                error(loc, "expected signed or unsigned integer or float type", identifier.c_str(), "");
+            }
+            if (publicType.typeParameters->arraySizes->getDimSize(0) <= 0 ||
+                publicType.typeParameters->arraySizes->getDimSize(1) <= 0) {
+                error(loc, "expected positive matrix dimensions", identifier.c_str(), "");
             }
         }
     }
@@ -9165,8 +9209,15 @@ TIntermTyped* TParseContext::constructBuiltIn(const TType& type, TOperator op, T
 
     case EOpConstructCooperativeMatrixNV:
     case EOpConstructCooperativeMatrixKHR:
+    case EOpConstructCooperativeMatrixAD:
         if (node->getType() == type) {
             return node;
+        }
+        if (node->getType().isCoopMat() &&
+            (type.isCoopMatNV() != node->getType().isCoopMatNV() ||
+             type.isCoopMatKHR() != node->getType().isCoopMatKHR() ||
+             type.isCoopMatAD() != node->getType().isCoopMatAD())) {
+            return nullptr;
         }
         if (!node->getType().isCoopMat()) {
             if (type.getBasicType() != node->getType().getBasicType()) {
@@ -9175,7 +9226,8 @@ TIntermTyped* TParseContext::constructBuiltIn(const TType& type, TOperator op, T
                     return nullptr;
             }
             node = intermediate.setAggregateOperator(node, op, type, node->getLoc());
-        } else if (type.sameCoopMatShape(node->getType()) && !type.sameCoopMatUse(node->getType()) &&
+        } else if (type.sameCoopMatShape(node->getType()) &&
+                   ((!type.isCoopMatKHR()) || !type.sameCoopMatUse(node->getType())) &&
                    type.getBasicType() == node->getType().getBasicType()) {
             node = intermediate.setAggregateOperator(node, op, type, node->getLoc());
         } else {

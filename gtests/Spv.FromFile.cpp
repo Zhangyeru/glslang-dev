@@ -368,6 +368,8 @@ INSTANTIATE_TEST_SUITE_P(
         "spv.controlFlowAttributes.frag",
         "spv.conversion.frag",
         "spv.coopmat.comp",
+        "spv.coopmatAD.comp",
+        "spv.coopmatAD_Error.comp",
         "spv.coopmat_Error.comp",
         "spv.coopmatKHR.comp",
         "spv.coopmat_armlayout.comp",
