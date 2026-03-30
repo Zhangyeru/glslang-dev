@@ -1,7 +1,7 @@
 ; SPIR-V
 ; Version: 1.0
 ; Generator: Khronos Glslang Reference Front End; 11
-; Bound: 85
+; Bound: 82
 ; Schema: 0
                OpCapability Shader
                OpCapability Float16
@@ -71,14 +71,11 @@
     %float_2 = OpConstant %float 2
          %36 = OpConstantComposite %v2float %float_1 %float_2
          %43 = OpConstantNull %10
-     %uint_4 = OpConstant %uint 4
-         %55 = OpTypeCooperativeMatrixAD %half %uint_16 %uint_4
-%_ptr_Function_55 = OpTypePointer Function %55
       %int_1 = OpConstant %int 1
       %int_2 = OpConstant %int 2
     %float_3 = OpConstant %float 3
     %float_4 = OpConstant %float 4
-         %69 = OpConstantComposite %v2float %float_3 %float_4
+         %66 = OpConstantComposite %v2float %float_3 %float_4
 %_ptr_Function_int = OpTypePointer Function %int
        %bool = OpTypeBool
      %v3uint = OpTypeVector %uint 3
@@ -93,8 +90,8 @@
   %tempArg_0 = OpVariable %_ptr_Function_10 Function
           %M = OpVariable %_ptr_Function_10 Function
   %tempArg_1 = OpVariable %_ptr_Function_10 Function
-         %R0 = OpVariable %_ptr_Function_55 Function
-         %R1 = OpVariable %_ptr_Function_15 Function
+         %R0 = OpVariable %_ptr_Function_10 Function
+         %R1 = OpVariable %_ptr_Function_10 Function
         %len = OpVariable %_ptr_Function_int Function
           %D = OpVariable %_ptr_Function_10 Function
                OpStore %A %14
@@ -119,29 +116,29 @@
                OpStore %tempArg_1 %52
          %53 = OpLoad %10 %tempArg_1
                OpStore %C %53
+         %55 = OpLoad %10 %C
+         %56 = OpCooperativeMatrixReduceAD %10 %55 %int_0 %int_0
+               OpStore %R0 %56
          %58 = OpLoad %10 %C
-         %59 = OpCooperativeMatrixReduceAD %55 %58 %int_0 %int_0
-               OpStore %R0 %59
-         %61 = OpLoad %10 %C
-         %64 = OpCooperativeMatrixReduceAD %15 %61 %int_1 %int_2
-               OpStore %R1 %64
-         %65 = OpLoad %10 %C
-         %66 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %buf %int_0
-               OpCooperativeMatrixStoreAD %66 %65 %33 %69 %int_1 None
-         %72 = OpCooperativeMatrixLengthAD %uint %10
-         %73 = OpBitcast %int %72
-               OpStore %len %73
-         %75 = OpLoad %10 %C
-               OpStore %D %75
-         %76 = OpLoad %10 %D
-               OpStore %C %76
-         %77 = OpLoad %int %len
-         %79 = OpIEqual %bool %77 %int_0
-               OpSelectionMerge %81 None
-               OpBranchConditional %79 %80 %81
-         %80 = OpLabel
+         %61 = OpCooperativeMatrixReduceAD %10 %58 %int_1 %int_2
+               OpStore %R1 %61
+         %62 = OpLoad %10 %C
+         %63 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %buf %int_0
+               OpCooperativeMatrixStoreAD %63 %62 %33 %66 %int_1 None
+         %69 = OpCooperativeMatrixLengthAD %uint %10
+         %70 = OpBitcast %int %69
+               OpStore %len %70
+         %72 = OpLoad %10 %C
+               OpStore %D %72
+         %73 = OpLoad %10 %D
+               OpStore %C %73
+         %74 = OpLoad %int %len
+         %76 = OpIEqual %bool %74 %int_0
+               OpSelectionMerge %78 None
+               OpBranchConditional %76 %77 %78
+         %77 = OpLabel
                OpStore %C %14
-               OpBranch %81
-         %81 = OpLabel
+               OpBranch %78
+         %78 = OpLabel
                OpReturn
                OpFunctionEnd

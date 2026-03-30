@@ -1745,27 +1745,7 @@ void TParseContext::handleCoopMat2FunctionCall(const TSourceLoc& loc, const TFun
             // Set result type to match type of first parameter
             result->setType(result->getAsAggregate()->getSequence()[0]->getAsTyped()->getType());
         } else if (fnCandidate->getBuiltInOp() == EOpCooperativeMatrixReduceAD) {
-            auto& sequence = result->getAsAggregate()->getSequence();
-            TType resultType;
-            resultType.deepCopy(sequence[0]->getAsTyped()->getType());
-
-            auto getConstInt = [](TIntermTyped* node) -> int {
-                if (node->getType().getQualifier().isSpecConstant())
-                    return node->getAsSymbolNode()->getConstArray()[0].getIConst();
-                if (auto* cu = node->getAsConstantUnion())
-                    return cu->getConstArray()[0].getIConst();
-                return node->getAsSymbolNode()->getConstArray()[0].getIConst();
-            };
-
-            const int reduceMask = getConstInt(sequence[1]->getAsTyped());
-            auto* typeParameters = resultType.getTypeParameters();
-            if (typeParameters && typeParameters->arraySizes && typeParameters->arraySizes->getNumDims() == 2) {
-                if (reduceMask == 0)
-                    typeParameters->arraySizes->setDimSize(1, typeParameters->arraySizes->getDimSize(1) / 2);
-                else
-                    typeParameters->arraySizes->setDimSize(0, typeParameters->arraySizes->getDimSize(0) / 2);
-            }
-            result->setType(resultType);
+            result->setType(result->getAsAggregate()->getSequence()[0]->getAsTyped()->getType());
         } else {
             // For MulAdd, set result type to match type of C parameter
             result->setType(result->getAsAggregate()->getSequence()[2]->getAsTyped()->getType());
