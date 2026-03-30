@@ -1637,6 +1637,7 @@ void TParseContext::handleCoopMat2FunctionCall(const TSourceLoc& loc, const TFun
                fnCandidate->getBuiltInOp() == EOpCooperativeMatrixMulAddNV ||
                fnCandidate->getBuiltInOp() == EOpCooperativeMatrixMulAddAD ||
                fnCandidate->getBuiltInOp() == EOpCooperativeMatrixReduceNV ||
+               fnCandidate->getBuiltInOp() == EOpCooperativeMatrixReduceAD ||
                fnCandidate->getBuiltInOp() == EOpCooperativeMatrixPerElementOpNV ||
                fnCandidate->getBuiltInOp() == EOpCooperativeMatrixTransposeNV ||
                fnCandidate->getBuiltInOp() == EOpCreateTensorLayoutNV ||
@@ -1743,6 +1744,28 @@ void TParseContext::handleCoopMat2FunctionCall(const TSourceLoc& loc, const TFun
                    fnCandidate->getBuiltInOp() == EOpTensorViewSetClipNV) {
             // Set result type to match type of first parameter
             result->setType(result->getAsAggregate()->getSequence()[0]->getAsTyped()->getType());
+        } else if (fnCandidate->getBuiltInOp() == EOpCooperativeMatrixReduceAD) {
+            auto& sequence = result->getAsAggregate()->getSequence();
+            TType resultType;
+            resultType.deepCopy(sequence[0]->getAsTyped()->getType());
+
+            auto getConstInt = [](TIntermTyped* node) -> int {
+                if (node->getType().getQualifier().isSpecConstant())
+                    return node->getAsSymbolNode()->getConstArray()[0].getIConst();
+                if (auto* cu = node->getAsConstantUnion())
+                    return cu->getConstArray()[0].getIConst();
+                return node->getAsSymbolNode()->getConstArray()[0].getIConst();
+            };
+
+            const int reduceMask = getConstInt(sequence[1]->getAsTyped());
+            auto* typeParameters = resultType.getTypeParameters();
+            if (typeParameters && typeParameters->arraySizes && typeParameters->arraySizes->getNumDims() == 2) {
+                if (reduceMask == 0)
+                    typeParameters->arraySizes->setDimSize(1, typeParameters->arraySizes->getDimSize(1) / 2);
+                else
+                    typeParameters->arraySizes->setDimSize(0, typeParameters->arraySizes->getDimSize(0) / 2);
+            }
+            result->setType(resultType);
         } else {
             // For MulAdd, set result type to match type of C parameter
             result->setType(result->getAsAggregate()->getSequence()[2]->getAsTyped()->getType());
@@ -3087,6 +3110,12 @@ void TParseContext::builtInOpCheck(const TSourceLoc& loc, const TFunction& fnCan
             error(loc, "argument must be compile-time constant", "matrixLayout", "");
         if (!(*argp)[6]->getAsTyped()->getType().getQualifier().isConstant())
             error(loc, "argument must be compile-time constant", "matrixInterpretation", "");
+        break;
+    case EOpCooperativeMatrixReduceAD:
+        if (!(*argp)[1]->getAsTyped()->getType().getQualifier().isConstant())
+            error(loc, "argument must be compile-time constant", "reduceMask", "");
+        if (!(*argp)[2]->getAsTyped()->getType().getQualifier().isConstant())
+            error(loc, "argument must be compile-time constant", "combineOp", "");
         break;
     default:
         break;

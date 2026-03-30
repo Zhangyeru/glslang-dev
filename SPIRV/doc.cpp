@@ -1585,6 +1585,7 @@ const char* OpcodeString(int op)
     case OpCooperativeMatrixMulAddAD:       return "OpCooperativeMatrixMulAddAD";
     case OpCooperativeMatrixLengthNV:       return "OpCooperativeMatrixLengthNV";
     case OpCooperativeMatrixLengthAD:       return "OpCooperativeMatrixLengthAD";
+    case OpCooperativeMatrixReduceAD:       return "OpCooperativeMatrixReduceAD";
     case OpTypeCooperativeMatrixKHR:        return "OpTypeCooperativeMatrixKHR";
     case OpCooperativeMatrixLoadKHR:        return "OpCooperativeMatrixLoadKHR";
     case OpCooperativeMatrixStoreKHR:       return "OpCooperativeMatrixStoreKHR";
@@ -1815,6 +1816,7 @@ void Parameterize()
         InstructionDesc[OpTypeCooperativeMatrixAD].setResultAndType(true, false);
         InstructionDesc[OpCooperativeMatrixStoreNV].setResultAndType(false, false);
         InstructionDesc[OpCooperativeMatrixStoreAD].setResultAndType(false, false);
+        InstructionDesc[OpCooperativeMatrixReduceAD].setResultAndType(true, true);
         InstructionDesc[OpTypeCooperativeMatrixKHR].setResultAndType(true, false);
         InstructionDesc[OpCooperativeMatrixStoreKHR].setResultAndType(false, false);
         InstructionDesc[OpBeginInvocationInterlockEXT].setResultAndType(false, false);
@@ -3757,6 +3759,9 @@ void Parameterize()
         InstructionDesc[OpCooperativeMatrixReduceNV].operands.push(OperandId, "'Matrix'");
         InstructionDesc[OpCooperativeMatrixReduceNV].operands.push(OperandLiteralNumber, "'ReduceMask'");
         InstructionDesc[OpCooperativeMatrixReduceNV].operands.push(OperandId, "'CombineFunc'");
+        InstructionDesc[OpCooperativeMatrixReduceAD].operands.push(OperandId, "'Matrix'");
+        InstructionDesc[OpCooperativeMatrixReduceAD].operands.push(OperandId, "'ReduceMask'");
+        InstructionDesc[OpCooperativeMatrixReduceAD].operands.push(OperandId, "'CombineOp'");
 
         InstructionDesc[OpCooperativeMatrixPerElementOpNV].operands.push(OperandId, "'Matrix'");
         InstructionDesc[OpCooperativeMatrixPerElementOpNV].operands.push(OperandId, "'Operation'");

@@ -4637,6 +4637,7 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
             }
             cooperativeMatrixADFuncs << "void coopMatMulAD(out coopmatAD result, coopmatAD A, coopmatAD B);\n";
             cooperativeMatrixADFuncs << "void coopMatMulAddAD(out coopmatAD result, coopmatAD A, coopmatAD B, coopmatAD C);\n";
+            cooperativeMatrixADFuncs << "coopmatAD coopMatReduceAD(coopmatAD matrix, int reduceMask, int combineOp);\n";
             stageBuiltins[EShLangCompute].append(cooperativeMatrixADFuncs.str().c_str());
         }
 
@@ -4679,6 +4680,11 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
         commonBuiltins.append(
             "const int RowMajorAD = 0;\n"
             "const int ColumnMajorAD = 1;\n"
+            "const int ReduceRowAD = 0;\n"
+            "const int ReduceColumnAD = 1;\n"
+            "const int ReduceAddAD = 0;\n"
+            "const int ReduceMinAD = 1;\n"
+            "const int ReduceMaxAD = 2;\n"
             "\n"
             );
 
@@ -9531,6 +9537,7 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
             symbolTable.setFunctionExtensions("coopMatStoreAD",  1, &E_GL_AD_cooperative_matrix);
             symbolTable.setFunctionExtensions("coopMatMulAD",    1, &E_GL_AD_cooperative_matrix);
             symbolTable.setFunctionExtensions("coopMatMulAddAD", 1, &E_GL_AD_cooperative_matrix);
+            symbolTable.setFunctionExtensions("coopMatReduceAD", 1, &E_GL_AD_cooperative_matrix);
         }
 
         {
@@ -10799,6 +10806,7 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
         symbolTable.relateToOperator("coopMatStoreAD",             EOpCooperativeMatrixStoreAD);
         symbolTable.relateToOperator("coopMatMulAD",               EOpCooperativeMatrixMulAD);
         symbolTable.relateToOperator("coopMatMulAddAD",            EOpCooperativeMatrixMulAddAD);
+        symbolTable.relateToOperator("coopMatReduceAD",            EOpCooperativeMatrixReduceAD);
 
         symbolTable.relateToOperator("coopMatLoad",                EOpCooperativeMatrixLoad);
         symbolTable.relateToOperator("coopMatStore",               EOpCooperativeMatrixStore);

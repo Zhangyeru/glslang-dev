@@ -9743,6 +9743,11 @@ spv::Id TGlslangToSpvTraverser::createMiscOperation(glslang::TOperator op, spv::
                    ? spv::OpCooperativeMatrixMulAddAD
                    : spv::OpCooperativeMatrixMulAddNV;
         break;
+    case glslang::EOpCooperativeMatrixReduceAD:
+        builder.addCapability(getCooperativeMatrixCapability(true));
+        builder.addExtension(getCooperativeMatrixExtension(true));
+        opCode = spv::OpCooperativeMatrixReduceAD;
+        break;
     case glslang::EOpHitObjectTraceRayNV:
         builder.createNoResultOp(spv::OpHitObjectTraceRayNV, operands);
         return 0;
