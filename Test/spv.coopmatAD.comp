@@ -18,8 +18,11 @@ void main()
     coopmatAD<float16_t, 16, 8> A = coopmatAD<float16_t, 16, 8>(0.0);
     coopmatAD<float16_t, 8, 8> B = coopmatAD<float16_t, 8, 8>(1.0);
     coopmatAD<float16_t, 16, 8> C;
+    coopmatAD<float16_t, 16, 8> M;
 
     coopMatLoadAD(C, buf.data, srcMatrixShape, srcMatrixOffset, RowMajorAD);
+    coopMatMulAD(M, A, B);
+    C = M;
     coopMatMulAddAD(C, A, B, C);
     coopMatStoreAD(C, buf.data, srcMatrixShape, dstMatrixOffset, ColumnMajorAD);
 

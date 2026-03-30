@@ -4635,6 +4635,7 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
                 cooperativeMatrixADFuncs << "void coopMatLoadAD(out coopmatAD m, volatile coherent nontemporal " << t << "[] buf, vec2 srcMatrixShape, vec2 srcMatrixOffset, int matrixLayout);\n";
                 cooperativeMatrixADFuncs << "void coopMatStoreAD(coopmatAD m, volatile coherent nontemporal " << t << "[] buf, vec2 dstMatrixShape, vec2 dstMatrixOffset, int matrixLayout);\n";
             }
+            cooperativeMatrixADFuncs << "void coopMatMulAD(out coopmatAD result, coopmatAD A, coopmatAD B);\n";
             cooperativeMatrixADFuncs << "void coopMatMulAddAD(out coopmatAD result, coopmatAD A, coopmatAD B, coopmatAD C);\n";
             stageBuiltins[EShLangCompute].append(cooperativeMatrixADFuncs.str().c_str());
         }
@@ -9528,6 +9529,7 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
         {
             symbolTable.setFunctionExtensions("coopMatLoadAD",   1, &E_GL_AD_cooperative_matrix);
             symbolTable.setFunctionExtensions("coopMatStoreAD",  1, &E_GL_AD_cooperative_matrix);
+            symbolTable.setFunctionExtensions("coopMatMulAD",    1, &E_GL_AD_cooperative_matrix);
             symbolTable.setFunctionExtensions("coopMatMulAddAD", 1, &E_GL_AD_cooperative_matrix);
         }
 
@@ -10795,6 +10797,7 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
         symbolTable.relateToOperator("coopMatMulAddNV",            EOpCooperativeMatrixMulAddNV);
         symbolTable.relateToOperator("coopMatLoadAD",              EOpCooperativeMatrixLoadAD);
         symbolTable.relateToOperator("coopMatStoreAD",             EOpCooperativeMatrixStoreAD);
+        symbolTable.relateToOperator("coopMatMulAD",               EOpCooperativeMatrixMulAD);
         symbolTable.relateToOperator("coopMatMulAddAD",            EOpCooperativeMatrixMulAddAD);
 
         symbolTable.relateToOperator("coopMatLoad",                EOpCooperativeMatrixLoad);

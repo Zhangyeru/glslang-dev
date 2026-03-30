@@ -455,6 +455,7 @@ enum TOperator {
     EOpCooperativeMatrixStoreNV,
     EOpCooperativeMatrixLoadAD,
     EOpCooperativeMatrixStoreAD,
+    EOpCooperativeMatrixMulAD,
     EOpCooperativeMatrixMulAddAD,
     EOpCooperativeMatrixLoadTensorNV,
     EOpCooperativeMatrixStoreTensorNV,

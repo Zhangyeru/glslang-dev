@@ -3486,6 +3486,7 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
     case glslang::EOpCooperativeMatrixReduceNV:
     case glslang::EOpCooperativeMatrixPerElementOpNV:
     case glslang::EOpCooperativeMatrixTransposeNV:
+    case glslang::EOpCooperativeMatrixMulAD:
     case glslang::EOpCooperativeVectorMatMulNV:
     case glslang::EOpCooperativeVectorMatMulAddNV:
     case glslang::EOpCooperativeMatrixMulAddAD:
@@ -3819,6 +3820,10 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         case glslang::EOpCooperativeMatrixStoreTensorNV:
         case glslang::EOpCooperativeVectorStoreNV:
             if (arg == 1)
+                lvalue = true;
+            break;
+        case glslang::EOpCooperativeMatrixMulAD:
+            if (arg == 0)
                 lvalue = true;
             break;
         case glslang::EOpCooperativeMatrixMulAddAD:
@@ -4385,6 +4390,19 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         idImmOps.push_back(spv::IdImmediate(true, operands[2])); // Offset
         idImmOps.push_back(spv::IdImmediate(true, operands[0])); // A
         builder.createNoResultOp(getCooperativeVectorTrainingOp(isAd, true), idImmOps);
+        result = 0;
+    } else if (node->getOp() == glslang::EOpCooperativeMatrixMulAD) {
+        std::vector<spv::IdImmediate> idImmOps;
+
+        idImmOps.push_back(spv::IdImmediate(true, operands[1])); // A
+        idImmOps.push_back(spv::IdImmediate(true, operands[2])); // B
+
+        spv::Id typeId = builder.getContainedTypeId(builder.getTypeId(operands[0]));
+        assert(builder.isCooperativeMatrixADType(typeId));
+        idImmOps.push_back(spv::IdImmediate(true, builder.makeNullConstant(typeId))); // C = 0
+
+        spv::Id matrix = builder.createOp(spv::OpCooperativeMatrixMulAddAD, typeId, idImmOps);
+        builder.createStore(matrix, operands[0]);
         result = 0;
     } else if (node->getOp() == glslang::EOpCooperativeMatrixMulAddAD) {
         std::vector<spv::IdImmediate> idImmOps;
