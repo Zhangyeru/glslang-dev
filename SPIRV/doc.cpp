@@ -3329,7 +3329,11 @@ void Parameterize()
         InstructionDesc[OpCooperativeMatrixLoadNV].operands.push(OperandMemoryAccess, "'Memory Access'");
         InstructionDesc[OpCooperativeMatrixLoadNV].operands.push(OperandLiteralNumber, "", true);
         InstructionDesc[OpCooperativeMatrixLoadNV].operands.push(OperandId, "", true);
-        InstructionDesc[OpCooperativeMatrixLoadAD].operands = InstructionDesc[OpCooperativeMatrixLoadNV].operands;
+        InstructionDesc[OpCooperativeMatrixLoadAD].operands.push(OperandId, "'Pointer'");
+        InstructionDesc[OpCooperativeMatrixLoadAD].operands.push(OperandId, "'Matrix Shape'");
+        InstructionDesc[OpCooperativeMatrixLoadAD].operands.push(OperandId, "'Matrix Offset'");
+        InstructionDesc[OpCooperativeMatrixLoadAD].operands.push(OperandId, "'Matrix Layout'");
+        InstructionDesc[OpCooperativeMatrixLoadAD].operands.push(OperandMemoryAccess, "'Memory Access'");
         InstructionDesc[OpCooperativeMatrixLoadAD].setResultAndType(true, true);
 
         InstructionDesc[OpCooperativeMatrixStoreNV].operands.push(OperandId, "'Pointer'");
@@ -3339,7 +3343,12 @@ void Parameterize()
         InstructionDesc[OpCooperativeMatrixStoreNV].operands.push(OperandMemoryAccess, "'Memory Access'");
         InstructionDesc[OpCooperativeMatrixStoreNV].operands.push(OperandLiteralNumber, "", true);
         InstructionDesc[OpCooperativeMatrixStoreNV].operands.push(OperandId, "", true);
-        InstructionDesc[OpCooperativeMatrixStoreAD].operands = InstructionDesc[OpCooperativeMatrixStoreNV].operands;
+        InstructionDesc[OpCooperativeMatrixStoreAD].operands.push(OperandId, "'Pointer'");
+        InstructionDesc[OpCooperativeMatrixStoreAD].operands.push(OperandId, "'Object'");
+        InstructionDesc[OpCooperativeMatrixStoreAD].operands.push(OperandId, "'Matrix Shape'");
+        InstructionDesc[OpCooperativeMatrixStoreAD].operands.push(OperandId, "'Matrix Offset'");
+        InstructionDesc[OpCooperativeMatrixStoreAD].operands.push(OperandId, "'Matrix Layout'");
+        InstructionDesc[OpCooperativeMatrixStoreAD].operands.push(OperandMemoryAccess, "'Memory Access'");
         InstructionDesc[OpCooperativeMatrixStoreAD].setResultAndType(false, false);
 
         InstructionDesc[OpCooperativeMatrixMulAddNV].operands.push(OperandId, "'A'");

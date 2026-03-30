@@ -11,13 +11,17 @@ layout(set = 0, binding = 0) buffer Buf {
 
 void main()
 {
+    const vec2 srcMatrixShape = vec2(32.0, 64.0);
+    const vec2 srcMatrixOffset = vec2(1.0, 2.0);
+    const vec2 dstMatrixOffset = vec2(3.0, 4.0);
+
     coopmatAD<float16_t, 16, 8> A = coopmatAD<float16_t, 16, 8>(0.0);
     coopmatAD<float16_t, 8, 8> B = coopmatAD<float16_t, 8, 8>(1.0);
     coopmatAD<float16_t, 16, 8> C;
 
-    coopMatLoadAD(C, buf.data, 0, 16, false);
+    coopMatLoadAD(C, buf.data, srcMatrixShape, srcMatrixOffset, RowMajorAD);
     C = coopMatMulAddAD(A, B, C);
-    coopMatStoreAD(C, buf.data, 0, 16, false);
+    coopMatStoreAD(C, buf.data, srcMatrixShape, dstMatrixOffset, ColumnMajorAD);
 
     int len = C.length();
     coopmatAD<float16_t, 16, 8> D = coopmatAD<float16_t, 16, 8>(C);

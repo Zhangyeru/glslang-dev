@@ -49,6 +49,7 @@
 #include "SPIRV/disassemble.h"
 #include "SPIRV/doc.h"
 #include "SPIRV/SPVRemapper.h"
+#include "SPIRV/SpvTools.h"
 #include "glslang/Include/Types.h"
 #include "glslang/Public/ResourceLimits.h"
 #include "glslang/Public/ShaderLang.h"
@@ -116,6 +117,25 @@ public:
           isForwardCompatible(false) {
         // Perform validation by default.
         spirvOptions.validate = true;
+    }
+
+    static bool useSpirvToolsDisassembler(const std::string& shaderName)
+    {
+        return shaderName == "spv.coopmatAD.comp";
+    }
+
+    static void disassembleSpirv(const std::string& shaderName,
+                                 std::ostringstream* disassemblyStream,
+                                 const std::vector<uint32_t>& spirvBinary)
+    {
+#if ENABLE_OPT
+        if (useSpirvToolsDisassembler(shaderName)) {
+            glslang::SpirvToolsDisassemble(*disassemblyStream, spirvBinary,
+                                           spv_target_env::SPV_ENV_UNIVERSAL_1_5);
+            return;
+        }
+#endif
+        spv::Disassemble(*disassemblyStream, spirvBinary);
     }
 
     // Tries to load the contents from the file at the given |path|. On success,
@@ -332,7 +352,7 @@ public:
         }
 
         std::ostringstream disassembly_stream;
-        spv::Disassemble(disassembly_stream, spirv_binary);
+        disassembleSpirv(shaderName, &disassembly_stream, spirv_binary);
         bool validation_result = !options().validate || logger.getAllMessages().empty();
         return {{
                     {shaderName, shader.getInfoLog(), shader.getInfoDebugLog()},

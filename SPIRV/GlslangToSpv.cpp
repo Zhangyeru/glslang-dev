@@ -3675,6 +3675,12 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
     glslang::TIntermSequence& glslangOperands = node->getSequence();
     std::vector<spv::Id> operands;
     std::vector<spv::IdImmediate> memoryAccessOperands;
+    const bool isCoopMatAdLoadStore =
+        (node->getOp() == glslang::EOpCooperativeMatrixLoadNV ||
+         node->getOp() == glslang::EOpCooperativeMatrixStoreNV) &&
+        !glslangOperands.empty() &&
+        glslangOperands[0]->getAsTyped() != nullptr &&
+        glslangOperands[0]->getAsTyped()->getType().isCoopMatAD();
     for (int arg = 0; arg < (int)glslangOperands.size(); ++arg) {
         // special case l-value operands; there are just a few
         bool lvalue = false;
@@ -3873,21 +3879,25 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
                 spv::Builder::AccessChain::CoherentFlags coherentFlags {};
                 unsigned int alignment {};
                 if (isCoopMat) {
-                    // fold "element" parameter into the access chain
-                    spv::Builder::AccessChain save = builder.getAccessChain();
-                    builder.clearAccessChain();
-                    glslangOperands[2]->traverse(this);
+                    if (isCoopMatAdLoadStore) {
+                        coherentFlags = builder.getAccessChain().coherentFlags;
+                        alignment = builder.getAccessChain().alignment;
+                    } else {
+                        // fold "element" parameter into the access chain
+                        spv::Builder::AccessChain save = builder.getAccessChain();
+                        builder.clearAccessChain();
+                        glslangOperands[2]->traverse(this);
+                        spv::Id elementId = accessChainLoad(glslangOperands[2]->getAsTyped()->getType());
 
-                    spv::Id elementId = accessChainLoad(glslangOperands[2]->getAsTyped()->getType());
+                        builder.setAccessChain(save);
 
-                    builder.setAccessChain(save);
-
-                    // Point to the first element of the array.
-                    builder.accessChainPush(elementId,
-                        TranslateCoherent(glslangOperands[arg]->getAsTyped()->getType()),
-                                          glslangOperands[arg]->getAsTyped()->getType().getBufferReferenceAlignment());
-                    coherentFlags = builder.getAccessChain().coherentFlags;
-                    alignment = builder.getAccessChain().alignment;
+                        // Point to the first element of the array.
+                        builder.accessChainPush(elementId,
+                            TranslateCoherent(glslangOperands[arg]->getAsTyped()->getType()),
+                                              glslangOperands[arg]->getAsTyped()->getType().getBufferReferenceAlignment());
+                        coherentFlags = builder.getAccessChain().coherentFlags;
+                        alignment = builder.getAccessChain().alignment;
+                    }
                 } else {
                     coherentFlags = builder.getAccessChain().coherentFlags;
                     coherentFlags |= TranslateCoherent(glslangOperands[arg]->getAsTyped()->getType());
@@ -3921,7 +3931,7 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
                     memoryAccessOperands.push_back(spv::IdImmediate(true,
                         builder.makeUintConstant(TranslateMemoryScope(coherentFlags))));
                 }
-            } else if (isCoopMat && arg == 2) {
+            } else if (isCoopMat && arg == 2 && !isCoopMatAdLoadStore) {
                 continue;
             }
         }
@@ -4060,6 +4070,10 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
                 builder.addCapability(spv::CapabilityCooperativeMatrixLayoutsARM);
             }
             idImmOps.push_back(spv::IdImmediate(true, operands[2])); // stride
+        } else if (builder.isCooperativeMatrixADType(builder.getContainedTypeId(builder.getTypeId(operands[0])))) {
+            idImmOps.push_back(spv::IdImmediate(true, operands[2])); // srcMatrixShape
+            idImmOps.push_back(spv::IdImmediate(true, operands[3])); // srcMatrixOffset
+            idImmOps.push_back(spv::IdImmediate(true, operands[4])); // matrixLayout
         } else {
             idImmOps.push_back(spv::IdImmediate(true, operands[2])); // stride
             idImmOps.push_back(spv::IdImmediate(true, operands[3])); // colMajor
@@ -4113,6 +4127,10 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
                 builder.addCapability(spv::CapabilityCooperativeMatrixLayoutsARM);
             }
             idImmOps.push_back(spv::IdImmediate(true, operands[2])); // stride
+        } else if (builder.isCooperativeMatrixADType(builder.getTypeId(operands[0]))) {
+            idImmOps.push_back(spv::IdImmediate(true, operands[2])); // dstMatrixShape
+            idImmOps.push_back(spv::IdImmediate(true, operands[3])); // dstMatrixOffset
+            idImmOps.push_back(spv::IdImmediate(true, operands[4])); // matrixLayout
         } else {
             idImmOps.push_back(spv::IdImmediate(true, operands[2])); // stride
             idImmOps.push_back(spv::IdImmediate(true, operands[3])); // colMajor

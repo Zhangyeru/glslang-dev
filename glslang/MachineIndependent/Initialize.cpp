@@ -4632,8 +4632,8 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
 
             std::stringstream cooperativeMatrixADFuncs;
             for (auto t : allTypes) {
-                cooperativeMatrixADFuncs << "void coopMatLoadAD(out coopmatAD m, volatile coherent nontemporal " << t << "[] buf, uint element, uint stride, bool colMajor);\n";
-                cooperativeMatrixADFuncs << "void coopMatStoreAD(coopmatAD m, volatile coherent nontemporal " << t << "[] buf, uint element, uint stride, bool colMajor);\n";
+                cooperativeMatrixADFuncs << "void coopMatLoadAD(out coopmatAD m, volatile coherent nontemporal " << t << "[] buf, vec2 srcMatrixShape, vec2 srcMatrixOffset, int matrixLayout);\n";
+                cooperativeMatrixADFuncs << "void coopMatStoreAD(coopmatAD m, volatile coherent nontemporal " << t << "[] buf, vec2 dstMatrixShape, vec2 dstMatrixOffset, int matrixLayout);\n";
             }
             cooperativeMatrixADFuncs << "coopmatAD coopMatMulAddAD(coopmatAD A, coopmatAD B, coopmatAD C);\n";
             stageBuiltins[EShLangCompute].append(cooperativeMatrixADFuncs.str().c_str());
@@ -4674,6 +4674,12 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
             "coopmat coopMatMulAdd(coopmat A, coopmat B, coopmat C, int matrixOperands);\n";
 
         commonBuiltins.append(cooperativeMatrixFuncs.str().c_str());
+
+        commonBuiltins.append(
+            "const int RowMajorAD = 0;\n"
+            "const int ColumnMajorAD = 1;\n"
+            "\n"
+            );
 
         commonBuiltins.append(
             "const int gl_MatrixUseA = 0;\n"
