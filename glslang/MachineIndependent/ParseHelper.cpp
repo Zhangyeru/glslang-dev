@@ -1635,6 +1635,7 @@ void TParseContext::handleCoopMat2FunctionCall(const TSourceLoc& loc, const TFun
        !result->getAsTyped()->getType().isParameterized()) {
         assert(fnCandidate->getBuiltInOp() == EOpCooperativeMatrixMulAdd ||
                fnCandidate->getBuiltInOp() == EOpCooperativeMatrixMulAddNV ||
+               fnCandidate->getBuiltInOp() == EOpCooperativeMatrixMulAddAD ||
                fnCandidate->getBuiltInOp() == EOpCooperativeMatrixReduceNV ||
                fnCandidate->getBuiltInOp() == EOpCooperativeMatrixPerElementOpNV ||
                fnCandidate->getBuiltInOp() == EOpCooperativeMatrixTransposeNV ||

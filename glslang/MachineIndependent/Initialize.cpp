@@ -4635,7 +4635,7 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
                 cooperativeMatrixADFuncs << "void coopMatLoadAD(out coopmatAD m, volatile coherent nontemporal " << t << "[] buf, vec2 srcMatrixShape, vec2 srcMatrixOffset, int matrixLayout);\n";
                 cooperativeMatrixADFuncs << "void coopMatStoreAD(coopmatAD m, volatile coherent nontemporal " << t << "[] buf, vec2 dstMatrixShape, vec2 dstMatrixOffset, int matrixLayout);\n";
             }
-            cooperativeMatrixADFuncs << "coopmatAD coopMatMulAddAD(coopmatAD A, coopmatAD B, coopmatAD C);\n";
+            cooperativeMatrixADFuncs << "void coopMatMulAddAD(out coopmatAD result, coopmatAD A, coopmatAD B, coopmatAD C);\n";
             stageBuiltins[EShLangCompute].append(cooperativeMatrixADFuncs.str().c_str());
         }
 
@@ -10793,9 +10793,9 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
         symbolTable.relateToOperator("coopMatLoadNV",              EOpCooperativeMatrixLoadNV);
         symbolTable.relateToOperator("coopMatStoreNV",             EOpCooperativeMatrixStoreNV);
         symbolTable.relateToOperator("coopMatMulAddNV",            EOpCooperativeMatrixMulAddNV);
-        symbolTable.relateToOperator("coopMatLoadAD",              EOpCooperativeMatrixLoadNV);
-        symbolTable.relateToOperator("coopMatStoreAD",             EOpCooperativeMatrixStoreNV);
-        symbolTable.relateToOperator("coopMatMulAddAD",            EOpCooperativeMatrixMulAddNV);
+        symbolTable.relateToOperator("coopMatLoadAD",              EOpCooperativeMatrixLoadAD);
+        symbolTable.relateToOperator("coopMatStoreAD",             EOpCooperativeMatrixStoreAD);
+        symbolTable.relateToOperator("coopMatMulAddAD",            EOpCooperativeMatrixMulAddAD);
 
         symbolTable.relateToOperator("coopMatLoad",                EOpCooperativeMatrixLoad);
         symbolTable.relateToOperator("coopMatStore",               EOpCooperativeMatrixStore);

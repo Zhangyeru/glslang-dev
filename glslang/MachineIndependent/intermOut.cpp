@@ -959,6 +959,9 @@ bool TOutputTraverser::visitAggregate(TVisit /* visit */, TIntermAggregate* node
     case EOpCooperativeMatrixMulAdd: out.debug << "MulAdd cooperative matrices KHR"; break;
     case EOpCooperativeMatrixLoadNV:  out.debug << "Load cooperative matrix NV"; break;
     case EOpCooperativeMatrixStoreNV:  out.debug << "Store cooperative matrix NV"; break;
+    case EOpCooperativeMatrixLoadAD:  out.debug << "Load cooperative matrix AD"; break;
+    case EOpCooperativeMatrixStoreAD:  out.debug << "Store cooperative matrix AD"; break;
+    case EOpCooperativeMatrixMulAddAD: out.debug << "MulAdd cooperative matrices AD"; break;
     case EOpCooperativeMatrixLoadTensorNV:  out.debug << "Load cooperative matrix tensor NV"; break;
     case EOpCooperativeMatrixStoreTensorNV:  out.debug << "Store cooperative matrix tensor NV"; break;
     case EOpCooperativeMatrixMulAddNV: out.debug << "MulAdd cooperative matrices NV"; break;

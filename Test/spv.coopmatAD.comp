@@ -20,7 +20,7 @@ void main()
     coopmatAD<float16_t, 16, 8> C;
 
     coopMatLoadAD(C, buf.data, srcMatrixShape, srcMatrixOffset, RowMajorAD);
-    C = coopMatMulAddAD(A, B, C);
+    coopMatMulAddAD(C, A, B, C);
     coopMatStoreAD(C, buf.data, srcMatrixShape, dstMatrixOffset, ColumnMajorAD);
 
     int len = C.length();
