@@ -1,21 +1,10 @@
 #version 450 core
 #extension GL_KHR_memory_scope_semantics : enable
+#extension GL_AD_cooperative_matrix : enable
 #extension GL_AD_cooperative_vector : enable
 #extension GL_EXT_shader_explicit_arithmetic_types : enable
-#extension GL_EXT_buffer_reference : enable
-#extension GL_EXT_nonuniform_qualifier : enable
 
 layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
-
-layout(set = 0, binding = 0) buffer MatrixBuf {
-    float16_t matrixData[];
-} matrixBuf;
-
-layout(set = 0, binding = 0) buffer MatrixBuf2 {
-    int8_t matrixData[];
-} matrixBuf2;
-
-layout(constant_id = 0) const int matrixLayout = gl_CooperativeVectorMatrixLayoutColumnMajorNV;
 
 coopvecAD<float16_t, 1> foo(coopvecAD<float16_t, 1> x) { return x; }
 coopvecAD<float16_t, 2> foo(coopvecAD<float16_t, 2> x) { return x; }
@@ -45,12 +34,16 @@ void main()
 
     coopvecAD<float, 20> v7;
     coopvecAD<float, 100> v8;
-    coopVecMatMulAD(v8, v7, gl_ComponentTypeFloat16NV, matrixBuf.matrixData, 11, gl_ComponentTypeFloat16NV, 100, 20, gl_CooperativeVectorMatrixLayoutRowMajorNV, false, 300);
+    coopvecAD<float16_t, 20> v7h;
+    coopvecAD<float, 100> v8bias;
+    coopmatAD<float16_t, 100, 20> m8;
+    coopVecMatMulAD(v8, v7h, m8);
 
     coopvecAD<int8_t, 20> v9;
     coopvecAD<int32_t, 100> v10;
-    uint32_t matrixOffset = 11;
-    coopVecMatMulAD(v10, v9, gl_ComponentTypeSignedInt8NV, matrixBuf2.matrixData, matrixOffset, gl_ComponentTypeSignedInt8NV, 100, 20, gl_CooperativeVectorMatrixLayoutColumnMajorNV, true, 300);
+    coopvecAD<int32_t, 100> v10bias;
+    coopmatAD<int8_t, 100, 20> m10;
+    coopVecMatMulAD(v10, v9, m10);
 
     coopvecAD<float16_t, 2> f162 = coopvecAD<float16_t, 2>(v7.length());
 
@@ -116,13 +109,8 @@ void main()
     s11 &= s12;
     s11 ^= s12;
 
-    coopVecMatMulAddAD(v8, v7, gl_ComponentTypeFloat16NV, matrixBuf.matrixData, 11, gl_ComponentTypeFloat16NV, matrixBuf.matrixData, 50, gl_ComponentTypeFloat16NV, 100, 20, gl_CooperativeVectorMatrixLayoutRowMajorNV, false, 300);
-
-    uint32_t biasOffset = 11;
-    coopVecMatMulAddAD(v10, v9, gl_ComponentTypeSignedInt8NV, matrixBuf2.matrixData, matrixOffset, gl_ComponentTypeSignedInt8NV, matrixBuf2.matrixData, biasOffset, gl_ComponentTypeSignedInt8NV, 100, 20, gl_CooperativeVectorMatrixLayoutColumnMajorNV, true, 300);
-
-    coopvecAD<uint32_t, 20> v14;
-    coopVecMatMulAD(v10, v14, gl_ComponentTypeSignedInt8PackedNV, matrixBuf2.matrixData, matrixOffset, gl_ComponentTypeSignedInt8NV, 100, 20, matrixLayout, true, 300);
+    coopVecMatMulAddAD(v8, v7h, m8, v8bias);
+    coopVecMatMulAddAD(v10, v9, m10, v10bias);
 
     f += (v += v)[len];
 }

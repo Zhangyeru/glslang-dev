@@ -4817,19 +4817,6 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
                                std::string("uint matrixStride);\n");
             commonBuiltins.append(func.c_str());
 
-            func = std::string("void coopVecMatMulAD(out coopvecAD result, ") +
-                   std::string("coopvecAD v, ") +
-                   std::string("int inputInterpretation, ") +
-                   std::string(basicTypes[i]) + std::string("[] matrix, ") +
-                   std::string("uint matrixOffset, ") +
-                   std::string("int matrixInterpretation, ") +
-                   std::string("uint M, ") +
-                   std::string("uint K, ") +
-                   std::string("int matrixLayout, ") +
-                   std::string("bool transpose, ") +
-                   std::string("uint matrixStride);\n");
-            commonBuiltins.append(func.c_str());
-
             for (uint32_t j = 0; j < sizeof(basicTypes)/sizeof(basicTypes[0]); ++j) {
                 func = std::string("void coopVecMatMulAddNV(out coopvecNV result, ") +
                        std::string("coopvecNV v, ") +
@@ -4847,21 +4834,6 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
                        std::string("uint matrixStride);\n");
                 commonBuiltins.append(func.c_str());
 
-                func = std::string("void coopVecMatMulAddAD(out coopvecAD result, ") +
-                       std::string("coopvecAD v, ") +
-                       std::string("int inputInterpretation, ") +
-                       std::string(basicTypes[i]) + std::string("[] matrix, ") +
-                       std::string("uint matrixOffset, ") +
-                       std::string("int matrixInterpretation, ") +
-                       std::string(basicTypes[j]) + std::string("[] bias, ") +
-                       std::string("uint biasOffset, ") +
-                       std::string("int biasInterpretation, ") +
-                       std::string("uint M, ") +
-                       std::string("uint K, ") +
-                       std::string("int matrixLayout, ") +
-                       std::string("bool transpose, ") +
-                       std::string("uint matrixStride);\n");
-                commonBuiltins.append(func.c_str());
             }
 
             func = std::string("void coopVecOuterProductAccumulateNV(coopvecNV v1, coopvecNV v2, ") +
@@ -4884,6 +4856,9 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
                    std::string("[] buf, uint offset);\n");
             commonBuiltins.append(func.c_str());
         }
+
+        commonBuiltins.append("void coopVecMatMulAD(out coopvecAD result, coopvecAD v, coopmatAD matrix);\n");
+        commonBuiltins.append("void coopVecMatMulAddAD(out coopvecAD result, coopvecAD v, coopmatAD matrix, coopvecAD bias);\n");
 
         std::string cooperativeVectorFuncs =
             "coopvecNV fma(coopvecNV, coopvecNV, coopvecNV);\n"

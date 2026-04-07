@@ -3405,7 +3405,8 @@ void Parameterize()
         InstructionDesc[OpCooperativeVectorMatrixMulNV].operands.push(OperandId, "'Transpose'");
         InstructionDesc[OpCooperativeVectorMatrixMulNV].operands.push(OperandId, "'MatrixStride'", true);
         InstructionDesc[OpCooperativeVectorMatrixMulNV].operands.push(OperandCooperativeMatrixOperands, "'Cooperative Matrix Operands'", true);
-        InstructionDesc[OpCooperativeVectorMatrixMulAD].operands = InstructionDesc[OpCooperativeVectorMatrixMulNV].operands;
+        InstructionDesc[OpCooperativeVectorMatrixMulAD].operands.push(OperandId, "'Input'");
+        InstructionDesc[OpCooperativeVectorMatrixMulAD].operands.push(OperandId, "'Matrix'");
         InstructionDesc[OpCooperativeVectorMatrixMulAD].setResultAndType(true, true);
 
         InstructionDesc[OpCooperativeVectorMatrixMulAddNV].operands.push(OperandId, "'Input'");
@@ -3422,7 +3423,9 @@ void Parameterize()
         InstructionDesc[OpCooperativeVectorMatrixMulAddNV].operands.push(OperandId, "'Transpose'");
         InstructionDesc[OpCooperativeVectorMatrixMulAddNV].operands.push(OperandId, "'MatrixStride'", true);
         InstructionDesc[OpCooperativeVectorMatrixMulAddNV].operands.push(OperandCooperativeMatrixOperands, "'Cooperative Matrix Operands'", true);
-        InstructionDesc[OpCooperativeVectorMatrixMulAddAD].operands = InstructionDesc[OpCooperativeVectorMatrixMulAddNV].operands;
+        InstructionDesc[OpCooperativeVectorMatrixMulAddAD].operands.push(OperandId, "'Input'");
+        InstructionDesc[OpCooperativeVectorMatrixMulAddAD].operands.push(OperandId, "'Matrix'");
+        InstructionDesc[OpCooperativeVectorMatrixMulAddAD].operands.push(OperandId, "'Bias'");
         InstructionDesc[OpCooperativeVectorMatrixMulAddAD].setResultAndType(true, true);
 
         InstructionDesc[OpCooperativeVectorLoadNV].operands.push(OperandId, "'Pointer'");

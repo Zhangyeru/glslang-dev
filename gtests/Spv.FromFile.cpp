@@ -394,6 +394,8 @@ INSTANTIATE_TEST_SUITE_P(
         "spv.coopvecAD_conversionError.comp",
         "spv.coopvecADloadstore.comp",
         "spv.coopvecADloadstore_Error.comp",
+        "spv.coopvecADMatMul_Error.comp",
+        "spv.coopvecADMatMulAdd_Error.comp",
         "spv.coopvecADstore_Error.comp",
         "spv.coopvecADTraining.comp",
         "spv.coopvecAD_Error.comp",

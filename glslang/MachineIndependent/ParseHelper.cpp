@@ -3242,6 +3242,46 @@ void TParseContext::builtInOpCheck(const TSourceLoc& loc, const TFunction& fnCan
     case EOpCooperativeVectorMatMulNV:
     case EOpCooperativeVectorMatMulAddNV:
         {
+            if (callNode.getOp() == EOpCooperativeVectorMatMulNV && argp->size() == 3) {
+                const TType& resultType = (*argp)[0]->getAsTyped()->getType();
+                const TType& inputType = (*argp)[1]->getAsTyped()->getType();
+                const TType& matrixType = (*argp)[2]->getAsTyped()->getType();
+
+                if (!resultType.isCoopVecAD() || !inputType.isCoopVecAD() || !matrixType.isCoopMatAD()) {
+                    error(loc, "requires coopVecMatMulAD(out coopvecAD, coopvecAD, coopmatAD)", "coopVecMatMulAD", "");
+                    break;
+                }
+
+                if (inputType.getBasicType() != matrixType.getBasicType()) {
+                    error(loc, "input vector and matrix component types must match", "coopVecMatMulAD", "");
+                }
+
+                break;
+            }
+
+            if (callNode.getOp() == EOpCooperativeVectorMatMulAddNV && argp->size() == 4) {
+                const TType& resultType = (*argp)[0]->getAsTyped()->getType();
+                const TType& inputType = (*argp)[1]->getAsTyped()->getType();
+                const TType& matrixType = (*argp)[2]->getAsTyped()->getType();
+                const TType& biasType = (*argp)[3]->getAsTyped()->getType();
+
+                if (!resultType.isCoopVecAD() || !inputType.isCoopVecAD() || !matrixType.isCoopMatAD() || !biasType.isCoopVecAD()) {
+                    error(loc, "requires coopVecMatMulAddAD(out coopvecAD, coopvecAD, coopmatAD, coopvecAD)", "coopVecMatMulAddAD", "");
+                    break;
+                }
+
+                if (resultType.getBasicType() != biasType.getBasicType() ||
+                    resultType.getVectorSize() != biasType.getVectorSize()) {
+                    error(loc, "result and bias types must match", "coopVecMatMulAddAD", "");
+                }
+
+                if (inputType.getBasicType() != matrixType.getBasicType()) {
+                    error(loc, "input vector and matrix component types must match", "coopVecMatMulAddAD", "");
+                }
+
+                break;
+            }
+
             int inputInterpIdx = 2;
             int matrixInterpIdx = 5;
             int biasInterpIdx = 8;
