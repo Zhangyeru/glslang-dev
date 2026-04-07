@@ -1188,7 +1188,6 @@ enum Capability {
     CapabilityCooperativeMatrixTensorAddressingNV = 5433,
     CapabilityCooperativeMatrixBlockLoadsNV = 5434,
     CapabilityCooperativeVectorTrainingNV = 5435,
-    CapabilityCooperativeVectorTrainingAD = 65001,
     CapabilityRayTracingClusterAccelerationStructureNV = 5437,
     CapabilityTensorAddressingNV = 5439,
     CapabilitySubgroupShuffleINTEL = 5568,
@@ -1989,8 +1988,6 @@ enum Op {
     OpCooperativeVectorMatrixMulAddNV = 5292,
     OpTypeCooperativeVectorAD = 65010,
     OpCooperativeVectorMatrixMulAD = 65011,
-    OpCooperativeVectorOuterProductAccumulateAD = 65012,
-    OpCooperativeVectorReduceSumAccumulateAD = 65013,
     OpCooperativeVectorMatrixMulAddAD = 65014,
     OpCooperativeVectorLoadAD = 65015,
     OpCooperativeVectorStoreAD = 65016,
@@ -2798,9 +2795,7 @@ inline void HasResultAndType(Op opcode, bool *hasResult, bool *hasResultType) {
     case OpCooperativeVectorMatrixMulNV: *hasResult = true; *hasResultType = true; break;
     case OpCooperativeVectorMatrixMulAD: *hasResult = true; *hasResultType = true; break;
     case OpCooperativeVectorOuterProductAccumulateNV: *hasResult = false; *hasResultType = false; break;
-    case OpCooperativeVectorOuterProductAccumulateAD: *hasResult = false; *hasResultType = false; break;
     case OpCooperativeVectorReduceSumAccumulateNV: *hasResult = false; *hasResultType = false; break;
-    case OpCooperativeVectorReduceSumAccumulateAD: *hasResult = false; *hasResultType = false; break;
     case OpCooperativeVectorMatrixMulAddNV: *hasResult = true; *hasResultType = true; break;
     case OpCooperativeVectorMatrixMulAddAD: *hasResult = true; *hasResultType = true; break;
     case OpCooperativeMatrixConvertNV: *hasResult = true; *hasResultType = true; break;
@@ -3975,7 +3970,6 @@ inline const char* CapabilityToString(Capability value) {
     case CapabilityCooperativeMatrixTensorAddressingNV: return "CooperativeMatrixTensorAddressingNV";
     case CapabilityCooperativeMatrixBlockLoadsNV: return "CooperativeMatrixBlockLoadsNV";
     case CapabilityCooperativeVectorTrainingNV: return "CooperativeVectorTrainingNV";
-    case CapabilityCooperativeVectorTrainingAD: return "CooperativeVectorTrainingAD";
     case CapabilityTensorAddressingNV: return "TensorAddressingNV";
     case CapabilitySubgroupShuffleINTEL: return "SubgroupShuffleINTEL";
     case CapabilitySubgroupBufferBlockIOINTEL: return "SubgroupBufferBlockIOINTEL";
@@ -4699,9 +4693,7 @@ inline const char* OpToString(Op value) {
     case OpCooperativeVectorMatrixMulNV: return "OpCooperativeVectorMatrixMulNV";
     case OpCooperativeVectorMatrixMulAD: return "OpCooperativeVectorMatrixMulAD";
     case OpCooperativeVectorOuterProductAccumulateNV: return "OpCooperativeVectorOuterProductAccumulateNV";
-    case OpCooperativeVectorOuterProductAccumulateAD: return "OpCooperativeVectorOuterProductAccumulateAD";
     case OpCooperativeVectorReduceSumAccumulateNV: return "OpCooperativeVectorReduceSumAccumulateNV";
-    case OpCooperativeVectorReduceSumAccumulateAD: return "OpCooperativeVectorReduceSumAccumulateAD";
     case OpCooperativeVectorMatrixMulAddNV: return "OpCooperativeVectorMatrixMulAddNV";
     case OpCooperativeVectorMatrixMulAddAD: return "OpCooperativeVectorMatrixMulAddAD";
     case OpCooperativeMatrixConvertNV: return "OpCooperativeMatrixConvertNV";

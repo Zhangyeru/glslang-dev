@@ -122,11 +122,6 @@ spv::Capability getCooperativeVectorCapability(const glslang::TType& type)
     return getCooperativeVectorCapability(type.isCoopVecAD());
 }
 
-spv::Capability getCooperativeVectorTrainingCapability(bool isAd)
-{
-    return isAd ? spv::CapabilityCooperativeVectorTrainingAD : spv::CapabilityCooperativeVectorTrainingNV;
-}
-
 spv::Capability getCooperativeMatrixCapability(bool isAd)
 {
     return isAd ? spv::CapabilityCooperativeMatrixAD : spv::CapabilityCooperativeMatrixNV;
@@ -168,10 +163,8 @@ spv::Op getCooperativeVectorLoadStoreOp(bool isAd, bool isStore)
     return isStore ? spv::OpCooperativeVectorStoreNV : spv::OpCooperativeVectorLoadNV;
 }
 
-spv::Op getCooperativeVectorTrainingOp(bool isAd, bool isReduce)
+spv::Op getCooperativeVectorTrainingOp(bool isReduce)
 {
-    if (isAd)
-        return isReduce ? spv::OpCooperativeVectorReduceSumAccumulateAD : spv::OpCooperativeVectorOuterProductAccumulateAD;
     return isReduce ? spv::OpCooperativeVectorReduceSumAccumulateNV : spv::OpCooperativeVectorOuterProductAccumulateNV;
 }
 
@@ -4389,9 +4382,8 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         builder.createNoResultOp(getCooperativeVectorLoadStoreOp(isAd, true), idImmOps);
         result = 0;
     } else if (node->getOp() == glslang::EOpCooperativeVectorOuterProductAccumulateNV) {
-        const bool isAd = builder.isCooperativeVectorADType(builder.getTypeId(operands[0]));
-        builder.addCapability(getCooperativeVectorTrainingCapability(isAd));
-        builder.addExtension(getCooperativeVectorExtension(isAd));
+        builder.addCapability(spv::CapabilityCooperativeVectorTrainingNV);
+        builder.addExtension(getCooperativeVectorExtension(false));
 
         std::vector<spv::IdImmediate> idImmOps;
 
@@ -4402,19 +4394,18 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         idImmOps.push_back(spv::IdImmediate(true, operands[5])); // MemoryLayout
         idImmOps.push_back(spv::IdImmediate(true, operands[6])); // MatrixInterpretation
         idImmOps.push_back(spv::IdImmediate(true, operands[4])); // Stride
-        builder.createNoResultOp(getCooperativeVectorTrainingOp(isAd, false), idImmOps);
+        builder.createNoResultOp(getCooperativeVectorTrainingOp(false), idImmOps);
         result = 0;
     } else if (node->getOp() == glslang::EOpCooperativeVectorReduceSumAccumulateNV) {
-        const bool isAd = builder.isCooperativeVectorADType(builder.getTypeId(operands[0]));
-        builder.addCapability(getCooperativeVectorTrainingCapability(isAd));
-        builder.addExtension(getCooperativeVectorExtension(isAd));
+        builder.addCapability(spv::CapabilityCooperativeVectorTrainingNV);
+        builder.addExtension(getCooperativeVectorExtension(false));
 
         std::vector<spv::IdImmediate> idImmOps;
 
         idImmOps.push_back(spv::IdImmediate(true, operands[1])); // Buf
         idImmOps.push_back(spv::IdImmediate(true, operands[2])); // Offset
         idImmOps.push_back(spv::IdImmediate(true, operands[0])); // A
-        builder.createNoResultOp(getCooperativeVectorTrainingOp(isAd, true), idImmOps);
+        builder.createNoResultOp(getCooperativeVectorTrainingOp(true), idImmOps);
         result = 0;
     } else if (node->getOp() == glslang::EOpCooperativeMatrixMulAD) {
         std::vector<spv::IdImmediate> idImmOps;

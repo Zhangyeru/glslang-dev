@@ -4841,17 +4841,7 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
                    std::string("[] buf, uint offset, uint stride, int matrixLayout, int matrixInterpretation);\n");
             commonBuiltins.append(func.c_str());
 
-            func = std::string("void coopVecOuterProductAccumulateAD(coopvecAD v1, coopvecAD v2, ") +
-                   std::string(basicTypes[i]) +
-                   std::string("[] buf, uint offset, uint stride, int matrixLayout, int matrixInterpretation);\n");
-            commonBuiltins.append(func.c_str());
-            
             func = std::string("void coopVecReduceSumAccumulateNV(coopvecNV v, ") +
-                   std::string(basicTypes[i]) +
-                   std::string("[] buf, uint offset);\n");
-            commonBuiltins.append(func.c_str());
-
-            func = std::string("void coopVecReduceSumAccumulateAD(coopvecAD v, ") +
                    std::string(basicTypes[i]) +
                    std::string("[] buf, uint offset);\n");
             commonBuiltins.append(func.c_str());
@@ -9567,8 +9557,6 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
 
             symbolTable.setFunctionExtensions("coopVecMatMulAD",                    1, &E_GL_AD_cooperative_vector);
             symbolTable.setFunctionExtensions("coopVecMatMulAddAD",                 1, &E_GL_AD_cooperative_vector);
-            symbolTable.setFunctionExtensions("coopVecOuterProductAccumulateAD",    1, &E_GL_AD_cooperative_vector);
-            symbolTable.setFunctionExtensions("coopVecReduceSumAccumulateAD",       1, &E_GL_AD_cooperative_vector);
         }
 
         if ((profile != EEsProfile && version >= 450) || (profile == EEsProfile && version >= 320)) {
@@ -10701,9 +10689,7 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
         symbolTable.relateToOperator("coopVecStoreNV",               EOpCooperativeVectorStoreNV);
         symbolTable.relateToOperator("coopVecStoreAD",               EOpCooperativeVectorStoreAD);
         symbolTable.relateToOperator("coopVecOuterProductAccumulateNV", EOpCooperativeVectorOuterProductAccumulateNV);
-        symbolTable.relateToOperator("coopVecOuterProductAccumulateAD", EOpCooperativeVectorOuterProductAccumulateNV);
         symbolTable.relateToOperator("coopVecReduceSumAccumulateNV",    EOpCooperativeVectorReduceSumAccumulateNV);
-        symbolTable.relateToOperator("coopVecReduceSumAccumulateAD",    EOpCooperativeVectorReduceSumAccumulateNV);
     }
 
     switch(language) {

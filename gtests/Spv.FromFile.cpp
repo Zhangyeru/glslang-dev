@@ -397,7 +397,6 @@ INSTANTIATE_TEST_SUITE_P(
         "spv.coopvecADMatMul_Error.comp",
         "spv.coopvecADMatMulAdd_Error.comp",
         "spv.coopvecADstore_Error.comp",
-        "spv.coopvecADTraining.comp",
         "spv.coopvecAD_Error.comp",
         "spv.coopvecAD_Params_Error.comp",
         "spv.coopvecloadstore.comp",
