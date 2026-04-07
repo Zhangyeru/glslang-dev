@@ -4097,7 +4097,8 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
             idImmOps.push_back(spv::IdImmediate(true, operands[2])); // stride
             idImmOps.push_back(spv::IdImmediate(true, operands[3])); // colMajor
         }
-        idImmOps.insert(idImmOps.end(), memoryAccessOperands.begin(), memoryAccessOperands.end());
+        if (node->getOp() != glslang::EOpCooperativeMatrixLoadAD)
+            idImmOps.insert(idImmOps.end(), memoryAccessOperands.begin(), memoryAccessOperands.end());
         // get the pointee type
         spv::Id typeId = builder.getContainedTypeId(builder.getTypeId(operands[0]));
         assert(builder.isCooperativeMatrixType(typeId));
@@ -4154,7 +4155,8 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
             idImmOps.push_back(spv::IdImmediate(true, operands[2])); // stride
             idImmOps.push_back(spv::IdImmediate(true, operands[3])); // colMajor
         }
-        idImmOps.insert(idImmOps.end(), memoryAccessOperands.begin(), memoryAccessOperands.end());
+        if (node->getOp() != glslang::EOpCooperativeMatrixStoreAD)
+            idImmOps.insert(idImmOps.end(), memoryAccessOperands.begin(), memoryAccessOperands.end());
 
         if (node->getOp() == glslang::EOpCooperativeMatrixStore)
             builder.createNoResultOp(spv::OpCooperativeMatrixStoreKHR, idImmOps);

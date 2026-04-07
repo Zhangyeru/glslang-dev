@@ -98,7 +98,7 @@ spv.coopmatAD.comp
                OpStore %A %14
                OpStore %B %19
          %28 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %buf %int_0
-         %37 = OpCooperativeMatrixLoadAD %10 %28 %33 %36 %int_0 None
+         %37 = OpCooperativeMatrixLoadAD %10 %28 %33 %36 %int_0
                OpStore %tempArg %37
          %39 = OpLoad %10 %tempArg
                OpStore %C %39
@@ -125,7 +125,7 @@ spv.coopmatAD.comp
                OpStore %R1 %61
          %62 = OpLoad %10 %C
          %63 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %buf %int_0
-               OpCooperativeMatrixStoreAD %63 %62 %33 %66 %int_1 None
+               OpCooperativeMatrixStoreAD %63 %62 %33 %66 %int_1
          %69 = OpCooperativeMatrixLengthAD %uint %10
          %70 = OpBitcast %int %69
                OpStore %len %70
