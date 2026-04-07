@@ -2,7 +2,7 @@ spv.coopvecADloadstore.comp
 ; SPIR-V
 ; Version: 1.0
 ; Generator: Khronos Glslang Reference Front End; 11
-; Bound: 78
+; Bound: 77
 ; Schema: 0
                OpCapability Shader
                OpCapability Float16
@@ -82,7 +82,6 @@ spv.coopvecADloadstore.comp
         %int = OpTypeInt 32 1
       %int_0 = OpConstant %int 0
 %_ptr_StorageBuffer__runtimearr_v3ulong = OpTypePointer StorageBuffer %_runtimearr_v3ulong
-   %uint_144 = OpConstant %uint 144
        %half = OpTypeFloat 16
 %_runtimearr_half = OpTypeRuntimeArray %half
  %MatrixBuf2 = OpTypeStruct %_runtimearr_half
@@ -125,38 +124,38 @@ spv.coopvecADloadstore.comp
                OpStore %v %24
          %25 = OpLoad %9 %v
          %26 = OpAccessChain %_ptr_StorageBuffer__runtimearr_v3ulong %matrixBuf %int_0
-               OpCooperativeVectorStoreAD %26 %uint_144 %25 None
-         %35 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %matrixBuf2 %int_0
-         %36 = OpCooperativeVectorLoadAD %9 %35
-               OpStore %tempArg_0 %36
-         %37 = OpLoad %9 %tempArg_0
-               OpStore %v %37
-         %38 = OpLoad %9 %v
-         %39 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %matrixBuf2 %int_0
-               OpCooperativeVectorStoreAD %39 %uint_144 %38 MakePointerAvailable|NonPrivatePointer %uint_5
-         %46 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %matrixBuf3 %int_0
-         %47 = OpCooperativeVectorLoadAD %9 %46
-               OpStore %tempArg_1 %47
-         %48 = OpLoad %9 %tempArg_1
-               OpStore %v %48
-         %49 = OpLoad %9 %v
-         %50 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %matrixBuf3 %int_0
-               OpCooperativeVectorStoreAD %50 %uint_144 %49 Volatile|MakePointerAvailable|NonPrivatePointer %uint_5
-         %57 = OpLoad %_ptr_PhysicalStorageBuffer_MatrixBuf4 %matrixBuf4
-         %59 = OpAccessChain %_ptr_PhysicalStorageBuffer__runtimearr_half_0 %57 %int_0
-         %60 = OpCooperativeVectorLoadAD %9 %59
-               OpStore %tempArg_2 %60
-         %61 = OpLoad %9 %tempArg_2
-               OpStore %v %61
-         %62 = OpLoad %9 %v
-         %63 = OpLoad %_ptr_PhysicalStorageBuffer_MatrixBuf4 %matrixBuf4
-         %64 = OpAccessChain %_ptr_PhysicalStorageBuffer__runtimearr_half_0 %63 %int_0
-               OpCooperativeVectorStoreAD %64 %uint_144 %62 Aligned|MakePointerAvailable|NonPrivatePointer 16 %uint_5
-         %71 = OpCooperativeVectorLoadAD %9 %matrixShmem
-               OpStore %tempArg_3 %71
-         %72 = OpLoad %9 %tempArg_3
-               OpStore %v %72
-         %73 = OpLoad %9 %v
-               OpCooperativeVectorStoreAD %matrixShmem %uint_144 %73 MakePointerAvailable|NonPrivatePointer %uint_2
+               OpCooperativeVectorStoreAD %26 %25
+         %34 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %matrixBuf2 %int_0
+         %35 = OpCooperativeVectorLoadAD %9 %34
+               OpStore %tempArg_0 %35
+         %36 = OpLoad %9 %tempArg_0
+               OpStore %v %36
+         %37 = OpLoad %9 %v
+         %38 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %matrixBuf2 %int_0
+               OpCooperativeVectorStoreAD %38 %37
+         %45 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %matrixBuf3 %int_0
+         %46 = OpCooperativeVectorLoadAD %9 %45
+               OpStore %tempArg_1 %46
+         %47 = OpLoad %9 %tempArg_1
+               OpStore %v %47
+         %48 = OpLoad %9 %v
+         %49 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %matrixBuf3 %int_0
+               OpCooperativeVectorStoreAD %49 %48
+         %56 = OpLoad %_ptr_PhysicalStorageBuffer_MatrixBuf4 %matrixBuf4
+         %58 = OpAccessChain %_ptr_PhysicalStorageBuffer__runtimearr_half_0 %56 %int_0
+         %59 = OpCooperativeVectorLoadAD %9 %58
+               OpStore %tempArg_2 %59
+         %60 = OpLoad %9 %tempArg_2
+               OpStore %v %60
+         %61 = OpLoad %9 %v
+         %62 = OpLoad %_ptr_PhysicalStorageBuffer_MatrixBuf4 %matrixBuf4
+         %63 = OpAccessChain %_ptr_PhysicalStorageBuffer__runtimearr_half_0 %62 %int_0
+               OpCooperativeVectorStoreAD %63 %61
+         %70 = OpCooperativeVectorLoadAD %9 %matrixShmem
+               OpStore %tempArg_3 %70
+         %71 = OpLoad %9 %tempArg_3
+               OpStore %v %71
+         %72 = OpLoad %9 %v
+               OpCooperativeVectorStoreAD %matrixShmem %72
                OpReturn
                OpFunctionEnd

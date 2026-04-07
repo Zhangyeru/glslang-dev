@@ -3441,7 +3441,8 @@ void Parameterize()
         InstructionDesc[OpCooperativeVectorStoreNV].operands.push(OperandMemoryAccess, "'Memory Access'");
         InstructionDesc[OpCooperativeVectorStoreNV].operands.push(OperandLiteralNumber, "", true);
         InstructionDesc[OpCooperativeVectorStoreNV].operands.push(OperandId, "", true);
-        InstructionDesc[OpCooperativeVectorStoreAD].operands = InstructionDesc[OpCooperativeVectorStoreNV].operands;
+        InstructionDesc[OpCooperativeVectorStoreAD].operands.push(OperandId, "'Pointer'");
+        InstructionDesc[OpCooperativeVectorStoreAD].operands.push(OperandId, "'Object'");
         InstructionDesc[OpCooperativeVectorStoreAD].setResultAndType(false, false);
 
         InstructionDesc[OpCooperativeVectorOuterProductAccumulateNV].operands.push(OperandId, "'Pointer'");
