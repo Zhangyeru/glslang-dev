@@ -385,6 +385,7 @@ INSTANTIATE_TEST_SUITE_P(
         "spv.coopvec2.comp",
         "spv.coopvecAD.comp",
         "spv.coopvecADloadstore.comp",
+        "spv.coopvecADloadstore_Error.comp",
         "spv.coopvecADTraining.comp",
         "spv.coopvecAD_Error.comp",
         "spv.coopvecAD_Params_Error.comp",

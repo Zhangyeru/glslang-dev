@@ -974,6 +974,7 @@ bool TOutputTraverser::visitAggregate(TVisit /* visit */, TIntermAggregate* node
     case EOpCooperativeVectorMatMulNV: out.debug << "Cooperative vector matrix multiply NV"; break;
     case EOpCooperativeVectorMatMulAddNV: out.debug << "Cooperative vector matrix multiply add NV"; break;
     case EOpCooperativeVectorLoadNV:  out.debug << "Load cooperative vector NV"; break;
+    case EOpCooperativeVectorLoadAD:  out.debug << "Load cooperative vector AD"; break;
     case EOpCooperativeVectorStoreNV:  out.debug << "Store cooperative vector NV"; break;
     case EOpCooperativeVectorOuterProductAccumulateNV: out.debug << "Cooperative vector outer product accumulate NV"; break;
     case EOpCooperativeVectorReduceSumAccumulateNV: out.debug << "Cooperative vector reduce sum accumulate NV"; break;

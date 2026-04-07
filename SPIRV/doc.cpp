@@ -3432,7 +3432,7 @@ void Parameterize()
         InstructionDesc[OpCooperativeVectorLoadNV].operands.push(OperandMemoryAccess, "'Memory Access'");
         InstructionDesc[OpCooperativeVectorLoadNV].operands.push(OperandLiteralNumber, "", true);
         InstructionDesc[OpCooperativeVectorLoadNV].operands.push(OperandId, "", true);
-        InstructionDesc[OpCooperativeVectorLoadAD].operands = InstructionDesc[OpCooperativeVectorLoadNV].operands;
+        InstructionDesc[OpCooperativeVectorLoadAD].operands.push(OperandId, "'Pointer'");
         InstructionDesc[OpCooperativeVectorLoadAD].setResultAndType(true, true);
 
         InstructionDesc[OpCooperativeVectorStoreNV].operands.push(OperandId, "'Pointer'");

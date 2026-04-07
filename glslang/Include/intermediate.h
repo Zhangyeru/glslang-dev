@@ -480,6 +480,7 @@ enum TOperator {
     EOpCooperativeVectorMatMulNV,
     EOpCooperativeVectorMatMulAddNV,
     EOpCooperativeVectorLoadNV,
+    EOpCooperativeVectorLoadAD,
     EOpCooperativeVectorStoreNV,
     EOpCooperativeVectorOuterProductAccumulateNV,
     EOpCooperativeVectorReduceSumAccumulateNV,

@@ -4953,7 +4953,7 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
             commonBuiltins.append(store.c_str());
 
             load = std::string("void coopVecLoadAD(out coopvecAD v, volatile coherent ") +
-                   std::string(scalarAndVectorTypes[i]) + std::string("[] buf, uint offset);");
+                   std::string(scalarAndVectorTypes[i]) + std::string("[] buf);");
             store = std::string("void coopVecStoreAD(coopvecAD v, volatile coherent ") +
                     std::string(scalarAndVectorTypes[i]) + std::string("[] buf, uint offset);");
             commonBuiltins.append(load.c_str());
@@ -10700,7 +10700,7 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
         symbolTable.relateToOperator("coopVecMatMulAddNV",           EOpCooperativeVectorMatMulAddNV);
         symbolTable.relateToOperator("coopVecMatMulAddAD",           EOpCooperativeVectorMatMulAddNV);
         symbolTable.relateToOperator("coopVecLoadNV",                EOpCooperativeVectorLoadNV);
-        symbolTable.relateToOperator("coopVecLoadAD",                EOpCooperativeVectorLoadNV);
+        symbolTable.relateToOperator("coopVecLoadAD",                EOpCooperativeVectorLoadAD);
         symbolTable.relateToOperator("coopVecStoreNV",               EOpCooperativeVectorStoreNV);
         symbolTable.relateToOperator("coopVecStoreAD",               EOpCooperativeVectorStoreNV);
         symbolTable.relateToOperator("coopVecOuterProductAccumulateNV", EOpCooperativeVectorOuterProductAccumulateNV);
