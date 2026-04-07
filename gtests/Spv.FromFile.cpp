@@ -370,6 +370,8 @@ INSTANTIATE_TEST_SUITE_P(
         "spv.coopmat.comp",
         "spv.coopmatAD.comp",
         "spv.coopmatAD_builtin.comp",
+        "spv.coopmatAD_bitcast.comp",
+        "spv.coopmatAD_bitcastError.comp",
         "spv.coopmatAD_conversion.comp",
         "spv.coopmatAD_conversionError.comp",
         "spv.coopmatAD_arithmetic.comp",

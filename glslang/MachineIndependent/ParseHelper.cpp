@@ -1533,6 +1533,33 @@ TIntermTyped* TParseContext::handleFunctionCall(const TSourceLoc& loc, TFunction
 
 void TParseContext::handleCoopMat2FunctionCall(const TSourceLoc& loc, const TFunction* fnCandidate, TIntermTyped* result, TIntermNode* arguments)
 {
+    auto getFirstArgType = [&]() -> const TType* {
+        if (auto typedArgs = arguments ? arguments->getAsTyped() : nullptr)
+            return &typedArgs->getType();
+        if (auto aggArgs = arguments ? arguments->getAsAggregate() : nullptr) {
+            if (!aggArgs->getSequence().empty() && aggArgs->getSequence()[0]->getAsTyped())
+                return &aggArgs->getSequence()[0]->getAsTyped()->getType();
+        }
+        if (auto aggNode = result->getAsAggregate()) {
+            if (!aggNode->getSequence().empty() && aggNode->getSequence()[0]->getAsTyped())
+                return &aggNode->getSequence()[0]->getAsTyped()->getType();
+        }
+        if (auto unaryNode = result->getAsUnaryNode())
+            return &unaryNode->getOperand()->getAsTyped()->getType();
+        return nullptr;
+    };
+
+    auto setCoopMatBitcastResultType = [&](TBasicType basicType) {
+        if (const TType* argType = getFirstArgType()) {
+            TType resultType;
+            resultType.deepCopy(*argType);
+            resultType.setBasicType(basicType);
+            if (resultType.getTypeParameters())
+                resultType.getTypeParameters()->basicType = basicType;
+            result->setType(resultType);
+        }
+    };
+
     if (arguments && arguments->getAsAggregate()) {
         auto &sequence = arguments->getAsAggregate()->getSequence();
         for (uint32_t i = 0; i < sequence.size(); ++i) {
@@ -1638,6 +1665,14 @@ void TParseContext::handleCoopMat2FunctionCall(const TSourceLoc& loc, const TFun
                fnCandidate->getBuiltInOp() == EOpCooperativeMatrixMulAddAD ||
                fnCandidate->getBuiltInOp() == EOpCooperativeMatrixReduceNV ||
                fnCandidate->getBuiltInOp() == EOpCooperativeMatrixReduceAD ||
+               fnCandidate->getBuiltInOp() == EOpFloatBitsToInt ||
+               fnCandidate->getBuiltInOp() == EOpFloatBitsToUint ||
+               fnCandidate->getBuiltInOp() == EOpIntBitsToFloat ||
+               fnCandidate->getBuiltInOp() == EOpUintBitsToFloat ||
+               fnCandidate->getBuiltInOp() == EOpFloat16BitsToInt16 ||
+               fnCandidate->getBuiltInOp() == EOpFloat16BitsToUint16 ||
+               fnCandidate->getBuiltInOp() == EOpInt16BitsToFloat16 ||
+               fnCandidate->getBuiltInOp() == EOpUint16BitsToFloat16 ||
                fnCandidate->getBuiltInOp() == EOpCooperativeMatrixPerElementOpNV ||
                fnCandidate->getBuiltInOp() == EOpCooperativeMatrixTransposeNV ||
                fnCandidate->getBuiltInOp() == EOpCreateTensorLayoutNV ||
@@ -1731,6 +1766,65 @@ void TParseContext::handleCoopMat2FunctionCall(const TSourceLoc& loc, const TFun
 
             resultType.copyTypeParameters(typeParameters);
             result->setType(resultType);
+        } else if (fnCandidate->getBuiltInOp() == EOpFloatBitsToInt) {
+            const TType* argType = getFirstArgType();
+            if (argType == nullptr || !argType->isCoopMatAD() ||
+                (argType->getBasicType() != EbtFloat && argType->getBasicType() != EbtFloat16))
+                error(loc, "requires coopmatAD<float|float16_t, ...>", "floatBitsToInt", "");
+            else
+                setCoopMatBitcastResultType(argType->getBasicType() == EbtFloat16 ? EbtInt16 : EbtInt);
+        } else if (fnCandidate->getBuiltInOp() == EOpFloatBitsToUint ||
+                   fnCandidate->getBuiltInOp() == EOpFloat16BitsToUint16) {
+            const TType* argType = getFirstArgType();
+            if (argType == nullptr || !argType->isCoopMatAD() || argType->getBasicType() != EbtFloat16) {
+                if (fnCandidate->getBuiltInOp() == EOpFloatBitsToUint) {
+                    if (argType == nullptr || !argType->isCoopMatAD() ||
+                        (argType->getBasicType() != EbtFloat && argType->getBasicType() != EbtFloat16))
+                        error(loc, "requires coopmatAD<float|float16_t, ...>", "floatBitsToUint", "");
+                    else
+                        setCoopMatBitcastResultType(argType->getBasicType() == EbtFloat16 ? EbtUint16 : EbtUint);
+                } else {
+                    error(loc, "requires coopmatAD<float16_t, ...>", "float16BitsToUint16", "");
+                }
+            } else {
+                setCoopMatBitcastResultType(EbtUint16);
+            }
+        } else if (fnCandidate->getBuiltInOp() == EOpIntBitsToFloat ||
+                   fnCandidate->getBuiltInOp() == EOpInt16BitsToFloat16) {
+            const TType* argType = getFirstArgType();
+            if (fnCandidate->getBuiltInOp() == EOpIntBitsToFloat) {
+                if (argType == nullptr || !argType->isCoopMatAD() ||
+                    (argType->getBasicType() != EbtInt && argType->getBasicType() != EbtInt16))
+                    error(loc, "requires coopmatAD<int|int16_t, ...>", "intBitsToFloat", "");
+                else
+                    setCoopMatBitcastResultType(argType->getBasicType() == EbtInt16 ? EbtFloat16 : EbtFloat);
+            } else {
+                if (argType == nullptr || !argType->isCoopMatAD() || argType->getBasicType() != EbtInt16)
+                    error(loc, "requires coopmatAD<int16_t, ...>", "int16BitsToFloat16", "");
+                else
+                    setCoopMatBitcastResultType(EbtFloat16);
+            }
+        } else if (fnCandidate->getBuiltInOp() == EOpUintBitsToFloat ||
+                   fnCandidate->getBuiltInOp() == EOpUint16BitsToFloat16) {
+            const TType* argType = getFirstArgType();
+            if (fnCandidate->getBuiltInOp() == EOpUintBitsToFloat) {
+                if (argType == nullptr || !argType->isCoopMatAD() ||
+                    (argType->getBasicType() != EbtUint && argType->getBasicType() != EbtUint16))
+                    error(loc, "requires coopmatAD<uint|uint16_t, ...>", "uintBitsToFloat", "");
+                else
+                    setCoopMatBitcastResultType(argType->getBasicType() == EbtUint16 ? EbtFloat16 : EbtFloat);
+            } else {
+                if (argType == nullptr || !argType->isCoopMatAD() || argType->getBasicType() != EbtUint16)
+                    error(loc, "requires coopmatAD<uint16_t, ...>", "uint16BitsToFloat16", "");
+                else
+                    setCoopMatBitcastResultType(EbtFloat16);
+            }
+        } else if (fnCandidate->getBuiltInOp() == EOpFloat16BitsToInt16) {
+            const TType* argType = getFirstArgType();
+            if (argType == nullptr || !argType->isCoopMatAD() || argType->getBasicType() != EbtFloat16)
+                error(loc, "requires coopmatAD<float16_t, ...>", "float16BitsToInt16", "");
+            else
+                setCoopMatBitcastResultType(EbtInt16);
         } else if (fnCandidate->getBuiltInOp() == EOpCooperativeMatrixReduceNV ||
                    fnCandidate->getBuiltInOp() == EOpCooperativeMatrixPerElementOpNV ||
                    fnCandidate->getBuiltInOp() == EOpCooperativeMatrixTransposeNV ||

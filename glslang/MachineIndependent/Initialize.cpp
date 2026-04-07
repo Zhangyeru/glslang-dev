@@ -4638,6 +4638,17 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
             cooperativeMatrixADFuncs << "void coopMatMulAD(out coopmatAD result, coopmatAD A, coopmatAD B);\n";
             cooperativeMatrixADFuncs << "void coopMatMulAddAD(out coopmatAD result, coopmatAD A, coopmatAD B, coopmatAD C);\n";
             cooperativeMatrixADFuncs << "coopmatAD coopMatReduceAD(coopmatAD matrix, int reduceMask, int combineOp);\n";
+            cooperativeMatrixADFuncs << "coopmatAD floatBitsToInt(coopmatAD value);\n";
+            cooperativeMatrixADFuncs << "coopmatAD floatBitsToUint(coopmatAD value);\n";
+            cooperativeMatrixADFuncs << "coopmatAD intBitsToFloat(coopmatAD value);\n";
+            cooperativeMatrixADFuncs << "coopmatAD uintBitsToFloat(coopmatAD value);\n";
+            cooperativeMatrixADFuncs << "coopmatAD float16BitsToInt16(coopmatAD value);\n";
+            cooperativeMatrixADFuncs << "coopmatAD float16BitsToUint16(coopmatAD value);\n";
+            cooperativeMatrixADFuncs << "coopmatAD halfBitsToUint16(coopmatAD value);\n";
+            cooperativeMatrixADFuncs << "coopmatAD int16BitsToFloat16(coopmatAD value);\n";
+            cooperativeMatrixADFuncs << "coopmatAD uint16BitsToFloat16(coopmatAD value);\n";
+            cooperativeMatrixADFuncs << "coopmatAD int16BitsToHalf(coopmatAD value);\n";
+            cooperativeMatrixADFuncs << "coopmatAD uint16BitsToHalf(coopmatAD value);\n";
             stageBuiltins[EShLangCompute].append(cooperativeMatrixADFuncs.str().c_str());
         }
 
