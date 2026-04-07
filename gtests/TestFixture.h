@@ -123,7 +123,8 @@ public:
     {
         return ((shaderName.rfind("spv.coopmatAD", 0) == 0) &&
                 shaderName.find("Error") == std::string::npos) ||
-               shaderName == "spv.coopvecADloadstore.comp";
+               ((shaderName.rfind("spv.coopvecAD", 0) == 0) &&
+                shaderName.find("Error") == std::string::npos);
     }
 
     static void disassembleSpirv(const std::string& shaderName,

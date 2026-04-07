@@ -1513,7 +1513,96 @@ TIntermTyped* TParseContext::handleFunctionCall(const TSourceLoc& loc, TFunction
 
             handleCoopMat2FunctionCall(loc, fnCandidate, result, arguments);
 
+            auto setCoopVecBitcastResultType = [&](TBasicType basicType) {
+                const TType* argType = nullptr;
+                if (auto typedArgs = arguments ? arguments->getAsTyped() : nullptr)
+                    argType = &typedArgs->getType();
+                else if (auto aggArgs = arguments ? arguments->getAsAggregate() : nullptr) {
+                    if (!aggArgs->getSequence().empty() && aggArgs->getSequence()[0]->getAsTyped())
+                        argType = &aggArgs->getSequence()[0]->getAsTyped()->getType();
+                }
+
+                if (argType) {
+                    TType resultType;
+                    resultType.deepCopy(*argType);
+                    resultType.setBasicType(basicType);
+                    if (resultType.getTypeParameters())
+                        resultType.getTypeParameters()->basicType = basicType;
+                    result->setType(resultType);
+                }
+            };
+
+            bool handledCoopVecBitcast = false;
             if (result->getAsTyped()->getType().isCoopVec() &&
+                !result->getAsTyped()->getType().isParameterized()) {
+                const TType* argType = nullptr;
+                if (auto typedArgs = arguments ? arguments->getAsTyped() : nullptr)
+                    argType = &typedArgs->getType();
+                else if (auto aggArgs = arguments ? arguments->getAsAggregate() : nullptr) {
+                    if (!aggArgs->getSequence().empty() && aggArgs->getSequence()[0]->getAsTyped())
+                        argType = &aggArgs->getSequence()[0]->getAsTyped()->getType();
+                }
+
+                if (fnCandidate->getBuiltInOp() == EOpFloatBitsToInt) {
+                    handledCoopVecBitcast = true;
+                    if (argType == nullptr || !argType->isCoopVecAD() ||
+                        (argType->getBasicType() != EbtFloat && argType->getBasicType() != EbtFloat16))
+                        error(loc, "requires coopvecAD<float|float16_t, ...>", "floatBitsToInt", "");
+                    else
+                        setCoopVecBitcastResultType(argType->getBasicType() == EbtFloat16 ? EbtInt16 : EbtInt);
+                } else if (fnCandidate->getBuiltInOp() == EOpFloatBitsToUint) {
+                    handledCoopVecBitcast = true;
+                    if (argType == nullptr || !argType->isCoopVecAD() ||
+                        (argType->getBasicType() != EbtFloat && argType->getBasicType() != EbtFloat16))
+                        error(loc, "requires coopvecAD<float|float16_t, ...>", "floatBitsToUint", "");
+                    else
+                        setCoopVecBitcastResultType(argType->getBasicType() == EbtFloat16 ? EbtUint16 : EbtUint);
+                } else if (fnCandidate->getBuiltInOp() == EOpIntBitsToFloat ||
+                           fnCandidate->getBuiltInOp() == EOpUintBitsToFloat) {
+                    handledCoopVecBitcast = true;
+                    if (fnCandidate->getBuiltInOp() == EOpIntBitsToFloat) {
+                        if (argType == nullptr || !argType->isCoopVecAD() ||
+                            (argType->getBasicType() != EbtInt && argType->getBasicType() != EbtInt16))
+                            error(loc, "requires coopvecAD<int|int16_t, ...>", "intBitsToFloat", "");
+                        else
+                            setCoopVecBitcastResultType(argType->getBasicType() == EbtInt16 ? EbtFloat16 : EbtFloat);
+                    } else {
+                        if (argType == nullptr || !argType->isCoopVecAD() ||
+                            (argType->getBasicType() != EbtUint && argType->getBasicType() != EbtUint16))
+                            error(loc, "requires coopvecAD<uint|uint16_t, ...>", "uintBitsToFloat", "");
+                        else
+                            setCoopVecBitcastResultType(argType->getBasicType() == EbtUint16 ? EbtFloat16 : EbtFloat);
+                    }
+                } else if (fnCandidate->getBuiltInOp() == EOpFloat16BitsToInt16) {
+                    handledCoopVecBitcast = true;
+                    if (argType == nullptr || !argType->isCoopVecAD() || argType->getBasicType() != EbtFloat16)
+                        error(loc, "requires coopvecAD<float16_t, ...>", "float16BitsToInt16", "");
+                    else
+                        setCoopVecBitcastResultType(EbtInt16);
+                } else if (fnCandidate->getBuiltInOp() == EOpFloat16BitsToUint16) {
+                    handledCoopVecBitcast = true;
+                    if (argType == nullptr || !argType->isCoopVecAD() || argType->getBasicType() != EbtFloat16)
+                        error(loc, "requires coopvecAD<float16_t, ...>", "float16BitsToUint16", "");
+                    else
+                        setCoopVecBitcastResultType(EbtUint16);
+                } else if (fnCandidate->getBuiltInOp() == EOpInt16BitsToFloat16 ||
+                           fnCandidate->getBuiltInOp() == EOpUint16BitsToFloat16) {
+                    handledCoopVecBitcast = true;
+                    if (fnCandidate->getBuiltInOp() == EOpInt16BitsToFloat16) {
+                        if (argType == nullptr || !argType->isCoopVecAD() || argType->getBasicType() != EbtInt16)
+                            error(loc, "requires coopvecAD<int16_t, ...>", "int16BitsToFloat16", "");
+                        else
+                            setCoopVecBitcastResultType(EbtFloat16);
+                    } else {
+                        if (argType == nullptr || !argType->isCoopVecAD() || argType->getBasicType() != EbtUint16)
+                            error(loc, "requires coopvecAD<uint16_t, ...>", "uint16BitsToFloat16", "");
+                        else
+                            setCoopVecBitcastResultType(EbtFloat16);
+                    }
+                }
+            }
+
+            if (!handledCoopVecBitcast && result->getAsTyped()->getType().isCoopVec() &&
                !result->getAsTyped()->getType().isParameterized()) {
                 if (auto unaryNode = result->getAsUnaryNode())
                     result->setType(unaryNode->getOperand()->getAsTyped()->getType());

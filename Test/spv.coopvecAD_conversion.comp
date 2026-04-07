@@ -1,0 +1,27 @@
+#version 450 core
+#extension GL_AD_cooperative_vector : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1) in;
+
+void main()
+{
+    coopvecAD<float16_t, 5> f16;
+    coopvecAD<float, 5> f32;
+    coopvecAD<int, 5> i32;
+    coopvecAD<uint, 5> u32;
+    coopvecAD<int16_t, 5> i16;
+    coopvecAD<uint16_t, 5> u16;
+
+    u32 = coopvecAD<uint, 5>(f16);
+    i32 = coopvecAD<int, 5>(f16);
+    i16 = coopvecAD<int16_t, 5>(f32);
+    u16 = coopvecAD<uint16_t, 5>(f32);
+
+    i32 = coopvecAD<int, 5>(u16);
+    u32 = coopvecAD<uint, 5>(i16);
+
+    f32 = coopvecAD<float, 5>(u16);
+    f16 = coopvecAD<float16_t, 5>(i16);
+    f16 = coopvecAD<float16_t, 5>(f32);
+}

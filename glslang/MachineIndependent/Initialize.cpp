@@ -4904,6 +4904,17 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
             "coopvecAD atan(coopvecAD);\n"
             "coopvecNV clamp(coopvecNV, coopvecNV, coopvecNV);\n"
             "coopvecAD clamp(coopvecAD, coopvecAD, coopvecAD);\n"
+            "coopvecAD floatBitsToInt(coopvecAD value);\n"
+            "coopvecAD floatBitsToUint(coopvecAD value);\n"
+            "coopvecAD intBitsToFloat(coopvecAD value);\n"
+            "coopvecAD uintBitsToFloat(coopvecAD value);\n"
+            "coopvecAD float16BitsToInt16(coopvecAD value);\n"
+            "coopvecAD float16BitsToUint16(coopvecAD value);\n"
+            "coopvecAD halfBitsToUint16(coopvecAD value);\n"
+            "coopvecAD int16BitsToFloat16(coopvecAD value);\n"
+            "coopvecAD uint16BitsToFloat16(coopvecAD value);\n"
+            "coopvecAD int16BitsToHalf(coopvecAD value);\n"
+            "coopvecAD uint16BitsToHalf(coopvecAD value);\n"
             "\n"
             ;
 
