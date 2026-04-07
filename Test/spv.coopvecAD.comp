@@ -71,6 +71,7 @@ void main()
 
     coopvecAD<int16_t, 7> s11, s12;
     s11 = -s11;
+    s11 = ~s11;
     s11 = s11 + s12;
     s11 = s11 - s12;
     s11 = s11 * s12;
@@ -84,14 +85,36 @@ void main()
     u11 = min(u11, u12);
     u11 = max(u11, u12);
     u11 = clamp(u11, u12, u13);
+    u11 = ~u11;
+    u11 = u11 >> u12;
+    u11 = u11 << u12;
+    u11 = u11 | u12;
+    u11 = u11 & u12;
+    u11 = u11 ^ u12;
     u11 = u11 + u12;
     u11 = u11 - u12;
     u11 = u11 * u12;
     u11 = u11 / u12;
+    u11 >>= u12;
+    u11 <<= u12;
+    u11 |= u12;
+    u11 &= u12;
+    u11 ^= u12;
     u11 += u12;
     u11 -= u12;
     u11 *= u12;
     u11 /= u12;
+
+    s11 = s11 >> s12;
+    s11 = s11 << s12;
+    s11 = s11 | s12;
+    s11 = s11 & s12;
+    s11 = s11 ^ s12;
+    s11 >>= s12;
+    s11 <<= s12;
+    s11 |= s12;
+    s11 &= s12;
+    s11 ^= s12;
 
     coopVecMatMulAddAD(v8, v7, gl_ComponentTypeFloat16NV, matrixBuf.matrixData, 11, gl_ComponentTypeFloat16NV, matrixBuf.matrixData, 50, gl_ComponentTypeFloat16NV, 100, 20, gl_CooperativeVectorMatrixLayoutRowMajorNV, false, 300);
 
