@@ -121,7 +121,8 @@ public:
 
     static bool useSpirvToolsDisassembler(const std::string& shaderName)
     {
-        return shaderName == "spv.coopmatAD.comp" ||
+        return ((shaderName.rfind("spv.coopmatAD", 0) == 0) &&
+                shaderName.find("Error") == std::string::npos) ||
                shaderName == "spv.coopvecADloadstore.comp";
     }
 

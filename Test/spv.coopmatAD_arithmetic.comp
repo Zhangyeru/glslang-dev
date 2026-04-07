@@ -21,64 +21,80 @@ void main()
     f16a = -f16a;
     f16a = f16a + f16b;
     f16a = f16a - f16b;
+    f16a = f16a * f16b;
     f16a = f16a / f16b;
     f16a += f16b;
     f16a -= f16b;
+    f16a *= f16b;
     f16a /= f16b;
 
     f32a = -f32a;
     f32a = f32a + f32b;
     f32a = f32a - f32b;
+    f32a = f32a * f32b;
     f32a = f32a / f32b;
     f32a += f32b;
     f32a -= f32b;
+    f32a *= f32b;
     f32a /= f32b;
 
     i32a = -i32a;
     i32a = i32a + i32b;
     i32a = i32a - i32b;
+    i32a = i32a * i32b;
     i32a = i32a / i32b;
     i32a += i32b;
     i32a -= i32b;
+    i32a *= i32b;
     i32a /= i32b;
 
     i8a = -i8a;
     i8a = i8a + i8b;
     i8a = i8a - i8b;
+    i8a = i8a * i8b;
     i8a = i8a / i8b;
     i8a += i8b;
     i8a -= i8b;
+    i8a *= i8b;
     i8a /= i8b;
 
     i16a = -i16a;
     i16a = i16a + i16b;
     i16a = i16a - i16b;
+    i16a = i16a * i16b;
     i16a = i16a / i16b;
     i16a += i16b;
     i16a -= i16b;
+    i16a *= i16b;
     i16a /= i16b;
 
     u32a = -u32a;
     u32a = u32a + u32b;
     u32a = u32a - u32b;
+    u32a = u32a * u32b;
     u32a = u32a / u32b;
     u32a += u32b;
     u32a -= u32b;
+    u32a *= u32b;
     u32a /= u32b;
 
     u8a = -u8a;
     u8a = u8a + u8b;
     u8a = u8a - u8b;
+    u8a = u8a * u8b;
     u8a = u8a / u8b;
     u8a += u8b;
     u8a -= u8b;
+    u8a *= u8b;
     u8a /= u8b;
 
     u16a = -u16a;
     u16a = u16a + u16b;
     u16a = u16a - u16b;
+    u16a = u16a * u16b;
     u16a = u16a / u16b;
     u16a += u16b;
     u16a -= u16b;
+    u16a *= u16b;
     u16a /= u16b;
 }

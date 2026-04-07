@@ -43,9 +43,6 @@ void main()
     f16a *= f16shape;
     f16a /= f16shape;
 
-    f16a * f16b;
-    f16a *= f16b;
-
     u8a + i8a;
     u8a - i8a;
     u8a * i8a;

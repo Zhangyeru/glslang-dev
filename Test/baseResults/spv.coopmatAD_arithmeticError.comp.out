@@ -24,23 +24,21 @@ ERROR: 0:41: 'assign' :  cannot convert from ' temp coopmatAD<8, 16> float16_t' 
 ERROR: 0:42: 'assign' :  cannot convert from ' temp coopmatAD<8, 16> float16_t' to ' temp coopmatAD<16, 8> float16_t'
 ERROR: 0:43: 'assign' :  cannot convert from ' temp coopmatAD<8, 16> float16_t' to ' temp coopmatAD<16, 8> float16_t'
 ERROR: 0:44: 'assign' :  cannot convert from ' temp coopmatAD<8, 16> float16_t' to ' temp coopmatAD<16, 8> float16_t'
-ERROR: 0:46: '*' :  wrong operand types: no operation '*' exists that takes a left-hand operand of type ' temp coopmatAD<16, 8> float16_t' and a right operand of type ' temp coopmatAD<16, 8> float16_t' (or there is no acceptable conversion)
-ERROR: 0:47: 'assign' :  cannot convert from ' temp coopmatAD<16, 8> float16_t' to ' temp coopmatAD<16, 8> float16_t'
-ERROR: 0:49: '+' :  wrong operand types: no operation '+' exists that takes a left-hand operand of type ' temp coopmatAD<16, 8> uint8_t' and a right operand of type ' temp coopmatAD<16, 8> int8_t' (or there is no acceptable conversion)
-ERROR: 0:50: '-' :  wrong operand types: no operation '-' exists that takes a left-hand operand of type ' temp coopmatAD<16, 8> uint8_t' and a right operand of type ' temp coopmatAD<16, 8> int8_t' (or there is no acceptable conversion)
-ERROR: 0:51: '*' :  wrong operand types: no operation '*' exists that takes a left-hand operand of type ' temp coopmatAD<16, 8> uint8_t' and a right operand of type ' temp coopmatAD<16, 8> int8_t' (or there is no acceptable conversion)
-ERROR: 0:52: '/' :  wrong operand types: no operation '/' exists that takes a left-hand operand of type ' temp coopmatAD<16, 8> uint8_t' and a right operand of type ' temp coopmatAD<16, 8> int8_t' (or there is no acceptable conversion)
+ERROR: 0:46: '+' :  wrong operand types: no operation '+' exists that takes a left-hand operand of type ' temp coopmatAD<16, 8> uint8_t' and a right operand of type ' temp coopmatAD<16, 8> int8_t' (or there is no acceptable conversion)
+ERROR: 0:47: '-' :  wrong operand types: no operation '-' exists that takes a left-hand operand of type ' temp coopmatAD<16, 8> uint8_t' and a right operand of type ' temp coopmatAD<16, 8> int8_t' (or there is no acceptable conversion)
+ERROR: 0:48: '*' :  wrong operand types: no operation '*' exists that takes a left-hand operand of type ' temp coopmatAD<16, 8> uint8_t' and a right operand of type ' temp coopmatAD<16, 8> int8_t' (or there is no acceptable conversion)
+ERROR: 0:49: '/' :  wrong operand types: no operation '/' exists that takes a left-hand operand of type ' temp coopmatAD<16, 8> uint8_t' and a right operand of type ' temp coopmatAD<16, 8> int8_t' (or there is no acceptable conversion)
+ERROR: 0:50: 'assign' :  cannot convert from ' temp coopmatAD<16, 8> int8_t' to ' temp coopmatAD<16, 8> uint8_t'
+ERROR: 0:51: 'assign' :  cannot convert from ' temp coopmatAD<16, 8> int8_t' to ' temp coopmatAD<16, 8> uint8_t'
+ERROR: 0:52: 'assign' :  cannot convert from ' temp coopmatAD<16, 8> int8_t' to ' temp coopmatAD<16, 8> uint8_t'
 ERROR: 0:53: 'assign' :  cannot convert from ' temp coopmatAD<16, 8> int8_t' to ' temp coopmatAD<16, 8> uint8_t'
-ERROR: 0:54: 'assign' :  cannot convert from ' temp coopmatAD<16, 8> int8_t' to ' temp coopmatAD<16, 8> uint8_t'
-ERROR: 0:55: 'assign' :  cannot convert from ' temp coopmatAD<16, 8> int8_t' to ' temp coopmatAD<16, 8> uint8_t'
-ERROR: 0:56: 'assign' :  cannot convert from ' temp coopmatAD<16, 8> int8_t' to ' temp coopmatAD<16, 8> uint8_t'
-ERROR: 0:58: '+' :  wrong operand types: no operation '+' exists that takes a left-hand operand of type ' temp coopmatAD<8, 8> int' and a right operand of type ' const int' (or there is no acceptable conversion)
-ERROR: 0:59: '-' :  wrong operand types: no operation '-' exists that takes a left-hand operand of type ' temp coopmatAD<8, 8> int' and a right operand of type ' const int' (or there is no acceptable conversion)
-ERROR: 0:60: '/' :  wrong operand types: no operation '/' exists that takes a left-hand operand of type ' temp coopmatAD<8, 8> int' and a right operand of type ' const int' (or there is no acceptable conversion)
-ERROR: 0:61: 'assign' :  cannot convert from ' const int' to ' temp coopmatAD<8, 8> int'
-ERROR: 0:62: 'assign' :  cannot convert from ' const int' to ' temp coopmatAD<8, 8> int'
-ERROR: 0:63: 'assign' :  cannot convert from ' const int' to ' temp coopmatAD<8, 8> int'
-ERROR: 41 compilation errors.  No code generated.
+ERROR: 0:55: '+' :  wrong operand types: no operation '+' exists that takes a left-hand operand of type ' temp coopmatAD<8, 8> int' and a right operand of type ' const int' (or there is no acceptable conversion)
+ERROR: 0:56: '-' :  wrong operand types: no operation '-' exists that takes a left-hand operand of type ' temp coopmatAD<8, 8> int' and a right operand of type ' const int' (or there is no acceptable conversion)
+ERROR: 0:57: '/' :  wrong operand types: no operation '/' exists that takes a left-hand operand of type ' temp coopmatAD<8, 8> int' and a right operand of type ' const int' (or there is no acceptable conversion)
+ERROR: 0:58: 'assign' :  cannot convert from ' const int' to ' temp coopmatAD<8, 8> int'
+ERROR: 0:59: 'assign' :  cannot convert from ' const int' to ' temp coopmatAD<8, 8> int'
+ERROR: 0:60: 'assign' :  cannot convert from ' const int' to ' temp coopmatAD<8, 8> int'
+ERROR: 39 compilation errors.  No code generated.
 
 
 SPIR-V is not generated for failed compile or link

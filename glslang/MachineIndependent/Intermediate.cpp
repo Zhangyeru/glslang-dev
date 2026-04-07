@@ -3287,12 +3287,17 @@ bool TIntermediate::promoteBinary(TIntermBinary& node)
         switch (op) {
         case EOpMul:
         case EOpMulAssign:
-            // Mul not supported in NV_cooperative_matrix
-            if ((left->getType().isCoopMatNV() || left->getType().isCoopMatAD()) &&
-                (right->getType().isCoopMatNV() || right->getType().isCoopMatAD())) {
+            // Mul is not supported for cooperative matrix NV types. For
+            // cooperative matrix AD, only same-type floating-point matrices are
+            // supported and lower to element-wise OpFMul.
+            if ((left->getType().isCoopMatNV() || right->getType().isCoopMatNV()) &&
+                left->getType().isCoopMat() && right->getType().isCoopMat()) {
                 return false;
             }
-            // NV_cooperative_matrix supports MulAssign is for mat*=scalar only.
+            if (left->getType().isCoopMatAD() && right->getType().isCoopMatAD()) {
+                return true;
+            }
+            // NV_cooperative_matrix supports MulAssign for mat*=scalar only.
             // KHR_cooperative_matrix supports it for mat*=mat as well.
             if (op == EOpMulAssign &&
                 (right->getType().isCoopMatNV() || right->getType().isCoopMatAD())) {
