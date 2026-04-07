@@ -4847,27 +4847,29 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
             commonBuiltins.append(func.c_str());
         }
 
-        commonBuiltins.append("void coopVecMatMulAD(out coopvecAD result, coopvecAD v, coopmatAD matrix);\n");
-        commonBuiltins.append("void coopVecMatMulAddAD(out coopvecAD result, coopvecAD v, coopmatAD matrix, coopvecAD bias);\n");
-
         std::string cooperativeVectorFuncs =
             "coopvecNV fma(coopvecNV, coopvecNV, coopvecNV);\n"
-            "coopvecAD fma(coopvecAD, coopvecAD, coopvecAD);\n"
             "coopvecNV min(coopvecNV, coopvecNV);\n"
-            "coopvecAD min(coopvecAD, coopvecAD);\n"
             "coopvecNV max(coopvecNV, coopvecNV);\n"
-            "coopvecAD max(coopvecAD, coopvecAD);\n"
             "coopvecNV step(coopvecNV, coopvecNV);\n"
-            "coopvecAD step(coopvecAD, coopvecAD);\n"
-            "coopvecNV exp(coopvecNV);\n"            
-            "coopvecAD exp(coopvecAD);\n"
-            "coopvecNV log(coopvecNV);\n"            
-            "coopvecAD log(coopvecAD);\n"
-            "coopvecNV tanh(coopvecNV);\n"            
-            "coopvecAD tanh(coopvecAD);\n"
-            "coopvecNV atan(coopvecNV);\n"            
-            "coopvecAD atan(coopvecAD);\n"
+            "coopvecNV exp(coopvecNV);\n"
+            "coopvecNV log(coopvecNV);\n"
+            "coopvecNV tanh(coopvecNV);\n"
+            "coopvecNV atan(coopvecNV);\n"
             "coopvecNV clamp(coopvecNV, coopvecNV, coopvecNV);\n"
+            "\n";
+
+        std::string cooperativeVectorADFuncs =
+            "void coopVecMatMulAD(out coopvecAD result, coopvecAD v, coopmatAD matrix);\n"
+            "void coopVecMatMulAddAD(out coopvecAD result, coopvecAD v, coopmatAD matrix, coopvecAD bias);\n"
+            "coopvecAD fma(coopvecAD, coopvecAD, coopvecAD);\n"
+            "coopvecAD min(coopvecAD, coopvecAD);\n"
+            "coopvecAD max(coopvecAD, coopvecAD);\n"
+            "coopvecAD step(coopvecAD, coopvecAD);\n"
+            "coopvecAD exp(coopvecAD);\n"
+            "coopvecAD log(coopvecAD);\n"
+            "coopvecAD tanh(coopvecAD);\n"
+            "coopvecAD atan(coopvecAD);\n"
             "coopvecAD clamp(coopvecAD, coopvecAD, coopvecAD);\n"
             "coopvecAD floatBitsToInt(coopvecAD value);\n"
             "coopvecAD floatBitsToUint(coopvecAD value);\n"
@@ -4880,10 +4882,10 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
             "coopvecAD uint16BitsToFloat16(coopvecAD value);\n"
             "coopvecAD int16BitsToHalf(coopvecAD value);\n"
             "coopvecAD uint16BitsToHalf(coopvecAD value);\n"
-            "\n"
-            ;
+            "\n";
 
         commonBuiltins.append(cooperativeVectorFuncs.c_str());
+        commonBuiltins.append(cooperativeVectorADFuncs.c_str());
 
         const char *scalarAndVectorTypes[] = {
             "int8_t",
@@ -4931,6 +4933,7 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
             "f32vec4",
             "f64vec4",
         };
+        std::stringstream cooperativeVectorADLoadStoreFuncs;
         for (uint32_t i = 0; i < sizeof(scalarAndVectorTypes)/sizeof(scalarAndVectorTypes[0]); ++i) {
             std::string load = std::string("void coopVecLoadNV(out coopvecNV v, volatile coherent ") +
                                std::string(scalarAndVectorTypes[i]) + std::string("[] buf, uint offset);");
@@ -4939,13 +4942,12 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
             commonBuiltins.append(load.c_str());
             commonBuiltins.append(store.c_str());
 
-            load = std::string("void coopVecLoadAD(out coopvecAD v, volatile coherent ") +
-                   std::string(scalarAndVectorTypes[i]) + std::string("[] buf);");
-            store = std::string("void coopVecStoreAD(coopvecAD v, volatile coherent ") +
-                    std::string(scalarAndVectorTypes[i]) + std::string("[] buf);");
-            commonBuiltins.append(load.c_str());
-            commonBuiltins.append(store.c_str());
+            cooperativeVectorADLoadStoreFuncs << "void coopVecLoadAD(out coopvecAD v, volatile coherent "
+                                              << scalarAndVectorTypes[i] << "[] buf);\n";
+            cooperativeVectorADLoadStoreFuncs << "void coopVecStoreAD(coopvecAD v, volatile coherent "
+                                              << scalarAndVectorTypes[i] << "[] buf);\n";
         }
+        commonBuiltins.append(cooperativeVectorADLoadStoreFuncs.str().c_str());
 
         commonBuiltins.append(
             "const int gl_CooperativeVectorMatrixLayoutRowMajorNV = 0;\n"

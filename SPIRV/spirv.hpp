@@ -2794,10 +2794,10 @@ inline void HasResultAndType(Op opcode, bool *hasResult, bool *hasResultType) {
     case OpTypeCooperativeVectorAD: *hasResult = true; *hasResultType = false; break;
     case OpCooperativeVectorMatrixMulNV: *hasResult = true; *hasResultType = true; break;
     case OpCooperativeVectorMatrixMulAD: *hasResult = true; *hasResultType = true; break;
+    case OpCooperativeVectorMatrixMulAddAD: *hasResult = true; *hasResultType = true; break;
     case OpCooperativeVectorOuterProductAccumulateNV: *hasResult = false; *hasResultType = false; break;
     case OpCooperativeVectorReduceSumAccumulateNV: *hasResult = false; *hasResultType = false; break;
     case OpCooperativeVectorMatrixMulAddNV: *hasResult = true; *hasResultType = true; break;
-    case OpCooperativeVectorMatrixMulAddAD: *hasResult = true; *hasResultType = true; break;
     case OpCooperativeMatrixConvertNV: *hasResult = true; *hasResultType = true; break;
     case OpEmitMeshTasksEXT: *hasResult = false; *hasResultType = false; break;
     case OpSetMeshOutputsEXT: *hasResult = false; *hasResultType = false; break;
@@ -4692,10 +4692,10 @@ inline const char* OpToString(Op value) {
     case OpTypeCooperativeVectorAD: return "OpTypeCooperativeVectorAD";
     case OpCooperativeVectorMatrixMulNV: return "OpCooperativeVectorMatrixMulNV";
     case OpCooperativeVectorMatrixMulAD: return "OpCooperativeVectorMatrixMulAD";
+    case OpCooperativeVectorMatrixMulAddAD: return "OpCooperativeVectorMatrixMulAddAD";
     case OpCooperativeVectorOuterProductAccumulateNV: return "OpCooperativeVectorOuterProductAccumulateNV";
     case OpCooperativeVectorReduceSumAccumulateNV: return "OpCooperativeVectorReduceSumAccumulateNV";
     case OpCooperativeVectorMatrixMulAddNV: return "OpCooperativeVectorMatrixMulAddNV";
-    case OpCooperativeVectorMatrixMulAddAD: return "OpCooperativeVectorMatrixMulAddAD";
     case OpCooperativeMatrixConvertNV: return "OpCooperativeMatrixConvertNV";
     case OpEmitMeshTasksEXT: return "OpEmitMeshTasksEXT";
     case OpSetMeshOutputsEXT: return "OpSetMeshOutputsEXT";

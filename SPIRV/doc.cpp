@@ -1615,8 +1615,8 @@ const char* OpcodeString(int op)
     case OpTypeCooperativeVectorAD:         return "OpTypeCooperativeVectorAD";
     case OpCooperativeVectorMatrixMulNV:    return "OpCooperativeVectorMatrixMulNV";
     case OpCooperativeVectorMatrixMulAD:    return "OpCooperativeVectorMatrixMulAD";
-    case OpCooperativeVectorMatrixMulAddNV: return "OpCooperativeVectorMatrixMulAddNV";
     case OpCooperativeVectorMatrixMulAddAD: return "OpCooperativeVectorMatrixMulAddAD";
+    case OpCooperativeVectorMatrixMulAddNV: return "OpCooperativeVectorMatrixMulAddNV";
     case OpCooperativeVectorLoadNV:         return "OpCooperativeVectorLoadNV";
     case OpCooperativeVectorLoadAD:         return "OpCooperativeVectorLoadAD";
     case OpCooperativeVectorStoreNV:        return "OpCooperativeVectorStoreNV";

@@ -168,6 +168,63 @@ spv::Op getCooperativeVectorTrainingOp(bool isReduce)
     return isReduce ? spv::OpCooperativeVectorReduceSumAccumulateNV : spv::OpCooperativeVectorOuterProductAccumulateNV;
 }
 
+spv::Id createCooperativeVectorADMatMul(spv::Builder& builder, spv::Id typeId, const std::vector<spv::Id>& operands,
+                                        bool isMulAdd)
+{
+    std::vector<spv::IdImmediate> idImmOps;
+    idImmOps.push_back(spv::IdImmediate(true, operands[1])); // Input
+    idImmOps.push_back(spv::IdImmediate(true, operands[2])); // Matrix
+    if (isMulAdd)
+        idImmOps.push_back(spv::IdImmediate(true, operands[3])); // Bias
+
+    return builder.createOp(getCooperativeVectorMatMulOp(true, isMulAdd), typeId, idImmOps);
+}
+
+spv::Id createCooperativeVectorNVMatMul(spv::Builder& builder, spv::Id typeId, const std::vector<spv::Id>& operands,
+                                        bool isMulAdd, glslang::TBasicType inputType,
+                                        glslang::TBasicType resultType)
+{
+    uint32_t matrixOperands = 0;
+
+    if (isTypeSignedInt(inputType))
+        matrixOperands |= spv::CooperativeMatrixOperandsMatrixBSignedComponentsKHRMask;
+    if (isTypeSignedInt(resultType))
+        matrixOperands |= spv::CooperativeMatrixOperandsMatrixResultSignedComponentsKHRMask;
+
+    uint32_t opIdx = 1;
+    std::vector<spv::IdImmediate> idImmOps;
+    idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // Input
+    idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // InputInterpretation
+    idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // Matrix
+    idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // MatrixOffset
+    idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // MatrixInterpretation
+    if (isMulAdd) {
+        idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // Bias
+        idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // BiasOffset
+        idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // BiasInterpretation
+    }
+    idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // M
+    idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // K
+    idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // MemoryLayout
+    idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // Transpose
+    idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // MatrixStride
+    if (matrixOperands != 0)
+        idImmOps.push_back(spv::IdImmediate(false, matrixOperands)); // Cooperative Matrix Operands
+
+    return builder.createOp(getCooperativeVectorMatMulOp(false, isMulAdd), typeId, idImmOps);
+}
+
+spv::Id createCooperativeMatrixADMul(spv::Builder& builder, spv::Id typeId, const std::vector<spv::Id>& operands,
+                                     bool isMulAdd)
+{
+    std::vector<spv::IdImmediate> idImmOps;
+    idImmOps.push_back(spv::IdImmediate(true, operands[1])); // A
+    idImmOps.push_back(spv::IdImmediate(true, operands[2])); // B
+    idImmOps.push_back(spv::IdImmediate(true, isMulAdd ? operands[3] : builder.makeNullConstant(typeId))); // C
+
+    return builder.createOp(spv::OpCooperativeMatrixMulAddAD, typeId, idImmOps);
+}
+
 } // namespace
 
 //
@@ -4300,56 +4357,18 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         result = 0;
     } else if (node->getOp() == glslang::EOpCooperativeVectorMatMulNV ||
                node->getOp() == glslang::EOpCooperativeVectorMatMulAddNV) {
-        uint32_t matrixOperands = 0;
-
         bool isMulAdd = node->getOp() == glslang::EOpCooperativeVectorMatMulAddNV;
         spv::Id typeId = builder.getContainedTypeId(builder.getTypeId(operands[0]));
         assert(builder.isCooperativeVectorType(typeId));
         const bool isAd = builder.isCooperativeVectorADType(typeId);
 
-        if (isAd) {
-            std::vector<spv::IdImmediate> idImmOps;
-            idImmOps.push_back(spv::IdImmediate(true, operands[1])); // Input
-            idImmOps.push_back(spv::IdImmediate(true, operands[2])); // Matrix
-            if (isMulAdd)
-                idImmOps.push_back(spv::IdImmediate(true, operands[3])); // Bias
-
-            result = builder.createOp(getCooperativeVectorMatMulOp(true, isMulAdd), typeId, idImmOps);
-            builder.createStore(result, operands[0]);
-            result = 0;
-        } else {
-            // Determine Cooperative Matrix Operands bits from the signedness of the types.
-
-            if (isTypeSignedInt(glslangOperands[1]->getAsTyped()->getBasicType()))
-                matrixOperands |= spv::CooperativeMatrixOperandsMatrixBSignedComponentsKHRMask;
-            if (isTypeSignedInt(glslangOperands[0]->getAsTyped()->getBasicType()))
-                matrixOperands |= spv::CooperativeMatrixOperandsMatrixResultSignedComponentsKHRMask;
-
-            uint32_t opIdx = 1;
-            std::vector<spv::IdImmediate> idImmOps;
-            idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // Input
-            idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // InputInterpretation
-            idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // Matrix
-            idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // MatrixOffset
-            idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // MatrixInterpretation
-            if (isMulAdd) {
-                idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // Bias
-                idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // BiasOffset
-                idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // BiasInterpretation
-            }
-            idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // M
-            idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // K
-            idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // MemoryLayout
-            idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // Transpose
-            idImmOps.push_back(spv::IdImmediate(true, operands[opIdx++])); // MatrixStride
-            if (matrixOperands != 0)
-                idImmOps.push_back(spv::IdImmediate(false, matrixOperands));  // Cooperative Matrix Operands
-
-            result = builder.createOp(getCooperativeVectorMatMulOp(isAd, isMulAdd), typeId, idImmOps);
-            // store the result to the pointer (out param 'res')
-            builder.createStore(result, operands[0]);
-            result = 0;
-        }
+        result = isAd
+            ? createCooperativeVectorADMatMul(builder, typeId, operands, isMulAdd)
+            : createCooperativeVectorNVMatMul(builder, typeId, operands, isMulAdd,
+                                              glslangOperands[1]->getAsTyped()->getBasicType(),
+                                              glslangOperands[0]->getAsTyped()->getBasicType());
+        builder.createStore(result, operands[0]);
+        result = 0;
         } else if (node->getOp() == glslang::EOpCooperativeVectorLoadNV ||
                    node->getOp() == glslang::EOpCooperativeVectorLoadAD) {
             std::vector<spv::IdImmediate> idImmOps;
@@ -4408,28 +4427,15 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         builder.createNoResultOp(getCooperativeVectorTrainingOp(true), idImmOps);
         result = 0;
     } else if (node->getOp() == glslang::EOpCooperativeMatrixMulAD) {
-        std::vector<spv::IdImmediate> idImmOps;
-
-        idImmOps.push_back(spv::IdImmediate(true, operands[1])); // A
-        idImmOps.push_back(spv::IdImmediate(true, operands[2])); // B
-
         spv::Id typeId = builder.getContainedTypeId(builder.getTypeId(operands[0]));
         assert(builder.isCooperativeMatrixADType(typeId));
-        idImmOps.push_back(spv::IdImmediate(true, builder.makeNullConstant(typeId))); // C = 0
-
-        spv::Id matrix = builder.createOp(spv::OpCooperativeMatrixMulAddAD, typeId, idImmOps);
+        spv::Id matrix = createCooperativeMatrixADMul(builder, typeId, operands, false);
         builder.createStore(matrix, operands[0]);
         result = 0;
     } else if (node->getOp() == glslang::EOpCooperativeMatrixMulAddAD) {
-        std::vector<spv::IdImmediate> idImmOps;
-
-        idImmOps.push_back(spv::IdImmediate(true, operands[1])); // A
-        idImmOps.push_back(spv::IdImmediate(true, operands[2])); // B
-        idImmOps.push_back(spv::IdImmediate(true, operands[3])); // C
-
         spv::Id typeId = builder.getContainedTypeId(builder.getTypeId(operands[0]));
         assert(builder.isCooperativeMatrixADType(typeId));
-        spv::Id matrix = builder.createOp(spv::OpCooperativeMatrixMulAddAD, typeId, idImmOps);
+        spv::Id matrix = createCooperativeMatrixADMul(builder, typeId, operands, true);
         builder.createStore(matrix, operands[0]);
         result = 0;
     } else if (atomic) {

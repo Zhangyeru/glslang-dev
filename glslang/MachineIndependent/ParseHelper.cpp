@@ -51,6 +51,219 @@ extern int yyparse(glslang::TParseContext*);
 
 namespace glslang {
 
+namespace {
+
+const TType* getFirstCooperativeADArgumentType(TIntermNode* arguments, TIntermTyped* result = nullptr)
+{
+    if (auto typedArgs = arguments ? arguments->getAsTyped() : nullptr)
+        return &typedArgs->getType();
+    if (auto aggArgs = arguments ? arguments->getAsAggregate() : nullptr) {
+        if (!aggArgs->getSequence().empty() && aggArgs->getSequence()[0]->getAsTyped())
+            return &aggArgs->getSequence()[0]->getAsTyped()->getType();
+    }
+    if (result) {
+        if (auto aggNode = result->getAsAggregate()) {
+            if (!aggNode->getSequence().empty() && aggNode->getSequence()[0]->getAsTyped())
+                return &aggNode->getSequence()[0]->getAsTyped()->getType();
+        }
+        if (auto unaryNode = result->getAsUnaryNode())
+            return &unaryNode->getOperand()->getAsTyped()->getType();
+    }
+    return nullptr;
+}
+
+void setCooperativeADResultBasicType(TIntermTyped* result, const TType* argType, TBasicType basicType)
+{
+    if (argType == nullptr)
+        return;
+
+    TType resultType;
+    resultType.deepCopy(*argType);
+    resultType.setBasicType(basicType);
+    if (resultType.getTypeParameters())
+        resultType.getTypeParameters()->basicType = basicType;
+    result->setType(resultType);
+}
+
+void inheritCooperativeADResultTypeFromFirstArgument(TIntermTyped* result)
+{
+    if (auto unaryNode = result->getAsUnaryNode())
+        result->setType(unaryNode->getOperand()->getAsTyped()->getType());
+    else if (auto aggregate = result->getAsAggregate())
+        result->setType(aggregate->getSequence()[0]->getAsTyped()->getType());
+}
+
+bool handleCoopVecADBitcastBuiltin(TParseContext& parseContext, const TSourceLoc& loc, const TFunction* fnCandidate,
+                                   TIntermTyped* result, TIntermNode* arguments)
+{
+    if (!result->getType().isCoopVec() || result->getType().isParameterized())
+        return false;
+
+    const TType* argType = getFirstCooperativeADArgumentType(arguments);
+    switch (fnCandidate->getBuiltInOp()) {
+    case EOpFloatBitsToInt:
+        if (argType == nullptr || !argType->isCoopVecAD() ||
+            (argType->getBasicType() != EbtFloat && argType->getBasicType() != EbtFloat16))
+            parseContext.error(loc, "requires coopvecAD<float|float16_t, ...>", "floatBitsToInt", "");
+        else
+            setCooperativeADResultBasicType(result, argType, argType->getBasicType() == EbtFloat16 ? EbtInt16 : EbtInt);
+        return true;
+    case EOpFloatBitsToUint:
+        if (argType == nullptr || !argType->isCoopVecAD() ||
+            (argType->getBasicType() != EbtFloat && argType->getBasicType() != EbtFloat16))
+            parseContext.error(loc, "requires coopvecAD<float|float16_t, ...>", "floatBitsToUint", "");
+        else
+            setCooperativeADResultBasicType(result, argType, argType->getBasicType() == EbtFloat16 ? EbtUint16 : EbtUint);
+        return true;
+    case EOpIntBitsToFloat:
+        if (argType == nullptr || !argType->isCoopVecAD() ||
+            (argType->getBasicType() != EbtInt && argType->getBasicType() != EbtInt16))
+            parseContext.error(loc, "requires coopvecAD<int|int16_t, ...>", "intBitsToFloat", "");
+        else
+            setCooperativeADResultBasicType(result, argType, argType->getBasicType() == EbtInt16 ? EbtFloat16 : EbtFloat);
+        return true;
+    case EOpUintBitsToFloat:
+        if (argType == nullptr || !argType->isCoopVecAD() ||
+            (argType->getBasicType() != EbtUint && argType->getBasicType() != EbtUint16))
+            parseContext.error(loc, "requires coopvecAD<uint|uint16_t, ...>", "uintBitsToFloat", "");
+        else
+            setCooperativeADResultBasicType(result, argType, argType->getBasicType() == EbtUint16 ? EbtFloat16 : EbtFloat);
+        return true;
+    case EOpFloat16BitsToInt16:
+        if (argType == nullptr || !argType->isCoopVecAD() || argType->getBasicType() != EbtFloat16)
+            parseContext.error(loc, "requires coopvecAD<float16_t, ...>", "float16BitsToInt16", "");
+        else
+            setCooperativeADResultBasicType(result, argType, EbtInt16);
+        return true;
+    case EOpFloat16BitsToUint16:
+        if (argType == nullptr || !argType->isCoopVecAD() || argType->getBasicType() != EbtFloat16)
+            parseContext.error(loc, "requires coopvecAD<float16_t, ...>", "float16BitsToUint16", "");
+        else
+            setCooperativeADResultBasicType(result, argType, EbtUint16);
+        return true;
+    case EOpInt16BitsToFloat16:
+        if (argType == nullptr || !argType->isCoopVecAD() || argType->getBasicType() != EbtInt16)
+            parseContext.error(loc, "requires coopvecAD<int16_t, ...>", "int16BitsToFloat16", "");
+        else
+            setCooperativeADResultBasicType(result, argType, EbtFloat16);
+        return true;
+    case EOpUint16BitsToFloat16:
+        if (argType == nullptr || !argType->isCoopVecAD() || argType->getBasicType() != EbtUint16)
+            parseContext.error(loc, "requires coopvecAD<uint16_t, ...>", "uint16BitsToFloat16", "");
+        else
+            setCooperativeADResultBasicType(result, argType, EbtFloat16);
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool handleCoopMatADBitcastBuiltin(TParseContext& parseContext, const TSourceLoc& loc, const TFunction* fnCandidate,
+                                   TIntermTyped* result, TIntermNode* arguments)
+{
+    if (!result->getType().isCoopMat() || result->getType().isParameterized())
+        return false;
+
+    const TType* argType = getFirstCooperativeADArgumentType(arguments, result);
+    switch (fnCandidate->getBuiltInOp()) {
+    case EOpFloatBitsToInt:
+        if (argType == nullptr || !argType->isCoopMatAD() ||
+            (argType->getBasicType() != EbtFloat && argType->getBasicType() != EbtFloat16))
+            parseContext.error(loc, "requires coopmatAD<float|float16_t, ...>", "floatBitsToInt", "");
+        else
+            setCooperativeADResultBasicType(result, argType, argType->getBasicType() == EbtFloat16 ? EbtInt16 : EbtInt);
+        return true;
+    case EOpFloatBitsToUint:
+        if (argType == nullptr || !argType->isCoopMatAD() ||
+            (argType->getBasicType() != EbtFloat && argType->getBasicType() != EbtFloat16))
+            parseContext.error(loc, "requires coopmatAD<float|float16_t, ...>", "floatBitsToUint", "");
+        else
+            setCooperativeADResultBasicType(result, argType, argType->getBasicType() == EbtFloat16 ? EbtUint16 : EbtUint);
+        return true;
+    case EOpFloat16BitsToUint16:
+        if (argType == nullptr || !argType->isCoopMatAD() || argType->getBasicType() != EbtFloat16)
+            parseContext.error(loc, "requires coopmatAD<float16_t, ...>", "float16BitsToUint16", "");
+        else
+            setCooperativeADResultBasicType(result, argType, EbtUint16);
+        return true;
+    case EOpIntBitsToFloat:
+        if (argType == nullptr || !argType->isCoopMatAD() ||
+            (argType->getBasicType() != EbtInt && argType->getBasicType() != EbtInt16))
+            parseContext.error(loc, "requires coopmatAD<int|int16_t, ...>", "intBitsToFloat", "");
+        else
+            setCooperativeADResultBasicType(result, argType, argType->getBasicType() == EbtInt16 ? EbtFloat16 : EbtFloat);
+        return true;
+    case EOpInt16BitsToFloat16:
+        if (argType == nullptr || !argType->isCoopMatAD() || argType->getBasicType() != EbtInt16)
+            parseContext.error(loc, "requires coopmatAD<int16_t, ...>", "int16BitsToFloat16", "");
+        else
+            setCooperativeADResultBasicType(result, argType, EbtFloat16);
+        return true;
+    case EOpUintBitsToFloat:
+        if (argType == nullptr || !argType->isCoopMatAD() ||
+            (argType->getBasicType() != EbtUint && argType->getBasicType() != EbtUint16))
+            parseContext.error(loc, "requires coopmatAD<uint|uint16_t, ...>", "uintBitsToFloat", "");
+        else
+            setCooperativeADResultBasicType(result, argType, argType->getBasicType() == EbtUint16 ? EbtFloat16 : EbtFloat);
+        return true;
+    case EOpUint16BitsToFloat16:
+        if (argType == nullptr || !argType->isCoopMatAD() || argType->getBasicType() != EbtUint16)
+            parseContext.error(loc, "requires coopmatAD<uint16_t, ...>", "uint16BitsToFloat16", "");
+        else
+            setCooperativeADResultBasicType(result, argType, EbtFloat16);
+        return true;
+    case EOpFloat16BitsToInt16:
+        if (argType == nullptr || !argType->isCoopMatAD() || argType->getBasicType() != EbtFloat16)
+            parseContext.error(loc, "requires coopmatAD<float16_t, ...>", "float16BitsToInt16", "");
+        else
+            setCooperativeADResultBasicType(result, argType, EbtInt16);
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool handleCoopVecADMatMulBuiltin(TParseContext& parseContext, const TSourceLoc& loc,
+                                  const TIntermOperator& callNode, const TIntermSequence& arguments)
+{
+    if (callNode.getOp() == EOpCooperativeVectorMatMulNV && arguments.size() == 3) {
+        const TType& resultType = arguments[0]->getAsTyped()->getType();
+        const TType& inputType = arguments[1]->getAsTyped()->getType();
+        const TType& matrixType = arguments[2]->getAsTyped()->getType();
+
+        if (!resultType.isCoopVecAD() || !inputType.isCoopVecAD() || !matrixType.isCoopMatAD())
+            parseContext.error(loc, "requires coopVecMatMulAD(out coopvecAD, coopvecAD, coopmatAD)", "coopVecMatMulAD", "");
+        else if (inputType.getBasicType() != matrixType.getBasicType())
+            parseContext.error(loc, "input vector and matrix component types must match", "coopVecMatMulAD", "");
+
+        return true;
+    }
+
+    if (callNode.getOp() == EOpCooperativeVectorMatMulAddNV && arguments.size() == 4) {
+        const TType& resultType = arguments[0]->getAsTyped()->getType();
+        const TType& inputType = arguments[1]->getAsTyped()->getType();
+        const TType& matrixType = arguments[2]->getAsTyped()->getType();
+        const TType& biasType = arguments[3]->getAsTyped()->getType();
+
+        if (!resultType.isCoopVecAD() || !inputType.isCoopVecAD() || !matrixType.isCoopMatAD() || !biasType.isCoopVecAD())
+            parseContext.error(loc, "requires coopVecMatMulAddAD(out coopvecAD, coopvecAD, coopmatAD, coopvecAD)", "coopVecMatMulAddAD", "");
+        else {
+            if (resultType.getBasicType() != biasType.getBasicType() ||
+                resultType.getVectorSize() != biasType.getVectorSize())
+                parseContext.error(loc, "result and bias types must match", "coopVecMatMulAddAD", "");
+
+            if (inputType.getBasicType() != matrixType.getBasicType())
+                parseContext.error(loc, "input vector and matrix component types must match", "coopVecMatMulAddAD", "");
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
+} // anonymous namespace
+
 TParseContext::TParseContext(TSymbolTable& symbolTable, TIntermediate& interm, bool parsingBuiltins,
                              int version, EProfile profile, const SpvVersion& spvVersion, EShLanguage language,
                              TInfoSink& infoSink, bool forwardCompatible, EShMessages messages,
@@ -1512,103 +1725,10 @@ TIntermTyped* TParseContext::handleFunctionCall(const TSourceLoc& loc, TFunction
             }
 
             handleCoopMat2FunctionCall(loc, fnCandidate, result, arguments);
-
-            auto setCoopVecBitcastResultType = [&](TBasicType basicType) {
-                const TType* argType = nullptr;
-                if (auto typedArgs = arguments ? arguments->getAsTyped() : nullptr)
-                    argType = &typedArgs->getType();
-                else if (auto aggArgs = arguments ? arguments->getAsAggregate() : nullptr) {
-                    if (!aggArgs->getSequence().empty() && aggArgs->getSequence()[0]->getAsTyped())
-                        argType = &aggArgs->getSequence()[0]->getAsTyped()->getType();
-                }
-
-                if (argType) {
-                    TType resultType;
-                    resultType.deepCopy(*argType);
-                    resultType.setBasicType(basicType);
-                    if (resultType.getTypeParameters())
-                        resultType.getTypeParameters()->basicType = basicType;
-                    result->setType(resultType);
-                }
-            };
-
-            bool handledCoopVecBitcast = false;
-            if (result->getAsTyped()->getType().isCoopVec() &&
-                !result->getAsTyped()->getType().isParameterized()) {
-                const TType* argType = nullptr;
-                if (auto typedArgs = arguments ? arguments->getAsTyped() : nullptr)
-                    argType = &typedArgs->getType();
-                else if (auto aggArgs = arguments ? arguments->getAsAggregate() : nullptr) {
-                    if (!aggArgs->getSequence().empty() && aggArgs->getSequence()[0]->getAsTyped())
-                        argType = &aggArgs->getSequence()[0]->getAsTyped()->getType();
-                }
-
-                if (fnCandidate->getBuiltInOp() == EOpFloatBitsToInt) {
-                    handledCoopVecBitcast = true;
-                    if (argType == nullptr || !argType->isCoopVecAD() ||
-                        (argType->getBasicType() != EbtFloat && argType->getBasicType() != EbtFloat16))
-                        error(loc, "requires coopvecAD<float|float16_t, ...>", "floatBitsToInt", "");
-                    else
-                        setCoopVecBitcastResultType(argType->getBasicType() == EbtFloat16 ? EbtInt16 : EbtInt);
-                } else if (fnCandidate->getBuiltInOp() == EOpFloatBitsToUint) {
-                    handledCoopVecBitcast = true;
-                    if (argType == nullptr || !argType->isCoopVecAD() ||
-                        (argType->getBasicType() != EbtFloat && argType->getBasicType() != EbtFloat16))
-                        error(loc, "requires coopvecAD<float|float16_t, ...>", "floatBitsToUint", "");
-                    else
-                        setCoopVecBitcastResultType(argType->getBasicType() == EbtFloat16 ? EbtUint16 : EbtUint);
-                } else if (fnCandidate->getBuiltInOp() == EOpIntBitsToFloat ||
-                           fnCandidate->getBuiltInOp() == EOpUintBitsToFloat) {
-                    handledCoopVecBitcast = true;
-                    if (fnCandidate->getBuiltInOp() == EOpIntBitsToFloat) {
-                        if (argType == nullptr || !argType->isCoopVecAD() ||
-                            (argType->getBasicType() != EbtInt && argType->getBasicType() != EbtInt16))
-                            error(loc, "requires coopvecAD<int|int16_t, ...>", "intBitsToFloat", "");
-                        else
-                            setCoopVecBitcastResultType(argType->getBasicType() == EbtInt16 ? EbtFloat16 : EbtFloat);
-                    } else {
-                        if (argType == nullptr || !argType->isCoopVecAD() ||
-                            (argType->getBasicType() != EbtUint && argType->getBasicType() != EbtUint16))
-                            error(loc, "requires coopvecAD<uint|uint16_t, ...>", "uintBitsToFloat", "");
-                        else
-                            setCoopVecBitcastResultType(argType->getBasicType() == EbtUint16 ? EbtFloat16 : EbtFloat);
-                    }
-                } else if (fnCandidate->getBuiltInOp() == EOpFloat16BitsToInt16) {
-                    handledCoopVecBitcast = true;
-                    if (argType == nullptr || !argType->isCoopVecAD() || argType->getBasicType() != EbtFloat16)
-                        error(loc, "requires coopvecAD<float16_t, ...>", "float16BitsToInt16", "");
-                    else
-                        setCoopVecBitcastResultType(EbtInt16);
-                } else if (fnCandidate->getBuiltInOp() == EOpFloat16BitsToUint16) {
-                    handledCoopVecBitcast = true;
-                    if (argType == nullptr || !argType->isCoopVecAD() || argType->getBasicType() != EbtFloat16)
-                        error(loc, "requires coopvecAD<float16_t, ...>", "float16BitsToUint16", "");
-                    else
-                        setCoopVecBitcastResultType(EbtUint16);
-                } else if (fnCandidate->getBuiltInOp() == EOpInt16BitsToFloat16 ||
-                           fnCandidate->getBuiltInOp() == EOpUint16BitsToFloat16) {
-                    handledCoopVecBitcast = true;
-                    if (fnCandidate->getBuiltInOp() == EOpInt16BitsToFloat16) {
-                        if (argType == nullptr || !argType->isCoopVecAD() || argType->getBasicType() != EbtInt16)
-                            error(loc, "requires coopvecAD<int16_t, ...>", "int16BitsToFloat16", "");
-                        else
-                            setCoopVecBitcastResultType(EbtFloat16);
-                    } else {
-                        if (argType == nullptr || !argType->isCoopVecAD() || argType->getBasicType() != EbtUint16)
-                            error(loc, "requires coopvecAD<uint16_t, ...>", "uint16BitsToFloat16", "");
-                        else
-                            setCoopVecBitcastResultType(EbtFloat16);
-                    }
-                }
-            }
-
+            bool handledCoopVecBitcast = handleCoopVecADBitcastBuiltin(*this, loc, fnCandidate, result, arguments);
             if (!handledCoopVecBitcast && result->getAsTyped()->getType().isCoopVec() &&
-               !result->getAsTyped()->getType().isParameterized()) {
-                if (auto unaryNode = result->getAsUnaryNode())
-                    result->setType(unaryNode->getOperand()->getAsTyped()->getType());
-                else
-                    result->setType(result->getAsAggregate()->getSequence()[0]->getAsTyped()->getType());
-            }
+                !result->getAsTyped()->getType().isParameterized())
+                inheritCooperativeADResultTypeFromFirstArgument(result);
         }
     }
 
@@ -1622,33 +1742,6 @@ TIntermTyped* TParseContext::handleFunctionCall(const TSourceLoc& loc, TFunction
 
 void TParseContext::handleCoopMat2FunctionCall(const TSourceLoc& loc, const TFunction* fnCandidate, TIntermTyped* result, TIntermNode* arguments)
 {
-    auto getFirstArgType = [&]() -> const TType* {
-        if (auto typedArgs = arguments ? arguments->getAsTyped() : nullptr)
-            return &typedArgs->getType();
-        if (auto aggArgs = arguments ? arguments->getAsAggregate() : nullptr) {
-            if (!aggArgs->getSequence().empty() && aggArgs->getSequence()[0]->getAsTyped())
-                return &aggArgs->getSequence()[0]->getAsTyped()->getType();
-        }
-        if (auto aggNode = result->getAsAggregate()) {
-            if (!aggNode->getSequence().empty() && aggNode->getSequence()[0]->getAsTyped())
-                return &aggNode->getSequence()[0]->getAsTyped()->getType();
-        }
-        if (auto unaryNode = result->getAsUnaryNode())
-            return &unaryNode->getOperand()->getAsTyped()->getType();
-        return nullptr;
-    };
-
-    auto setCoopMatBitcastResultType = [&](TBasicType basicType) {
-        if (const TType* argType = getFirstArgType()) {
-            TType resultType;
-            resultType.deepCopy(*argType);
-            resultType.setBasicType(basicType);
-            if (resultType.getTypeParameters())
-                resultType.getTypeParameters()->basicType = basicType;
-            result->setType(resultType);
-        }
-    };
-
     if (arguments && arguments->getAsAggregate()) {
         auto &sequence = arguments->getAsAggregate()->getSequence();
         for (uint32_t i = 0; i < sequence.size(); ++i) {
@@ -1855,65 +1948,7 @@ void TParseContext::handleCoopMat2FunctionCall(const TSourceLoc& loc, const TFun
 
             resultType.copyTypeParameters(typeParameters);
             result->setType(resultType);
-        } else if (fnCandidate->getBuiltInOp() == EOpFloatBitsToInt) {
-            const TType* argType = getFirstArgType();
-            if (argType == nullptr || !argType->isCoopMatAD() ||
-                (argType->getBasicType() != EbtFloat && argType->getBasicType() != EbtFloat16))
-                error(loc, "requires coopmatAD<float|float16_t, ...>", "floatBitsToInt", "");
-            else
-                setCoopMatBitcastResultType(argType->getBasicType() == EbtFloat16 ? EbtInt16 : EbtInt);
-        } else if (fnCandidate->getBuiltInOp() == EOpFloatBitsToUint ||
-                   fnCandidate->getBuiltInOp() == EOpFloat16BitsToUint16) {
-            const TType* argType = getFirstArgType();
-            if (argType == nullptr || !argType->isCoopMatAD() || argType->getBasicType() != EbtFloat16) {
-                if (fnCandidate->getBuiltInOp() == EOpFloatBitsToUint) {
-                    if (argType == nullptr || !argType->isCoopMatAD() ||
-                        (argType->getBasicType() != EbtFloat && argType->getBasicType() != EbtFloat16))
-                        error(loc, "requires coopmatAD<float|float16_t, ...>", "floatBitsToUint", "");
-                    else
-                        setCoopMatBitcastResultType(argType->getBasicType() == EbtFloat16 ? EbtUint16 : EbtUint);
-                } else {
-                    error(loc, "requires coopmatAD<float16_t, ...>", "float16BitsToUint16", "");
-                }
-            } else {
-                setCoopMatBitcastResultType(EbtUint16);
-            }
-        } else if (fnCandidate->getBuiltInOp() == EOpIntBitsToFloat ||
-                   fnCandidate->getBuiltInOp() == EOpInt16BitsToFloat16) {
-            const TType* argType = getFirstArgType();
-            if (fnCandidate->getBuiltInOp() == EOpIntBitsToFloat) {
-                if (argType == nullptr || !argType->isCoopMatAD() ||
-                    (argType->getBasicType() != EbtInt && argType->getBasicType() != EbtInt16))
-                    error(loc, "requires coopmatAD<int|int16_t, ...>", "intBitsToFloat", "");
-                else
-                    setCoopMatBitcastResultType(argType->getBasicType() == EbtInt16 ? EbtFloat16 : EbtFloat);
-            } else {
-                if (argType == nullptr || !argType->isCoopMatAD() || argType->getBasicType() != EbtInt16)
-                    error(loc, "requires coopmatAD<int16_t, ...>", "int16BitsToFloat16", "");
-                else
-                    setCoopMatBitcastResultType(EbtFloat16);
-            }
-        } else if (fnCandidate->getBuiltInOp() == EOpUintBitsToFloat ||
-                   fnCandidate->getBuiltInOp() == EOpUint16BitsToFloat16) {
-            const TType* argType = getFirstArgType();
-            if (fnCandidate->getBuiltInOp() == EOpUintBitsToFloat) {
-                if (argType == nullptr || !argType->isCoopMatAD() ||
-                    (argType->getBasicType() != EbtUint && argType->getBasicType() != EbtUint16))
-                    error(loc, "requires coopmatAD<uint|uint16_t, ...>", "uintBitsToFloat", "");
-                else
-                    setCoopMatBitcastResultType(argType->getBasicType() == EbtUint16 ? EbtFloat16 : EbtFloat);
-            } else {
-                if (argType == nullptr || !argType->isCoopMatAD() || argType->getBasicType() != EbtUint16)
-                    error(loc, "requires coopmatAD<uint16_t, ...>", "uint16BitsToFloat16", "");
-                else
-                    setCoopMatBitcastResultType(EbtFloat16);
-            }
-        } else if (fnCandidate->getBuiltInOp() == EOpFloat16BitsToInt16) {
-            const TType* argType = getFirstArgType();
-            if (argType == nullptr || !argType->isCoopMatAD() || argType->getBasicType() != EbtFloat16)
-                error(loc, "requires coopmatAD<float16_t, ...>", "float16BitsToInt16", "");
-            else
-                setCoopMatBitcastResultType(EbtInt16);
+        } else if (handleCoopMatADBitcastBuiltin(*this, loc, fnCandidate, result, arguments)) {
         } else if (fnCandidate->getBuiltInOp() == EOpCooperativeMatrixReduceNV ||
                    fnCandidate->getBuiltInOp() == EOpCooperativeMatrixPerElementOpNV ||
                    fnCandidate->getBuiltInOp() == EOpCooperativeMatrixTransposeNV ||
@@ -3242,45 +3277,8 @@ void TParseContext::builtInOpCheck(const TSourceLoc& loc, const TFunction& fnCan
     case EOpCooperativeVectorMatMulNV:
     case EOpCooperativeVectorMatMulAddNV:
         {
-            if (callNode.getOp() == EOpCooperativeVectorMatMulNV && argp->size() == 3) {
-                const TType& resultType = (*argp)[0]->getAsTyped()->getType();
-                const TType& inputType = (*argp)[1]->getAsTyped()->getType();
-                const TType& matrixType = (*argp)[2]->getAsTyped()->getType();
-
-                if (!resultType.isCoopVecAD() || !inputType.isCoopVecAD() || !matrixType.isCoopMatAD()) {
-                    error(loc, "requires coopVecMatMulAD(out coopvecAD, coopvecAD, coopmatAD)", "coopVecMatMulAD", "");
-                    break;
-                }
-
-                if (inputType.getBasicType() != matrixType.getBasicType()) {
-                    error(loc, "input vector and matrix component types must match", "coopVecMatMulAD", "");
-                }
-
+            if (handleCoopVecADMatMulBuiltin(*this, loc, callNode, *argp))
                 break;
-            }
-
-            if (callNode.getOp() == EOpCooperativeVectorMatMulAddNV && argp->size() == 4) {
-                const TType& resultType = (*argp)[0]->getAsTyped()->getType();
-                const TType& inputType = (*argp)[1]->getAsTyped()->getType();
-                const TType& matrixType = (*argp)[2]->getAsTyped()->getType();
-                const TType& biasType = (*argp)[3]->getAsTyped()->getType();
-
-                if (!resultType.isCoopVecAD() || !inputType.isCoopVecAD() || !matrixType.isCoopMatAD() || !biasType.isCoopVecAD()) {
-                    error(loc, "requires coopVecMatMulAddAD(out coopvecAD, coopvecAD, coopmatAD, coopvecAD)", "coopVecMatMulAddAD", "");
-                    break;
-                }
-
-                if (resultType.getBasicType() != biasType.getBasicType() ||
-                    resultType.getVectorSize() != biasType.getVectorSize()) {
-                    error(loc, "result and bias types must match", "coopVecMatMulAddAD", "");
-                }
-
-                if (inputType.getBasicType() != matrixType.getBasicType()) {
-                    error(loc, "input vector and matrix component types must match", "coopVecMatMulAddAD", "");
-                }
-
-                break;
-            }
 
             int inputInterpIdx = 2;
             int matrixInterpIdx = 5;
