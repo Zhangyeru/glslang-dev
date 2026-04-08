@@ -178,7 +178,9 @@ extern int yylex(YYSTYPE*, TParseContext&);
 %token <lex> RAYQUERYEXT
 %token <lex> FCOOPMATNV ICOOPMATNV UCOOPMATNV
 %token <lex> COOPMAT
+%token <lex> COOPMATAD
 %token <lex> COOPVECNV
+%token <lex> COOPVECAD
 %token <lex> HITOBJECTNV HITOBJECTATTRNV
 %token <lex> TENSORLAYOUTNV TENSORVIEWNV
 
@@ -3535,22 +3537,19 @@ type_specifier_nonarray
         $$.coopmatKHR = false;
     }
     | COOPMAT {
-        if (*$1.string == "coopmatAD")
-            parseContext.coopmatADCheck($1.loc, "coopmatAD", parseContext.symbolTable.atBuiltInLevel());
-        else
-            parseContext.coopmatCheck($1.loc, "coopmat", parseContext.symbolTable.atBuiltInLevel());
+        parseContext.coopmatCheck($1.loc, "coopmat", parseContext.symbolTable.atBuiltInLevel());
         $$.init($1.loc, parseContext.symbolTable.atGlobalLevel());
-        if (*$1.string == "coopmatAD") {
-            $$.basicType = EbtCoopmatAD;
-            $$.coopmatNV = false;
-            $$.coopmatKHR = false;
-            $$.coopmatAD = true;
-        } else {
-            $$.basicType = EbtCoopmat;
-            $$.coopmatNV = false;
-            $$.coopmatKHR = true;
-            $$.coopmatAD = false;
-        }
+        $$.basicType = EbtCoopmat;
+        $$.coopmatNV = false;
+        $$.coopmatKHR = true;
+    }
+    | COOPMATAD {
+        parseContext.coopmatADCheck($1.loc, "coopmatAD", parseContext.symbolTable.atBuiltInLevel());
+        $$.init($1.loc, parseContext.symbolTable.atGlobalLevel());
+        $$.basicType = EbtCoopmatAD;
+        $$.coopmatNV = false;
+        $$.coopmatKHR = false;
+        $$.coopmatAD = true;
     }
     | TENSORLAYOUTNV {
         parseContext.tensorLayoutViewCheck($1.loc, "tensorLayoutNV", parseContext.symbolTable.atBuiltInLevel());
@@ -3567,18 +3566,16 @@ type_specifier_nonarray
         $$.basicType = EbtFunction;
     }
     | COOPVECNV {
-        if (*$1.string == "coopvecAD")
-            parseContext.coopvecADCheck($1.loc, "coopvecAD", parseContext.symbolTable.atBuiltInLevel());
-        else
-            parseContext.coopvecCheck($1.loc, "coopvecNV", parseContext.symbolTable.atBuiltInLevel());
+        parseContext.coopvecCheck($1.loc, "coopvecNV", parseContext.symbolTable.atBuiltInLevel());
         $$.init($1.loc, parseContext.symbolTable.atGlobalLevel());
-        if (*$1.string == "coopvecAD") {
-            $$.basicType = EbtCoopvecAD;
-            $$.coopvecAD = true;
-        } else {
-            $$.basicType = EbtCoopvecNV;
-            $$.coopvecNV = true;
-        }
+        $$.basicType = EbtCoopvecNV;
+        $$.coopvecNV = true;
+    }
+    | COOPVECAD {
+        parseContext.coopvecADCheck($1.loc, "coopvecAD", parseContext.symbolTable.atBuiltInLevel());
+        $$.init($1.loc, parseContext.symbolTable.atGlobalLevel());
+        $$.basicType = EbtCoopvecAD;
+        $$.coopvecAD = true;
     }
     | spirv_type_specifier {
         parseContext.requireExtensions($1.loc, 1, &E_GL_EXT_spirv_intrinsics, "SPIR-V type specifier");

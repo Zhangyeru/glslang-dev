@@ -750,7 +750,7 @@ const std::unordered_map<const char*, int, str_hash, str_eq> KeywordMap {
     {"ucoopmatNV",UCOOPMATNV},
 
     {"coopmat",COOPMAT},
-    {"coopmatAD",COOPMAT},
+    {"coopmatAD",COOPMATAD},
 
     {"hitObjectNV",HITOBJECTNV},
     {"hitObjectAttributeNV",HITOBJECTATTRNV},
@@ -760,7 +760,7 @@ const std::unordered_map<const char*, int, str_hash, str_eq> KeywordMap {
     {"tensorViewNV",TENSORVIEWNV},
 
     {"coopvecNV",COOPVECNV},
-    {"coopvecAD",COOPVECNV},
+    {"coopvecAD",COOPVECAD},
 };
 const std::unordered_set<const char*, str_hash, str_eq> ReservedSet {
     "common",
@@ -920,6 +920,7 @@ int TScanContext::tokenizeIdentifier()
         return identifierOrType();
     }
     keyword = it->second;
+    parserToken->sType.lex.i = 0;
 
     switch (keyword) {
     case CONST:
@@ -1785,21 +1786,31 @@ int TScanContext::tokenizeIdentifier()
 
     case COOPMAT:
         afterType = true;
-        parserToken->sType.lex.string = NewPoolTString(tokenText);
         if (parseContext.symbolTable.atBuiltInLevel() ||
-            (strcmp("coopmatAD", tokenText) == 0
-                 ? parseContext.extensionTurnedOn(E_GL_AD_cooperative_matrix)
-                 : parseContext.extensionTurnedOn(E_GL_KHR_cooperative_matrix)))
+            parseContext.extensionTurnedOn(E_GL_KHR_cooperative_matrix))
+            return keyword;
+        return identifierOrType();
+
+    case COOPMATAD:
+        afterType = true;
+        parserToken->sType.lex.i = 1;
+        if (parseContext.symbolTable.atBuiltInLevel() ||
+            parseContext.extensionTurnedOn(E_GL_AD_cooperative_matrix))
             return keyword;
         return identifierOrType();
 
     case COOPVECNV:
         afterType = true;
-        parserToken->sType.lex.string = NewPoolTString(tokenText);
         if (parseContext.symbolTable.atBuiltInLevel() ||
-            (strcmp("coopvecAD", tokenText) == 0
-                 ? parseContext.extensionTurnedOn(E_GL_AD_cooperative_vector)
-                 : parseContext.extensionTurnedOn(E_GL_NV_cooperative_vector)))
+            parseContext.extensionTurnedOn(E_GL_NV_cooperative_vector))
+            return keyword;
+        return identifierOrType();
+
+    case COOPVECAD:
+        afterType = true;
+        parserToken->sType.lex.i = 1;
+        if (parseContext.symbolTable.atBuiltInLevel() ||
+            parseContext.extensionTurnedOn(E_GL_AD_cooperative_vector))
             return keyword;
         return identifierOrType();
 
