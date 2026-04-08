@@ -684,7 +684,7 @@ TIntermediate::addPairConversion(TOperator op, TIntermTyped* node0, TIntermTyped
             return std::make_tuple(nullptr, nullptr);
 
         // No implicit conversions for operations involving cooperative matrices
-        if (node0->getType().isCoopMat() || node1->getType().isCoopMat())
+        if (node0->getType().isAnyCoopMat() || node1->getType().isAnyCoopMat())
             return std::make_tuple(node0, node1);
     }
 
@@ -820,7 +820,7 @@ TIntermTyped* TIntermediate::addConversion(TOperator op, const TType& type, TInt
         return nullptr;
 
     // Reject implicit conversions to cooperative matrix types
-    if (node->getType().isCoopMat() &&
+    if (node->getType().isAnyCoopMat() &&
         op != EOpConstructCooperativeMatrixNV &&
         op != EOpConstructCooperativeMatrixKHR &&
         op != EOpConstructCooperativeMatrixAD)
@@ -831,7 +831,7 @@ TIntermTyped* TIntermediate::addConversion(TOperator op, const TType& type, TInt
         return nullptr;
 
     // Reject implicit conversions to cooperative vector types
-    if (node->getType().isCoopVec() &&
+    if (node->getType().isAnyCoopVec() &&
         op != EOpConstructCooperativeVectorNV &&
         op != EOpConstructCooperativeVectorAD)
         return nullptr;
@@ -3278,6 +3278,39 @@ bool TIntermediate::promoteBinary(TIntermBinary& node)
         break;
     }
 
+    if (left->getType().isCoopMatAD() || right->getType().isCoopMatAD()) {
+        if ((left->getType().isAnyCoopMat() && !left->getType().isCoopMatAD()) ||
+            (right->getType().isAnyCoopMat() && !right->getType().isCoopMatAD())) {
+            return false;
+        }
+        if (left->getType().isCoopMatAD() && right->getType().isCoopMatAD() &&
+            left->getType() != right->getType()) {
+            return false;
+        }
+        switch (op) {
+        case EOpMul:
+        case EOpMulAssign:
+            if (!left->getType().isCoopMatAD() || !right->getType().isCoopMatAD()) {
+                node.setOp(op == EOpMulAssign ? EOpMatrixTimesScalarAssign : EOpMatrixTimesScalar);
+            }
+            if (right->getType().isCoopMatAD()) {
+                node.setType(right->getType());
+            }
+            return true;
+        case EOpAdd:
+        case EOpSub:
+        case EOpDiv:
+        case EOpAssign:
+            if (!left->getType().isCoopMatAD() || !right->getType().isCoopMatAD()) {
+                return false;
+            }
+            return true;
+        default:
+            break;
+        }
+        return false;
+    }
+
     if (left->getType().isCoopMat() || right->getType().isCoopMat()) {
         // Operations on two cooperative matrices must have identical types
         if (left->getType().isCoopMat() && right->getType().isCoopMat() &&
@@ -3287,20 +3320,14 @@ bool TIntermediate::promoteBinary(TIntermBinary& node)
         switch (op) {
         case EOpMul:
         case EOpMulAssign:
-            // Mul is not supported for cooperative matrix NV types. For
-            // cooperative matrix AD, only same-type floating-point matrices are
-            // supported and lower to element-wise OpFMul.
+            // Mul is not supported for cooperative matrix NV types.
             if ((left->getType().isCoopMatNV() || right->getType().isCoopMatNV()) &&
                 left->getType().isCoopMat() && right->getType().isCoopMat()) {
                 return false;
             }
-            if (left->getType().isCoopMatAD() && right->getType().isCoopMatAD()) {
-                return true;
-            }
             // NV_cooperative_matrix supports MulAssign for mat*=scalar only.
             // KHR_cooperative_matrix supports it for mat*=mat as well.
-            if (op == EOpMulAssign &&
-                (right->getType().isCoopMatNV() || right->getType().isCoopMatAD())) {
+            if (op == EOpMulAssign && right->getType().isCoopMatNV()) {
                 return false;
             }
             // Use MatrixTimesScalar if either operand is not a matrix. Otherwise use Mul.
@@ -3318,6 +3345,43 @@ bool TIntermediate::promoteBinary(TIntermBinary& node)
         case EOpAssign:
             // These require both to be cooperative matrices
             if (!left->getType().isCoopMat() || !right->getType().isCoopMat()) {
+                return false;
+            }
+            return true;
+        default:
+            break;
+        }
+        return false;
+    }
+
+    if (left->getType().isCoopVecAD() || right->getType().isCoopVecAD()) {
+        if ((left->getType().isAnyCoopVec() && !left->getType().isCoopVecAD()) ||
+            (right->getType().isAnyCoopVec() && !right->getType().isCoopVecAD())) {
+            return false;
+        }
+        if (left->getType().isCoopVecAD() && right->getType().isCoopVecAD() &&
+            left->getType() != right->getType()) {
+            return false;
+        }
+        switch (op) {
+        case EOpMul:
+        case EOpMulAssign:
+            if (!left->getType().isCoopVecAD() || !right->getType().isCoopVecAD()) {
+                node.setOp(op == EOpMulAssign ? EOpVectorTimesScalarAssign : EOpVectorTimesScalar);
+            }
+            if (right->getType().isCoopVecAD()) {
+                node.setType(right->getType());
+            }
+            return true;
+        case EOpLeftShift:
+        case EOpLeftShiftAssign:
+        case EOpRightShift:
+        case EOpRightShiftAssign:
+        case EOpAdd:
+        case EOpSub:
+        case EOpDiv:
+        case EOpAssign:
+            if (!left->getType().isCoopVecAD() || !right->getType().isCoopVecAD()) {
                 return false;
             }
             return true;

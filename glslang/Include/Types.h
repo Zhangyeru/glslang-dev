@@ -1473,14 +1473,16 @@ public:
     // SPIR-V type defined by spirv_type directive
     TSpirvType* spirvType;
 
-    bool isCoopmat() const { return coopmatNV || coopmatKHR || coopmatAD; }
+    bool isCoopmat() const { return coopmatNV || coopmatKHR; }
     bool isCoopmatNV() const { return coopmatNV; }
     bool isCoopmatKHR() const { return coopmatKHR; }
     bool isCoopmatAD() const { return coopmatAD; }
+    bool isAnyCoopMat() const { return coopmatNV || coopmatKHR || coopmatAD; }
     bool isCoopvecNV() const { return coopvecNV; }
     bool isCoopvecAD() const { return coopvecAD; }
-    bool isCoopVec() const { return coopvecNV || coopvecAD; }
-    bool isCoopmatOrvec() const { return isCoopmat() || isCoopVec(); }
+    bool isCoopVec() const { return coopvecNV; }
+    bool isAnyCoopVec() const { return coopvecNV || coopvecAD; }
+    bool isCoopmatOrvec() const { return isAnyCoopMat() || isAnyCoopVec(); }
 
     bool isTensorLayoutNV() const { return basicType == EbtTensorLayoutNV; }
     bool isTensorViewNV() const { return basicType == EbtTensorViewNV; }
@@ -1647,7 +1649,7 @@ public:
                                 if (p.isCoopmatAD() && p.typeParameters) {
                                     basicType = p.typeParameters->basicType;
                                 }
-                                if (p.isCoopVec() && p.typeParameters) {
+                                if (p.isAnyCoopVec() && p.typeParameters) {
                                     basicType = p.typeParameters->basicType;
                                 }
                             }
@@ -1696,7 +1698,7 @@ public:
                                         // dereference from vector to scalar
                                         vectorSize = 1;
                                         vector1 = false;
-                                    } else if (isCoopMat() || isCoopVec()) {
+                                    } else if (isAnyCoopMat() || isAnyCoopVec()) {
                                         coopmatNV = false;
                                         coopmatKHR = false;
                                         coopmatAD = false;
@@ -1854,7 +1856,7 @@ public:
     virtual const TTypeParameters* getTypeParameters() const { return typeParameters; }
     virtual       TTypeParameters* getTypeParameters()       { return typeParameters; }
 
-    virtual bool isScalar() const { return ! isVector() && ! isMatrix() && ! isStruct() && ! isArray() && ! isCoopVec(); }
+    virtual bool isScalar() const { return ! isVector() && ! isMatrix() && ! isStruct() && ! isArray() && ! isAnyCoopVec(); }
     virtual bool isScalarOrVec1() const { return isScalar() || vector1; }
     virtual bool isScalarOrVector() const { return !isMatrix() && !isStruct() && !isArray(); }
     virtual bool isVector() const { return vectorSize > 1u || vector1; }
@@ -1902,14 +1904,16 @@ public:
     virtual bool isUnusableName() const { return isStruct() && structure == nullptr; }
     virtual bool isParameterized()  const { return typeParameters != nullptr; }
     bool isAtomic() const { return basicType == EbtAtomicUint; }
-    bool isCoopMat() const { return coopmatNV || coopmatKHR || coopmatAD; }
+    bool isCoopMat() const { return coopmatNV || coopmatKHR; }
     bool isCoopMatNV() const { return coopmatNV; }
     bool isCoopMatKHR() const { return coopmatKHR; }
     bool isCoopMatAD() const { return coopmatAD; }
+    bool isAnyCoopMat() const { return coopmatNV || coopmatKHR || coopmatAD; }
     bool isCoopVecNV() const { return coopvecNV; }
     bool isCoopVecAD() const { return coopvecAD; }
-    bool isCoopVec() const { return coopvecNV || coopvecAD; }
-    bool isCoopMatOrVec() const { return isCoopMat() || isCoopVec(); }
+    bool isCoopVec() const { return coopvecNV; }
+    bool isAnyCoopVec() const { return coopvecNV || coopvecAD; }
+    bool isCoopMatOrVec() const { return isAnyCoopMat() || isAnyCoopVec(); }
     bool isReference() const { return getBasicType() == EbtReference; }
     bool isSpirvType() const { return getBasicType() == EbtSpirvType; }
     int getCoopMatKHRuse() const { return static_cast<int>(coopmatKHRuse); }
@@ -2563,7 +2567,7 @@ public:
     {
         uint32_t components = 0;
 
-        if (isCoopVec()) {
+        if (isAnyCoopVec()) {
             components = typeParameters->arraySizes->getDimSize(0);
         } else if (getBasicType() == EbtStruct || getBasicType() == EbtBlock) {
             for (TTypeList::const_iterator tl = getStruct()->begin(); tl != getStruct()->end(); tl++)
@@ -2803,7 +2807,7 @@ public:
     // an OK function parameter
     bool coopVecParameterOK(const TType& right) const
     {
-        if (isCoopVec() && right.isCoopVec() &&
+        if (isAnyCoopVec() && right.isAnyCoopVec() &&
             isCoopVecNV() == right.isCoopVecNV() &&
             isCoopVecAD() == right.isCoopVecAD()) {
             const TBasicType placeholderType = isCoopVecNV() ? EbtCoopvecNV : EbtCoopvecAD;
@@ -2863,7 +2867,7 @@ public:
     bool sameCoopVecBaseType(const TType &right) const {
         bool rv = false;
 
-        if (isCoopVec() && right.isCoopVec() &&
+        if (isAnyCoopVec() && right.isAnyCoopVec() &&
             isCoopVecNV() == right.isCoopVecNV() &&
             isCoopVecAD() == right.isCoopVecAD()) {
             const TBasicType placeholderType = isCoopVecNV() ? EbtCoopvecNV : EbtCoopvecAD;
@@ -2885,7 +2889,7 @@ public:
 
     bool sameCoopMatShape(const TType &right) const
     {
-        if (!isCoopMat() || !right.isCoopMat())
+        if (!isAnyCoopMat() || !right.isAnyCoopMat())
             return false;
 
         if (isCoopMatNV() != right.isCoopMatNV() ||

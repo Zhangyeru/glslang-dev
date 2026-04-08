@@ -2821,7 +2821,7 @@ bool TGlslangToSpvTraverser::visitUnary(glslang::TVisit /* visit */, glslang::TI
         // SPV wants "block" and member number as the operands, go get them.
 
         spv::Id length;
-        if (node->getOperand()->getType().isCoopMat()) {
+        if (node->getOperand()->getType().isAnyCoopMat()) {
             spv::Id typeId = convertGlslangToSpvType(node->getOperand()->getType());
             assert(builder.isCooperativeMatrixType(typeId));
 
@@ -2833,7 +2833,7 @@ bool TGlslangToSpvTraverser::visitUnary(glslang::TVisit /* visit */, glslang::TI
                 spec_constant_op_mode_setter.turnOnSpecConstantOpMode();
                 length = builder.createCooperativeMatrixLengthNV(typeId);
             }
-        } else if (node->getOperand()->getType().isCoopVec()) {
+        } else if (node->getOperand()->getType().isAnyCoopVec()) {
             spv::Id typeId = convertGlslangToSpvType(node->getOperand()->getType());
             length = builder.getCooperativeVectorNumComponents(typeId);
         } else {
@@ -5527,7 +5527,7 @@ spv::Id TGlslangToSpvTraverser::convertGlslangToSpvType(const glslang::TType& ty
         spvType = builder.makeCooperativeMatrixTypeKHR(spvType, scope, rows, cols, use);
     }
 
-    if (type.isCoopVec()) {
+    if (type.isAnyCoopVec()) {
         if (type.isCoopVecAD()) {
             builder.addCapability(getCooperativeVectorADCapability());
             builder.addExtension(getCooperativeVectorADExtension());
@@ -10786,15 +10786,15 @@ spv::Id TGlslangToSpvTraverser::createSpvConstantFromConstUnionArray(const glsla
         glslang::TType vectorType(glslangType, 0);
         for (int col = 0; col < glslangType.getMatrixCols(); ++col)
             spvConsts.push_back(createSpvConstantFromConstUnionArray(vectorType, consts, nextConst, false));
-    } else if (glslangType.isCoopMat()) {
+    } else if (glslangType.isAnyCoopMat()) {
         glslang::TType componentType(glslangType.getBasicType());
         spvConsts.push_back(createSpvConstantFromConstUnionArray(componentType, consts, nextConst, false));
     } else if (glslangType.isStruct()) {
         glslang::TVector<glslang::TTypeLoc>::const_iterator iter;
         for (iter = glslangType.getStruct()->begin(); iter != glslangType.getStruct()->end(); ++iter)
             spvConsts.push_back(createSpvConstantFromConstUnionArray(*iter->type, consts, nextConst, false));
-    } else if (glslangType.getVectorSize() > 1 || glslangType.isCoopVec()) {
-        unsigned int numComponents = glslangType.isCoopVec() ? glslangType.getTypeParameters()->arraySizes->getDimSize(0) : glslangType.getVectorSize();
+    } else if (glslangType.getVectorSize() > 1 || glslangType.isAnyCoopVec()) {
+        unsigned int numComponents = glslangType.isAnyCoopVec() ? glslangType.getTypeParameters()->arraySizes->getDimSize(0) : glslangType.getVectorSize();
         for (unsigned int i = 0; i < numComponents; ++i) {
             bool zero = nextConst >= consts.size();
             switch (glslangType.getBasicType()) {
