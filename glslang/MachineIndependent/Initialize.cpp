@@ -4933,7 +4933,6 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
             "f32vec4",
             "f64vec4",
         };
-        std::stringstream cooperativeVectorADLoadStoreFuncs;
         for (uint32_t i = 0; i < sizeof(scalarAndVectorTypes)/sizeof(scalarAndVectorTypes[0]); ++i) {
             std::string load = std::string("void coopVecLoadNV(out coopvecNV v, volatile coherent ") +
                                std::string(scalarAndVectorTypes[i]) + std::string("[] buf, uint offset);");
@@ -4941,7 +4940,10 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
                                std::string(scalarAndVectorTypes[i]) + std::string("[] buf, uint offset);");
             commonBuiltins.append(load.c_str());
             commonBuiltins.append(store.c_str());
+        }
 
+        std::stringstream cooperativeVectorADLoadStoreFuncs;
+        for (uint32_t i = 0; i < sizeof(scalarAndVectorTypes)/sizeof(scalarAndVectorTypes[0]); ++i) {
             cooperativeVectorADLoadStoreFuncs << "void coopVecLoadAD(out coopvecAD v, volatile coherent "
                                               << scalarAndVectorTypes[i] << "[] buf);\n";
             cooperativeVectorADLoadStoreFuncs << "void coopVecStoreAD(coopvecAD v, volatile coherent "

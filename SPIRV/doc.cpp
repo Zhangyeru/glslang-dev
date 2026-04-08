@@ -3348,11 +3348,13 @@ void Parameterize()
         InstructionDesc[OpCooperativeMatrixMulAddNV].operands.push(OperandId, "'A'");
         InstructionDesc[OpCooperativeMatrixMulAddNV].operands.push(OperandId, "'B'");
         InstructionDesc[OpCooperativeMatrixMulAddNV].operands.push(OperandId, "'C'");
-        InstructionDesc[OpCooperativeMatrixMulAddAD].operands = InstructionDesc[OpCooperativeMatrixMulAddNV].operands;
+        InstructionDesc[OpCooperativeMatrixMulAddAD].operands.push(OperandId, "'A'");
+        InstructionDesc[OpCooperativeMatrixMulAddAD].operands.push(OperandId, "'B'");
+        InstructionDesc[OpCooperativeMatrixMulAddAD].operands.push(OperandId, "'C'");
         InstructionDesc[OpCooperativeMatrixMulAddAD].setResultAndType(true, true);
 
         InstructionDesc[OpCooperativeMatrixLengthNV].operands.push(OperandId, "'Type'");
-        InstructionDesc[OpCooperativeMatrixLengthAD].operands = InstructionDesc[OpCooperativeMatrixLengthNV].operands;
+        InstructionDesc[OpCooperativeMatrixLengthAD].operands.push(OperandId, "'Type'");
         InstructionDesc[OpCooperativeMatrixLengthAD].setResultAndType(true, true);
 
         InstructionDesc[OpTypeCooperativeMatrixKHR].operands.push(OperandId, "'Component Type'");
