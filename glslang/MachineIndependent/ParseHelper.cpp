@@ -784,8 +784,10 @@ TIntermTyped* TParseContext::handleBracketDereference(const TSourceLoc& loc, TIn
     // basic type checks...
     variableCheck(base);
 
-    if (! base->isArray() && ! base->isMatrix() && ! base->isVector() && ! base->getType().isAnyCoopMat() &&
-        ! base->isReference() && ! base->getType().isAnyCoopVec()) {
+    if (! base->isArray() && ! base->isMatrix() && ! base->isVector() &&
+        ! base->getType().isCoopMat() && ! base->getType().isCoopMatAD() &&
+        ! base->isReference() &&
+        ! base->getType().isCoopVecNV() && ! base->getType().isCoopVecAD()) {
         if (base->getAsSymbolNode())
             error(loc, " left of '[' is not of type array, matrix, or vector ", base->getAsSymbolNode()->getName().c_str(), "");
         else
@@ -1206,7 +1208,8 @@ TIntermTyped* TParseContext::handleDotDereference(const TSourceLoc& loc, TInterm
             const char* feature = ".length() on vectors and matrices";
             requireProfile(loc, ~EEsProfile, feature);
             profileRequires(loc, ~EEsProfile, 420, E_GL_ARB_shading_language_420pack, feature);
-        } else if (!base->getType().isAnyCoopMat() && !base->getType().isAnyCoopVec()) {
+        } else if (!base->getType().isCoopMat() && !base->getType().isCoopMatAD() &&
+                   !base->getType().isCoopVecNV() && !base->getType().isCoopVecAD()) {
             bool enhanced = intermediate.getEnhancedMsgs();
             error(loc, "does not operate on this type:", field.c_str(), base->getType().getCompleteString(enhanced).c_str());
             return base;
@@ -1223,7 +1226,7 @@ TIntermTyped* TParseContext::handleDotDereference(const TSourceLoc& loc, TInterm
         return base;
     }
 
-    if (base->getType().isAnyCoopMat()) {
+    if (base->getType().isCoopMat() || base->getType().isCoopMatAD()) {
         error(loc, "cannot apply to a cooperative matrix type:", ".", field.c_str());
         return base;
     }
@@ -2284,7 +2287,7 @@ TIntermTyped* TParseContext::handleLengthMethod(const TSourceLoc& loc, TFunction
             length = type.getMatrixCols();
         else if (type.isVector())
             length = type.getVectorSize();
-        else if (type.isAnyCoopMat() || type.isAnyCoopVec())
+        else if (type.isCoopMat() || type.isCoopMatAD() || type.isCoopVecNV() || type.isCoopVecAD())
             return intermediate.addBuiltInFunctionCall(loc, EOpArrayLength, true, intermNode, TType(EbtInt));
         else {
             // we should not get here, because earlier semantic checking should have prevented this path
@@ -2313,7 +2316,7 @@ void TParseContext::addInputArgumentConversions(const TFunction& function, TInte
         TIntermTyped* arg = function.getParamCount() == 1 ? arguments->getAsTyped() : (aggregate ? aggregate->getSequence()[i]->getAsTyped() : arguments->getAsTyped());
         if (*function[i].type != arg->getType()) {
             if (function[i].type->getQualifier().isParamInput() &&
-               !function[i].type->isAnyCoopMat()) {
+               !function[i].type->isCoopMat() && !function[i].type->isCoopMatAD()) {
                 // In-qualified arguments just need an extra node added above the argument to
                 // convert to the correct type.
                 arg = intermediate.addConversion(EOpFunctionCall, *function[i].type, arg);
@@ -4293,12 +4296,12 @@ bool TParseContext::constructorError(const TSourceLoc& loc, TIntermNode* node, T
         return true;
     }
     if (type.isCoopMatAD() &&
-        !(function[0].type->isScalar() || function[0].type->isAnyCoopMat())) {
+        !(function[0].type->isScalar() || function[0].type->isCoopMatAD())) {
         error(loc, "Cooperative matrix constructor argument must be scalar or cooperative matrix", constructorString.c_str(), "");
         return true;
     }
-    if (type.isCoopMatAD() && typed != nullptr && typed->getType().isAnyCoopMat() &&
-        !type.sameCoopMatShape(typed->getType())) {
+    if (type.isCoopMatAD() && typed != nullptr && typed->getType().isCoopMatAD() &&
+        !type.sameCoopMatADShape(typed->getType())) {
         error(loc, "Cooperative matrix type parameters mismatch", constructorString.c_str(), "");
         return true;
     }
@@ -7823,11 +7826,15 @@ const TFunction* TParseContext::findFunction400(const TSourceLoc& loc, const TFu
             return true;
         if (from.coopMatParameterOK(to))
             return true;
+        if (from.coopMatADParameterOK(to))
+            return true;
         if (from.tensorParameterOK(to))
             return true;
         if (from.getBasicType() == EbtFunction && to.getBasicType() == EbtFunction)
             return true;
         if (from.coopVecParameterOK(to))
+            return true;
+        if (from.coopVecADParameterOK(to))
             return true;
         // Allow a sized array to be passed through an unsized array parameter, for coopMatLoad/Store functions
         if (builtIn && from.isArray() && to.isUnsizedArray()) {
@@ -7844,10 +7851,14 @@ const TFunction* TParseContext::findFunction400(const TSourceLoc& loc, const TFu
         }
         if (from.isArray() || to.isArray() || ! from.sameElementShape(to))
             return false;
-        if (from.isAnyCoopMat() && to.isAnyCoopMat())
+        if (from.isCoopMat() && to.isCoopMat())
             return from.sameCoopMatBaseType(to);
-        if (from.isAnyCoopVec() && to.isAnyCoopVec())
+        if (from.isCoopMatAD() && to.isCoopMatAD())
+            return from.sameCoopMatADBaseType(to);
+        if (from.isCoopVecNV() && to.isCoopVecNV())
             return from.sameCoopVecBaseType(to);
+        if (from.isCoopVecAD() && to.isCoopVecAD())
+            return from.sameCoopVecADBaseType(to);
         return intermediate.canImplicitlyPromote(from.getBasicType(), to.getBasicType());
     };
 
@@ -7913,11 +7924,15 @@ const TFunction* TParseContext::findFunctionExplicitTypes(const TSourceLoc& loc,
             return true;
         if (from.coopMatParameterOK(to))
             return true;
+        if (from.coopMatADParameterOK(to))
+            return true;
         if (from.tensorParameterOK(to))
             return true;
         if (from.getBasicType() == EbtFunction && to.getBasicType() == EbtFunction)
             return true;
         if (from.coopVecParameterOK(to))
+            return true;
+        if (from.coopVecADParameterOK(to))
             return true;
         // Allow a sized array to be passed through an unsized array parameter, for coopMatLoad/Store functions
         if (builtIn && from.isArray() && to.isUnsizedArray()) {
@@ -7934,10 +7949,14 @@ const TFunction* TParseContext::findFunctionExplicitTypes(const TSourceLoc& loc,
         }
         if (from.isArray() || to.isArray() || ! from.sameElementShape(to))
             return false;
-        if (from.isAnyCoopMat() && to.isAnyCoopMat())
+        if (from.isCoopMat() && to.isCoopMat())
             return from.sameCoopMatBaseType(to);
-        if (from.isAnyCoopVec() && to.isAnyCoopVec())
+        if (from.isCoopMatAD() && to.isCoopMatAD())
+            return from.sameCoopMatADBaseType(to);
+        if (from.isCoopVecNV() && to.isCoopVecNV())
             return from.sameCoopVecBaseType(to);
+        if (from.isCoopVecAD() && to.isCoopVecAD())
+            return from.sameCoopVecADBaseType(to);
         return intermediate.canImplicitlyPromote(from.getBasicType(), to.getBasicType());
     };
 
@@ -9458,14 +9477,11 @@ TIntermTyped* TParseContext::constructBuiltIn(const TType& type, TOperator op, T
             return nullptr;
         }
 
-    case EOpConstructCooperativeVectorNV:
     case EOpConstructCooperativeVectorAD:
-        if (node->getType().isAnyCoopVec() &&
-            (type.isCoopVecNV() != node->getType().isCoopVecNV() ||
-             type.isCoopVecAD() != node->getType().isCoopVecAD())) {
+        if (node->getType().isCoopVecNV()) {
             return nullptr;
         }
-        if (!node->getType().isAnyCoopVec()) {
+        if (!node->getType().isCoopVecAD()) {
             if (type.getBasicType() != node->getType().getBasicType()) {
                 node = intermediate.addConversion(type.getBasicType(), node);
                 if (node == nullptr)
@@ -9485,19 +9501,60 @@ TIntermTyped* TParseContext::constructBuiltIn(const TType& type, TOperator op, T
 
         return node;
 
-    case EOpConstructCooperativeMatrixNV:
-    case EOpConstructCooperativeMatrixKHR:
+    case EOpConstructCooperativeVectorNV:
+        if (!node->getType().isCoopVecNV()) {
+            if (type.getBasicType() != node->getType().getBasicType()) {
+                node = intermediate.addConversion(type.getBasicType(), node);
+                if (node == nullptr)
+                    return nullptr;
+            }
+        }
+        if (type.getBasicType() != node->getType().getBasicType()) {
+            intermediate.buildConvertOp(type.getBasicType(), node->getType().getBasicType(), op);
+            node = intermediate.addUnaryNode(op, node, node->getLoc(), type);
+            return node;
+        }
+        if (subset) {
+            return node;
+        }
+
+        node = intermediate.setAggregateOperator(node, op, type, node->getLoc());
+
+        return node;
+
     case EOpConstructCooperativeMatrixAD:
         if (node->getType() == type) {
             return node;
         }
-        if (node->getType().isAnyCoopMat() &&
-            (type.isCoopMatNV() != node->getType().isCoopMatNV() ||
-             type.isCoopMatKHR() != node->getType().isCoopMatKHR() ||
-             type.isCoopMatAD() != node->getType().isCoopMatAD())) {
+        if (node->getType().isCoopMat()) {
             return nullptr;
         }
-        if (!node->getType().isAnyCoopMat()) {
+        if (!node->getType().isCoopMatAD()) {
+            if (type.getBasicType() != node->getType().getBasicType()) {
+                node = intermediate.addConversion(type.getBasicType(), node);
+                if (node == nullptr)
+                    return nullptr;
+            }
+            node = intermediate.setAggregateOperator(node, op, type, node->getLoc());
+        } else if (type.sameCoopMatADShape(node->getType()) &&
+                   type.getBasicType() == node->getType().getBasicType()) {
+            node = intermediate.setAggregateOperator(node, op, type, node->getLoc());
+        } else {
+            TOperator op = EOpConvNumeric;
+
+            node = intermediate.addUnaryNode(op, node, node->getLoc(), type);
+            if (node->getAsUnaryNode()->getOperand()->getAsConstantUnion())
+                return node->getAsUnaryNode()->getOperand()->getAsConstantUnion()->fold(op, node->getType());
+        }
+
+        return node;
+
+    case EOpConstructCooperativeMatrixNV:
+    case EOpConstructCooperativeMatrixKHR:
+        if (node->getType() == type) {
+            return node;
+        }
+        if (!node->getType().isCoopMat()) {
             if (type.getBasicType() != node->getType().getBasicType()) {
                 node = intermediate.addConversion(type.getBasicType(), node);
                 if (node == nullptr)
@@ -9505,7 +9562,7 @@ TIntermTyped* TParseContext::constructBuiltIn(const TType& type, TOperator op, T
             }
             node = intermediate.setAggregateOperator(node, op, type, node->getLoc());
         } else if (type.sameCoopMatShape(node->getType()) &&
-                   ((!type.isCoopMatKHR()) || !type.sameCoopMatUse(node->getType())) &&
+                   !type.sameCoopMatUse(node->getType()) &&
                    type.getBasicType() == node->getType().getBasicType()) {
             node = intermediate.setAggregateOperator(node, op, type, node->getLoc());
         } else {

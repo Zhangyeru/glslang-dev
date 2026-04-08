@@ -683,8 +683,12 @@ TIntermediate::addPairConversion(TOperator op, TIntermTyped* node0, TIntermTyped
         if (node0->getType().isArray() || node1->getType().isArray())
             return std::make_tuple(nullptr, nullptr);
 
+        // No implicit conversions for operations involving cooperative matrix AD types
+        if (node0->getType().isCoopMatAD() || node1->getType().isCoopMatAD())
+            return std::make_tuple(node0, node1);
+
         // No implicit conversions for operations involving cooperative matrices
-        if (node0->getType().isAnyCoopMat() || node1->getType().isAnyCoopMat())
+        if (node0->getType().isCoopMat() || node1->getType().isCoopMat())
             return std::make_tuple(node0, node1);
     }
 
@@ -819,21 +823,29 @@ TIntermTyped* TIntermediate::addConversion(TOperator op, const TType& type, TInt
     if (type.isArray() || node->getType().isArray())
         return nullptr;
 
-    // Reject implicit conversions to cooperative matrix types
-    if (node->getType().isAnyCoopMat() &&
-        op != EOpConstructCooperativeMatrixNV &&
-        op != EOpConstructCooperativeMatrixKHR &&
+    // Reject implicit conversions to cooperative matrix AD types
+    if (node->getType().isCoopMatAD() &&
         op != EOpConstructCooperativeMatrixAD)
+        return nullptr;
+
+    // Reject implicit conversions to cooperative matrix types
+    if (node->getType().isCoopMat() &&
+        op != EOpConstructCooperativeMatrixNV &&
+        op != EOpConstructCooperativeMatrixKHR)
         return nullptr;
 
     if (node->getType().isTensorLayoutNV() ||
         node->getType().isTensorViewNV())
         return nullptr;
 
-    // Reject implicit conversions to cooperative vector types
-    if (node->getType().isAnyCoopVec() &&
-        op != EOpConstructCooperativeVectorNV &&
+    // Reject implicit conversions to cooperative vector AD types
+    if (node->getType().isCoopVecAD() &&
         op != EOpConstructCooperativeVectorAD)
+        return nullptr;
+
+    // Reject implicit conversions to cooperative vector types
+    if (node->getType().isCoopVecNV() &&
+        op != EOpConstructCooperativeVectorNV)
         return nullptr;
 
     // Note: callers are responsible for other aspects of shape,
@@ -3279,8 +3291,7 @@ bool TIntermediate::promoteBinary(TIntermBinary& node)
     }
 
     if (left->getType().isCoopMatAD() || right->getType().isCoopMatAD()) {
-        if ((left->getType().isAnyCoopMat() && !left->getType().isCoopMatAD()) ||
-            (right->getType().isAnyCoopMat() && !right->getType().isCoopMatAD())) {
+        if (left->getType().isCoopMat() || right->getType().isCoopMat()) {
             return false;
         }
         if (left->getType().isCoopMatAD() && right->getType().isCoopMatAD() &&
@@ -3355,8 +3366,7 @@ bool TIntermediate::promoteBinary(TIntermBinary& node)
     }
 
     if (left->getType().isCoopVecAD() || right->getType().isCoopVecAD()) {
-        if ((left->getType().isAnyCoopVec() && !left->getType().isCoopVecAD()) ||
-            (right->getType().isAnyCoopVec() && !right->getType().isCoopVecAD())) {
+        if (left->getType().isCoopVecNV() || right->getType().isCoopVecNV()) {
             return false;
         }
         if (left->getType().isCoopVecAD() && right->getType().isCoopVecAD() &&

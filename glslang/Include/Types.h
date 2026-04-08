@@ -2788,12 +2788,6 @@ public:
             return right.isCoopMatNV() && (getBasicType() == right.getBasicType()) && typeParameters == nullptr &&
                    right.typeParameters != nullptr;
         }
-        if (isCoopMatAD() && right.isCoopMatAD()) {
-            return ((getBasicType() == right.getBasicType()) || (getBasicType() == EbtCoopmatAD) ||
-                    (right.getBasicType() == EbtCoopmatAD)) &&
-                   ((typeParameters == nullptr && right.typeParameters != nullptr) ||
-                    (typeParameters != nullptr && right.typeParameters == nullptr));
-        }
         if (isCoopMatKHR() && right.isCoopMatKHR()) {
             return ((getBasicType() == right.getBasicType()) || (getBasicType() == EbtCoopmat) ||
                     (right.getBasicType() == EbtCoopmat)) &&
@@ -2803,19 +2797,31 @@ public:
         return false;
     }
 
+    bool coopMatADParameterOK(const TType& right) const
+    {
+        return isCoopMatAD() && right.isCoopMatAD() &&
+               ((getBasicType() == right.getBasicType()) || (getBasicType() == EbtCoopmatAD) ||
+                (right.getBasicType() == EbtCoopmatAD)) &&
+               ((typeParameters == nullptr && right.typeParameters != nullptr) ||
+                (typeParameters != nullptr && right.typeParameters == nullptr));
+    }
+
     // See if a cooperative vector type parameter with unspecified parameters is
     // an OK function parameter
     bool coopVecParameterOK(const TType& right) const
     {
-        if (isAnyCoopVec() && right.isAnyCoopVec() &&
-            isCoopVecNV() == right.isCoopVecNV() &&
-            isCoopVecAD() == right.isCoopVecAD()) {
-            const TBasicType placeholderType = isCoopVecNV() ? EbtCoopvecNV : EbtCoopvecAD;
-            return ((getBasicType() == right.getBasicType()) || (getBasicType() == placeholderType) ||
-                    (right.getBasicType() == placeholderType)) &&
-                   typeParameters == nullptr && right.typeParameters != nullptr;
-        }
-        return false;
+        return isCoopVecNV() && right.isCoopVecNV() &&
+               ((getBasicType() == right.getBasicType()) || (getBasicType() == EbtCoopvecNV) ||
+                (right.getBasicType() == EbtCoopvecNV)) &&
+               typeParameters == nullptr && right.typeParameters != nullptr;
+    }
+
+    bool coopVecADParameterOK(const TType& right) const
+    {
+        return isCoopVecAD() && right.isCoopVecAD() &&
+               ((getBasicType() == right.getBasicType()) || (getBasicType() == EbtCoopvecAD) ||
+                (right.getBasicType() == EbtCoopvecAD)) &&
+               typeParameters == nullptr && right.typeParameters != nullptr;
     }
 
     bool sameCoopMatBaseType(const TType &right) const {
@@ -2831,15 +2837,6 @@ public:
                 rv = right.getBasicType() == EbtInt || right.getBasicType() == EbtInt8 || right.getBasicType() == EbtInt16;
             else
                 rv = false;
-        } else if (isCoopMatAD() && right.isCoopMatAD()) {
-            if (getBasicType() == EbtFloat || getBasicType() == EbtFloat16)
-                rv = right.getBasicType() == EbtFloat || right.getBasicType() == EbtFloat16 || right.getBasicType() == EbtCoopmatAD;
-            else if (getBasicType() == EbtUint || getBasicType() == EbtUint8 || getBasicType() == EbtUint16)
-                rv = right.getBasicType() == EbtUint || right.getBasicType() == EbtUint8 || right.getBasicType() == EbtUint16 || right.getBasicType() == EbtCoopmatAD;
-            else if (getBasicType() == EbtInt || getBasicType() == EbtInt8 || getBasicType() == EbtInt16)
-                rv = right.getBasicType() == EbtInt || right.getBasicType() == EbtInt8 || right.getBasicType() == EbtInt16 || right.getBasicType() == EbtCoopmatAD;
-            else
-                rv = false;
         } else if (isCoopMatKHR() && right.isCoopMatKHR()) {
             if (getBasicType() == EbtFloat || getBasicType() == EbtFloat16)
                 rv = right.getBasicType() == EbtFloat || right.getBasicType() == EbtFloat16 || right.getBasicType() == EbtCoopmat;
@@ -2847,6 +2844,22 @@ public:
                 rv = right.getBasicType() == EbtUint || right.getBasicType() == EbtUint8 || right.getBasicType() == EbtUint16 || right.getBasicType() == EbtCoopmat;
             else if (getBasicType() == EbtInt || getBasicType() == EbtInt8 || getBasicType() == EbtInt16)
                 rv = right.getBasicType() == EbtInt || right.getBasicType() == EbtInt8 || right.getBasicType() == EbtInt16 || right.getBasicType() == EbtCoopmat;
+            else
+                rv = false;
+        }
+        return rv;
+    }
+
+    bool sameCoopMatADBaseType(const TType &right) const {
+        bool rv = false;
+
+        if (isCoopMatAD() && right.isCoopMatAD()) {
+            if (getBasicType() == EbtFloat || getBasicType() == EbtFloat16)
+                rv = right.getBasicType() == EbtFloat || right.getBasicType() == EbtFloat16 || right.getBasicType() == EbtCoopmatAD;
+            else if (getBasicType() == EbtUint || getBasicType() == EbtUint8 || getBasicType() == EbtUint16)
+                rv = right.getBasicType() == EbtUint || right.getBasicType() == EbtUint8 || right.getBasicType() == EbtUint16 || right.getBasicType() == EbtCoopmatAD;
+            else if (getBasicType() == EbtInt || getBasicType() == EbtInt8 || getBasicType() == EbtInt16)
+                rv = right.getBasicType() == EbtInt || right.getBasicType() == EbtInt8 || right.getBasicType() == EbtInt16 || right.getBasicType() == EbtCoopmatAD;
             else
                 rv = false;
         }
@@ -2867,16 +2880,29 @@ public:
     bool sameCoopVecBaseType(const TType &right) const {
         bool rv = false;
 
-        if (isAnyCoopVec() && right.isAnyCoopVec() &&
-            isCoopVecNV() == right.isCoopVecNV() &&
-            isCoopVecAD() == right.isCoopVecAD()) {
-            const TBasicType placeholderType = isCoopVecNV() ? EbtCoopvecNV : EbtCoopvecAD;
+        if (isCoopVecNV() && right.isCoopVecNV()) {
             if (getBasicType() == EbtFloat || getBasicType() == EbtFloat16)
-                rv = right.getBasicType() == EbtFloat || right.getBasicType() == EbtFloat16 || right.getBasicType() == placeholderType;
+                rv = right.getBasicType() == EbtFloat || right.getBasicType() == EbtFloat16 || right.getBasicType() == EbtCoopvecNV;
             else if (getBasicType() == EbtUint || getBasicType() == EbtUint8 || getBasicType() == EbtUint16)
-                rv = right.getBasicType() == EbtUint || right.getBasicType() == EbtUint8 || right.getBasicType() == EbtUint16 || right.getBasicType() == placeholderType;
+                rv = right.getBasicType() == EbtUint || right.getBasicType() == EbtUint8 || right.getBasicType() == EbtUint16 || right.getBasicType() == EbtCoopvecNV;
             else if (getBasicType() == EbtInt || getBasicType() == EbtInt8 || getBasicType() == EbtInt16)
-                rv = right.getBasicType() == EbtInt || right.getBasicType() == EbtInt8 || right.getBasicType() == EbtInt16 || right.getBasicType() == placeholderType;
+                rv = right.getBasicType() == EbtInt || right.getBasicType() == EbtInt8 || right.getBasicType() == EbtInt16 || right.getBasicType() == EbtCoopvecNV;
+            else
+                rv = false;
+        }
+        return rv;
+    }
+
+    bool sameCoopVecADBaseType(const TType &right) const {
+        bool rv = false;
+
+        if (isCoopVecAD() && right.isCoopVecAD()) {
+            if (getBasicType() == EbtFloat || getBasicType() == EbtFloat16)
+                rv = right.getBasicType() == EbtFloat || right.getBasicType() == EbtFloat16 || right.getBasicType() == EbtCoopvecAD;
+            else if (getBasicType() == EbtUint || getBasicType() == EbtUint8 || getBasicType() == EbtUint16)
+                rv = right.getBasicType() == EbtUint || right.getBasicType() == EbtUint8 || right.getBasicType() == EbtUint16 || right.getBasicType() == EbtCoopvecAD;
+            else if (getBasicType() == EbtInt || getBasicType() == EbtInt8 || getBasicType() == EbtInt16)
+                rv = right.getBasicType() == EbtInt || right.getBasicType() == EbtInt8 || right.getBasicType() == EbtInt16 || right.getBasicType() == EbtCoopvecAD;
             else
                 rv = false;
         }
@@ -2889,18 +2915,25 @@ public:
 
     bool sameCoopMatShape(const TType &right) const
     {
-        if (!isAnyCoopMat() || !right.isAnyCoopMat())
-            return false;
-
-        if (isCoopMatNV() != right.isCoopMatNV() ||
-            isCoopMatKHR() != right.isCoopMatKHR() ||
-            isCoopMatAD() != right.isCoopMatAD())
+        if (!isCoopMat() || !right.isCoopMat() || isCoopMatKHR() != right.isCoopMatKHR())
             return false;
 
         // Skip bit width type parameter (first array size) for coopmatNV
         int firstArrayDimToCompare = isCoopMatNV() ? 1 : 0;
         int lastArrayDimToCompare = typeParameters->arraySizes->getNumDims() - (isCoopMatKHR() ? 1 : 0);
         for (int i = firstArrayDimToCompare; i < lastArrayDimToCompare; ++i) {
+            if (typeParameters->arraySizes->getDimSize(i) != right.typeParameters->arraySizes->getDimSize(i))
+                return false;
+        }
+        return true;
+    }
+
+    bool sameCoopMatADShape(const TType &right) const
+    {
+        if (!isCoopMatAD() || !right.isCoopMatAD())
+            return false;
+
+        for (int i = 0; i < typeParameters->arraySizes->getNumDims(); ++i) {
             if (typeParameters->arraySizes->getDimSize(i) != right.typeParameters->arraySizes->getDimSize(i))
                 return false;
         }

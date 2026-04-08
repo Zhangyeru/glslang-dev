@@ -2821,19 +2821,24 @@ bool TGlslangToSpvTraverser::visitUnary(glslang::TVisit /* visit */, glslang::TI
         // SPV wants "block" and member number as the operands, go get them.
 
         spv::Id length;
-        if (node->getOperand()->getType().isAnyCoopMat()) {
+        if (node->getOperand()->getType().isCoopMatAD()) {
+            spv::Id typeId = convertGlslangToSpvType(node->getOperand()->getType());
+            assert(builder.isCooperativeMatrixType(typeId));
+            length = builder.createCooperativeMatrixLengthAD(typeId);
+        } else if (node->getOperand()->getType().isCoopMat()) {
             spv::Id typeId = convertGlslangToSpvType(node->getOperand()->getType());
             assert(builder.isCooperativeMatrixType(typeId));
 
             if (node->getOperand()->getType().isCoopMatKHR()) {
                 length = builder.createCooperativeMatrixLengthKHR(typeId);
-            } else if (node->getOperand()->getType().isCoopMatAD()) {
-                length = builder.createCooperativeMatrixLengthAD(typeId);
             } else {
                 spec_constant_op_mode_setter.turnOnSpecConstantOpMode();
                 length = builder.createCooperativeMatrixLengthNV(typeId);
             }
-        } else if (node->getOperand()->getType().isAnyCoopVec()) {
+        } else if (node->getOperand()->getType().isCoopVecAD()) {
+            spv::Id typeId = convertGlslangToSpvType(node->getOperand()->getType());
+            length = builder.getCooperativeVectorNumComponents(typeId);
+        } else if (node->getOperand()->getType().isCoopVecNV()) {
             spv::Id typeId = convertGlslangToSpvType(node->getOperand()->getType());
             length = builder.getCooperativeVectorNumComponents(typeId);
         } else {
@@ -5527,14 +5532,9 @@ spv::Id TGlslangToSpvTraverser::convertGlslangToSpvType(const glslang::TType& ty
         spvType = builder.makeCooperativeMatrixTypeKHR(spvType, scope, rows, cols, use);
     }
 
-    if (type.isAnyCoopVec()) {
-        if (type.isCoopVecAD()) {
-            builder.addCapability(getCooperativeVectorADCapability());
-            builder.addExtension(getCooperativeVectorADExtension());
-        } else {
-            builder.addCapability(getCooperativeVectorNVCapability());
-            builder.addExtension(getCooperativeVectorNVExtension());
-        }
+    if (type.isCoopVecAD()) {
+        builder.addCapability(getCooperativeVectorADCapability());
+        builder.addExtension(getCooperativeVectorADExtension());
 
         if (type.getBasicType() == glslang::EbtFloat16)
             builder.addCapability(spv::CapabilityFloat16);
@@ -5543,11 +5543,21 @@ spv::Id TGlslangToSpvTraverser::convertGlslangToSpvType(const glslang::TType& ty
         }
 
         spv::Id components = makeArraySizeId(*type.getTypeParameters()->arraySizes, 0);
+        spvType = builder.makeCooperativeVectorTypeAD(spvType, components);
+    }
 
-        if (type.isCoopVecAD())
-            spvType = builder.makeCooperativeVectorTypeAD(spvType, components);
-        else
-            spvType = builder.makeCooperativeVectorTypeNV(spvType, components);
+    if (type.isCoopVecNV()) {
+        builder.addCapability(getCooperativeVectorNVCapability());
+        builder.addExtension(getCooperativeVectorNVExtension());
+
+        if (type.getBasicType() == glslang::EbtFloat16)
+            builder.addCapability(spv::CapabilityFloat16);
+        if (type.getBasicType() == glslang::EbtUint8 || type.getBasicType() == glslang::EbtInt8) {
+            builder.addCapability(spv::CapabilityInt8);
+        }
+
+        spv::Id components = makeArraySizeId(*type.getTypeParameters()->arraySizes, 0);
+        spvType = builder.makeCooperativeVectorTypeNV(spvType, components);
     }
 
     if (type.isArray()) {
