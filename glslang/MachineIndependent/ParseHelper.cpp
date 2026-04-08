@@ -784,10 +784,9 @@ TIntermTyped* TParseContext::handleBracketDereference(const TSourceLoc& loc, TIn
     // basic type checks...
     variableCheck(base);
 
-    if (! base->isArray() && ! base->isMatrix() && ! base->isVector() &&
-        ! base->getType().isCoopMat() && ! base->getType().isCoopMatAD() &&
-        ! base->isReference() &&
-        ! base->getType().isCoopVecNV() && ! base->getType().isCoopVecAD()) {
+    if (!(base->getType().isCoopMatAD() || base->getType().isCoopVecAD()) &&
+        ! base->isArray() && ! base->isMatrix() && ! base->isVector() && ! base->getType().isCoopMat() &&
+        ! base->isReference() && ! base->getType().isCoopVecNV()) {
         if (base->getAsSymbolNode())
             error(loc, " left of '[' is not of type array, matrix, or vector ", base->getAsSymbolNode()->getName().c_str(), "");
         else
@@ -1208,8 +1207,8 @@ TIntermTyped* TParseContext::handleDotDereference(const TSourceLoc& loc, TInterm
             const char* feature = ".length() on vectors and matrices";
             requireProfile(loc, ~EEsProfile, feature);
             profileRequires(loc, ~EEsProfile, 420, E_GL_ARB_shading_language_420pack, feature);
-        } else if (!base->getType().isCoopMat() && !base->getType().isCoopMatAD() &&
-                   !base->getType().isCoopVecNV() && !base->getType().isCoopVecAD()) {
+        } else if (!(base->getType().isCoopMatAD() || base->getType().isCoopVecAD()) &&
+                   !base->getType().isCoopMat() && !base->getType().isCoopVecNV()) {
             bool enhanced = intermediate.getEnhancedMsgs();
             error(loc, "does not operate on this type:", field.c_str(), base->getType().getCompleteString(enhanced).c_str());
             return base;
@@ -1226,7 +1225,12 @@ TIntermTyped* TParseContext::handleDotDereference(const TSourceLoc& loc, TInterm
         return base;
     }
 
-    if (base->getType().isCoopMat() || base->getType().isCoopMatAD()) {
+    if (base->getType().isCoopMatAD()) {
+        error(loc, "cannot apply to a cooperative matrix type:", ".", field.c_str());
+        return base;
+    }
+
+    if (base->getType().isCoopMat()) {
         error(loc, "cannot apply to a cooperative matrix type:", ".", field.c_str());
         return base;
     }
@@ -2287,7 +2291,9 @@ TIntermTyped* TParseContext::handleLengthMethod(const TSourceLoc& loc, TFunction
             length = type.getMatrixCols();
         else if (type.isVector())
             length = type.getVectorSize();
-        else if (type.isCoopMat() || type.isCoopMatAD() || type.isCoopVecNV() || type.isCoopVecAD())
+        else if (type.isCoopMatAD() || type.isCoopVecAD())
+            return intermediate.addBuiltInFunctionCall(loc, EOpArrayLength, true, intermNode, TType(EbtInt));
+        else if (type.isCoopMat() || type.isCoopVecNV())
             return intermediate.addBuiltInFunctionCall(loc, EOpArrayLength, true, intermNode, TType(EbtInt));
         else {
             // we should not get here, because earlier semantic checking should have prevented this path
@@ -2316,7 +2322,8 @@ void TParseContext::addInputArgumentConversions(const TFunction& function, TInte
         TIntermTyped* arg = function.getParamCount() == 1 ? arguments->getAsTyped() : (aggregate ? aggregate->getSequence()[i]->getAsTyped() : arguments->getAsTyped());
         if (*function[i].type != arg->getType()) {
             if (function[i].type->getQualifier().isParamInput() &&
-               !function[i].type->isCoopMat() && !function[i].type->isCoopMatAD()) {
+               !function[i].type->isCoopMatAD() &&
+               !function[i].type->isCoopMat()) {
                 // In-qualified arguments just need an extra node added above the argument to
                 // convert to the correct type.
                 arg = intermediate.addConversion(EOpFunctionCall, *function[i].type, arg);
@@ -3298,13 +3305,16 @@ void TParseContext::builtInOpCheck(const TSourceLoc& loc, const TFunction& fnCan
         }
 
         break;
-    case EOpCooperativeVectorMatMulNV:
     case EOpCooperativeVectorMatMulAD:
-    case EOpCooperativeVectorMatMulAddNV:
     case EOpCooperativeVectorMatMulAddAD:
         {
             if (handleCoopVecADMatMulBuiltin(*this, loc, callNode, *argp))
                 break;
+        }
+        break;
+    case EOpCooperativeVectorMatMulNV:
+    case EOpCooperativeVectorMatMulAddNV:
+        {
 
             int inputInterpIdx = 2;
             int matrixInterpIdx = 5;
@@ -8669,7 +8679,8 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
 
     if (type.getQualifier().storage == EvqtaskPayloadSharedEXT)
         intermediate.addTaskPayloadEXTCount();
-    if (type.getQualifier().storage == EvqShared && type.containsCoopMat())
+    if (type.getQualifier().storage == EvqShared &&
+        (type.containsCoopMat() || type.containsCoopMatAD()))
         error(loc, "qualifier", "Cooperative matrix types must not be used in shared memory", "");
 
     if (profile == EEsProfile) {
@@ -9731,10 +9742,10 @@ void TParseContext::declareBlock(const TSourceLoc& loc, TTypeList& typeList, con
                 error(memberLoc, "member of block cannot be or contain a sampler, image, or atomic_uint type", typeList[member].type->getFieldName().c_str(), "");
             }
 
-        if (memberType.containsCoopMat())
+        if (memberType.containsCoopMat() || memberType.containsCoopMatAD())
             error(memberLoc, "member of block cannot be or contain a cooperative matrix type", typeList[member].type->getFieldName().c_str(), "");
 
-        if (memberType.containsCoopVec())
+        if (memberType.containsCoopVec() || memberType.containsCoopVecAD())
             error(memberLoc, "member of block cannot be or contain a cooperative vector type", typeList[member].type->getFieldName().c_str(), "");
     }
 

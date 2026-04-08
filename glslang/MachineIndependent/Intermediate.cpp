@@ -3331,12 +3331,11 @@ bool TIntermediate::promoteBinary(TIntermBinary& node)
         switch (op) {
         case EOpMul:
         case EOpMulAssign:
-            // Mul is not supported for cooperative matrix NV types.
-            if ((left->getType().isCoopMatNV() || right->getType().isCoopMatNV()) &&
-                left->getType().isCoopMat() && right->getType().isCoopMat()) {
+            // Mul not supported in NV_cooperative_matrix
+            if (left->getType().isCoopMatNV() && right->getType().isCoopMatNV()) {
                 return false;
             }
-            // NV_cooperative_matrix supports MulAssign for mat*=scalar only.
+            // NV_cooperative_matrix supports MulAssign is for mat*=scalar only.
             // KHR_cooperative_matrix supports it for mat*=mat as well.
             if (op == EOpMulAssign && right->getType().isCoopMatNV()) {
                 return false;
@@ -3401,9 +3400,9 @@ bool TIntermediate::promoteBinary(TIntermBinary& node)
         return false;
     }
 
-    if (left->getType().isCoopVec() || right->getType().isCoopVec()) {
+    if (left->getType().isCoopVecNV() || right->getType().isCoopVecNV()) {
         // Operations on two cooperative vectors must have identical types
-        if (left->getType().isCoopVec() && right->getType().isCoopVec() &&
+        if (left->getType().isCoopVecNV() && right->getType().isCoopVecNV() &&
             left->getType() != right->getType()) {
             return false;
         }
@@ -3411,11 +3410,11 @@ bool TIntermediate::promoteBinary(TIntermBinary& node)
         case EOpMul:
         case EOpMulAssign:
             // Use VectorTimesScalar if either operand is not a vector. Otherwise use Mul.
-            if (!left->getType().isCoopVec() || !right->getType().isCoopVec()) {
+            if (!left->getType().isCoopVecNV() || !right->getType().isCoopVecNV()) {
                 node.setOp(op == EOpMulAssign ? EOpVectorTimesScalarAssign : EOpVectorTimesScalar);
             }
             // In case of scalar*vector, take the result type from the vector.
-            if (right->getType().isCoopVec()) {
+            if (right->getType().isCoopVecNV()) {
                 node.setType(right->getType());
             }
             return true;
@@ -3428,7 +3427,7 @@ bool TIntermediate::promoteBinary(TIntermBinary& node)
         case EOpDiv:
         case EOpAssign:
             // These require both to be cooperative vectors
-            if (!left->getType().isCoopVec() || !right->getType().isCoopVec()) {
+            if (!left->getType().isCoopVecNV() || !right->getType().isCoopVecNV()) {
                 return false;
             }
             return true;
