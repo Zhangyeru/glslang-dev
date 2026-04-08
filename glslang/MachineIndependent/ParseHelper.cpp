@@ -226,7 +226,7 @@ bool handleCoopMatADBitcastBuiltin(TParseContext& parseContext, const TSourceLoc
 bool handleCoopVecADMatMulBuiltin(TParseContext& parseContext, const TSourceLoc& loc,
                                   const TIntermOperator& callNode, const TIntermSequence& arguments)
 {
-    if (callNode.getOp() == EOpCooperativeVectorMatMulNV && arguments.size() == 3) {
+    if (callNode.getOp() == EOpCooperativeVectorMatMulAD && arguments.size() == 3) {
         const TType& resultType = arguments[0]->getAsTyped()->getType();
         const TType& inputType = arguments[1]->getAsTyped()->getType();
         const TType& matrixType = arguments[2]->getAsTyped()->getType();
@@ -239,7 +239,7 @@ bool handleCoopVecADMatMulBuiltin(TParseContext& parseContext, const TSourceLoc&
         return true;
     }
 
-    if (callNode.getOp() == EOpCooperativeVectorMatMulAddNV && arguments.size() == 4) {
+    if (callNode.getOp() == EOpCooperativeVectorMatMulAddAD && arguments.size() == 4) {
         const TType& resultType = arguments[0]->getAsTyped()->getType();
         const TType& inputType = arguments[1]->getAsTyped()->getType();
         const TType& matrixType = arguments[2]->getAsTyped()->getType();
@@ -3275,7 +3275,9 @@ void TParseContext::builtInOpCheck(const TSourceLoc& loc, const TFunction& fnCan
 
         break;
     case EOpCooperativeVectorMatMulNV:
+    case EOpCooperativeVectorMatMulAD:
     case EOpCooperativeVectorMatMulAddNV:
+    case EOpCooperativeVectorMatMulAddAD:
         {
             if (handleCoopVecADMatMulBuiltin(*this, loc, callNode, *argp))
                 break;

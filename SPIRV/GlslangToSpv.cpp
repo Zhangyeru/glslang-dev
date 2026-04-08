@@ -3638,7 +3638,9 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
     case glslang::EOpCooperativeMatrixTransposeNV:
     case glslang::EOpCooperativeMatrixMulAD:
     case glslang::EOpCooperativeVectorMatMulNV:
+    case glslang::EOpCooperativeVectorMatMulAD:
     case glslang::EOpCooperativeVectorMatMulAddNV:
+    case glslang::EOpCooperativeVectorMatMulAddAD:
     case glslang::EOpCooperativeMatrixMulAddAD:
     case glslang::EOpCooperativeVectorLoadNV:
     case glslang::EOpCooperativeVectorLoadAD:
@@ -3987,13 +3989,21 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         case glslang::EOpCooperativeVectorMatMulNV:
             if (arg == 0)
                 lvalue = true;
-            else if (!glslangOperands[0]->getAsTyped()->getType().isCoopVecAD() && arg == 3)
+            else if (arg == 3)
+                lvalue = true;
+            break;
+        case glslang::EOpCooperativeVectorMatMulAD:
+            if (arg == 0)
                 lvalue = true;
             break;
         case glslang::EOpCooperativeVectorMatMulAddNV:
             if (arg == 0)
                 lvalue = true;
-            else if (!glslangOperands[0]->getAsTyped()->getType().isCoopVecAD() && (arg == 3 || arg == 6))
+            else if (arg == 3 || arg == 6)
+                lvalue = true;
+            break;
+        case glslang::EOpCooperativeVectorMatMulAddAD:
+            if (arg == 0)
                 lvalue = true;
             break;
         case glslang::EOpCooperativeVectorOuterProductAccumulateNV:
@@ -4457,26 +4467,32 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         // store the result to the pointer
         builder.createStore(result, operands[0]);
         result = 0;
-    } else if (node->getOp() == glslang::EOpCooperativeVectorMatMulNV) {
+    } else if (node->getOp() == glslang::EOpCooperativeVectorMatMulAD) {
+        spv::Id typeId = builder.getContainedTypeId(builder.getTypeId(operands[0]));
+        assert(builder.isCooperativeVectorADType(typeId));
+        result = createCooperativeVectorADMatMul(builder, typeId, operands);
+        builder.createStore(result, operands[0]);
+        result = 0;
+        } else if (node->getOp() == glslang::EOpCooperativeVectorMatMulNV) {
         spv::Id typeId = builder.getContainedTypeId(builder.getTypeId(operands[0]));
         assert(builder.isCooperativeVectorType(typeId));
-        if (builder.isCooperativeVectorADType(typeId))
-            result = createCooperativeVectorADMatMul(builder, typeId, operands);
-        else
-            result = createCooperativeVectorNVMatMul(builder, typeId, operands,
-                                                     glslangOperands[1]->getAsTyped()->getBasicType(),
-                                                     glslangOperands[0]->getAsTyped()->getBasicType());
+        result = createCooperativeVectorNVMatMul(builder, typeId, operands,
+                                                 glslangOperands[1]->getAsTyped()->getBasicType(),
+                                                 glslangOperands[0]->getAsTyped()->getBasicType());
+        builder.createStore(result, operands[0]);
+        result = 0;
+        } else if (node->getOp() == glslang::EOpCooperativeVectorMatMulAddAD) {
+        spv::Id typeId = builder.getContainedTypeId(builder.getTypeId(operands[0]));
+        assert(builder.isCooperativeVectorADType(typeId));
+        result = createCooperativeVectorADMatMulAdd(builder, typeId, operands);
         builder.createStore(result, operands[0]);
         result = 0;
         } else if (node->getOp() == glslang::EOpCooperativeVectorMatMulAddNV) {
         spv::Id typeId = builder.getContainedTypeId(builder.getTypeId(operands[0]));
         assert(builder.isCooperativeVectorType(typeId));
-        if (builder.isCooperativeVectorADType(typeId))
-            result = createCooperativeVectorADMatMulAdd(builder, typeId, operands);
-        else
-            result = createCooperativeVectorNVMatMulAdd(builder, typeId, operands,
-                                                        glslangOperands[1]->getAsTyped()->getBasicType(),
-                                                        glslangOperands[0]->getAsTyped()->getBasicType());
+        result = createCooperativeVectorNVMatMulAdd(builder, typeId, operands,
+                                                    glslangOperands[1]->getAsTyped()->getBasicType(),
+                                                    glslangOperands[0]->getAsTyped()->getBasicType());
         builder.createStore(result, operands[0]);
         result = 0;
         } else if (node->getOp() == glslang::EOpCooperativeVectorLoadAD) {

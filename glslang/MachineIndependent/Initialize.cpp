@@ -10685,9 +10685,9 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
         }
 
         symbolTable.relateToOperator("coopVecMatMulNV",              EOpCooperativeVectorMatMulNV);
-        symbolTable.relateToOperator("coopVecMatMulAD",              EOpCooperativeVectorMatMulNV);
+        symbolTable.relateToOperator("coopVecMatMulAD",              EOpCooperativeVectorMatMulAD);
         symbolTable.relateToOperator("coopVecMatMulAddNV",           EOpCooperativeVectorMatMulAddNV);
-        symbolTable.relateToOperator("coopVecMatMulAddAD",           EOpCooperativeVectorMatMulAddNV);
+        symbolTable.relateToOperator("coopVecMatMulAddAD",           EOpCooperativeVectorMatMulAddAD);
         symbolTable.relateToOperator("coopVecLoadNV",                EOpCooperativeVectorLoadNV);
         symbolTable.relateToOperator("coopVecLoadAD",                EOpCooperativeVectorLoadAD);
         symbolTable.relateToOperator("coopVecStoreNV",               EOpCooperativeVectorStoreNV);

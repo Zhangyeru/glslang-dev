@@ -478,7 +478,9 @@ enum TOperator {
     EOpTensorViewSetClipNV,
 
     EOpCooperativeVectorMatMulNV,
+    EOpCooperativeVectorMatMulAD,
     EOpCooperativeVectorMatMulAddNV,
+    EOpCooperativeVectorMatMulAddAD,
     EOpCooperativeVectorLoadNV,
     EOpCooperativeVectorLoadAD,
     EOpCooperativeVectorStoreNV,
