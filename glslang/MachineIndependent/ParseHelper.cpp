@@ -72,6 +72,28 @@ const TType* getFirstCooperativeADArgumentType(TIntermNode* arguments, TIntermTy
     return nullptr;
 }
 
+bool haveSameInnermostArrayElementType(const TType& left, const TType& right)
+{
+    if (left.isArray())
+        return haveSameInnermostArrayElementType(TType(left, 0), right);
+    if (right.isArray())
+        return haveSameInnermostArrayElementType(left, TType(right, 0));
+    return left == right;
+}
+
+bool isAZDCooperativeBufferBuiltin(TOperator op)
+{
+    switch (op) {
+    case EOpCooperativeMatrixLoadAZD:
+    case EOpCooperativeMatrixStoreAZD:
+    case EOpCooperativeVectorLoadAZD:
+    case EOpCooperativeVectorStoreAZD:
+        return true;
+    default:
+        return false;
+    }
+}
+
 void setCooperativeADResultBasicType(TIntermTyped* result, const TType* argType, TBasicType basicType)
 {
     if (argType == nullptr)
@@ -7846,7 +7868,9 @@ const TFunction* TParseContext::findFunction400(const TSourceLoc& loc, const TFu
             return true;
         if (from.coopVecAZDParameterOK(to))
             return true;
-        // Allow a sized array to be passed through an unsized array parameter, for coopMatLoad/Store functions
+        // Preserve the legacy one-dimensional array matching for builtins that
+        // consume raw buffer data, and only enable nested array matching for
+        // AZD cooperative matrix/vector load-store builtins.
         if (builtIn && from.isArray() && to.isUnsizedArray()) {
             TType fromElementType(from, 0);
             TType toElementType(to, 0);
@@ -7857,6 +7881,9 @@ const TFunction* TParseContext::findFunction400(const TSourceLoc& loc, const TFu
                 return true;
             }
             if (fromElementType == toElementType)
+                return true;
+            if (isAZDCooperativeBufferBuiltin(op) &&
+                haveSameInnermostArrayElementType(from, to))
                 return true;
         }
         if (from.isArray() || to.isArray() || ! from.sameElementShape(to))
@@ -7944,7 +7971,9 @@ const TFunction* TParseContext::findFunctionExplicitTypes(const TSourceLoc& loc,
             return true;
         if (from.coopVecAZDParameterOK(to))
             return true;
-        // Allow a sized array to be passed through an unsized array parameter, for coopMatLoad/Store functions
+        // Preserve the legacy one-dimensional array matching for builtins that
+        // consume raw buffer data, and only enable nested array matching for
+        // AZD cooperative matrix/vector load-store builtins.
         if (builtIn && from.isArray() && to.isUnsizedArray()) {
             TType fromElementType(from, 0);
             TType toElementType(to, 0);
@@ -7955,6 +7984,9 @@ const TFunction* TParseContext::findFunctionExplicitTypes(const TSourceLoc& loc,
                 return true;
             }
             if (fromElementType == toElementType)
+                return true;
+            if (isAZDCooperativeBufferBuiltin(op) &&
+                haveSameInnermostArrayElementType(from, to))
                 return true;
         }
         if (from.isArray() || to.isArray() || ! from.sameElementShape(to))
