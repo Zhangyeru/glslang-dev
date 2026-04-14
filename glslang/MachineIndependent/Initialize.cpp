@@ -4649,7 +4649,7 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
             cooperativeMatrixADFuncs << "coopmatAZD uint16BitsToFloat16(coopmatAZD value);\n";
             cooperativeMatrixADFuncs << "coopmatAZD int16BitsToHalf(coopmatAZD value);\n";
             cooperativeMatrixADFuncs << "coopmatAZD uint16BitsToHalf(coopmatAZD value);\n";
-            stageBuiltins[EShLangCompute].append(cooperativeMatrixADFuncs.str().c_str());
+            commonBuiltins.append(cooperativeMatrixADFuncs.str().c_str());
         }
 
         std::stringstream cooperativeMatrixFuncs;
