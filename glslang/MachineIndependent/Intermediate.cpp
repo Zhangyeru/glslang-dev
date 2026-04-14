@@ -683,8 +683,8 @@ TIntermediate::addPairConversion(TOperator op, TIntermTyped* node0, TIntermTyped
         if (node0->getType().isArray() || node1->getType().isArray())
             return std::make_tuple(nullptr, nullptr);
 
-        // No implicit conversions for operations involving cooperative matrix AD types
-        if (node0->getType().isCoopMatAD() || node1->getType().isCoopMatAD())
+        // No implicit conversions for operations involving cooperative matrix AZD types
+        if (node0->getType().isCoopMatAZD() || node1->getType().isCoopMatAZD())
             return std::make_tuple(node0, node1);
 
         // No implicit conversions for operations involving cooperative matrices
@@ -823,9 +823,9 @@ TIntermTyped* TIntermediate::addConversion(TOperator op, const TType& type, TInt
     if (type.isArray() || node->getType().isArray())
         return nullptr;
 
-    // Reject implicit conversions to cooperative matrix AD types
-    if (node->getType().isCoopMatAD() &&
-        op != EOpConstructCooperativeMatrixAD)
+    // Reject implicit conversions to cooperative matrix AZD types
+    if (node->getType().isCoopMatAZD() &&
+        op != EOpConstructCooperativeMatrixAZD)
         return nullptr;
 
     // Reject implicit conversions to cooperative matrix types
@@ -838,9 +838,9 @@ TIntermTyped* TIntermediate::addConversion(TOperator op, const TType& type, TInt
         node->getType().isTensorViewNV())
         return nullptr;
 
-    // Reject implicit conversions to cooperative vector AD types
-    if (node->getType().isCoopVecAD() &&
-        op != EOpConstructCooperativeVectorAD)
+    // Reject implicit conversions to cooperative vector AZD types
+    if (node->getType().isCoopVecAZD() &&
+        op != EOpConstructCooperativeVectorAZD)
         return nullptr;
 
     // Reject implicit conversions to cooperative vector types
@@ -915,9 +915,9 @@ TIntermTyped* TIntermediate::addConversion(TOperator op, const TType& type, TInt
     case EOpConstructStruct:
     case EOpConstructCooperativeMatrixNV:
     case EOpConstructCooperativeMatrixKHR:
-    case EOpConstructCooperativeMatrixAD:
+    case EOpConstructCooperativeMatrixAZD:
     case EOpConstructCooperativeVectorNV:
-    case EOpConstructCooperativeVectorAD:
+    case EOpConstructCooperativeVectorAZD:
 
         if (type.isReference() || node->getType().isReference()) {
             // types must match to assign a reference
@@ -1794,14 +1794,14 @@ TOperator TIntermediate::mapTypeToConstructorOp(const TType& type) const
     if (type.isCoopMatKHR())
         return EOpConstructCooperativeMatrixKHR;
 
-    if (type.isCoopMatAD())
-        return EOpConstructCooperativeMatrixAD;
+    if (type.isCoopMatAZD())
+        return EOpConstructCooperativeMatrixAZD;
 
     if (type.isCoopVecNV())
         return EOpConstructCooperativeVectorNV;
 
-    if (type.isCoopVecAD())
-        return EOpConstructCooperativeVectorAD;
+    if (type.isCoopVecAZD())
+        return EOpConstructCooperativeVectorAZD;
 
     switch (type.getBasicType()) {
     case EbtStruct:
@@ -3290,21 +3290,21 @@ bool TIntermediate::promoteBinary(TIntermBinary& node)
         break;
     }
 
-    if (left->getType().isCoopMatAD() || right->getType().isCoopMatAD()) {
+    if (left->getType().isCoopMatAZD() || right->getType().isCoopMatAZD()) {
         if (left->getType().isCoopMat() || right->getType().isCoopMat()) {
             return false;
         }
-        if (left->getType().isCoopMatAD() && right->getType().isCoopMatAD() &&
+        if (left->getType().isCoopMatAZD() && right->getType().isCoopMatAZD() &&
             left->getType() != right->getType()) {
             return false;
         }
         switch (op) {
         case EOpMul:
         case EOpMulAssign:
-            if (!left->getType().isCoopMatAD() || !right->getType().isCoopMatAD()) {
+            if (!left->getType().isCoopMatAZD() || !right->getType().isCoopMatAZD()) {
                 node.setOp(op == EOpMulAssign ? EOpMatrixTimesScalarAssign : EOpMatrixTimesScalar);
             }
-            if (right->getType().isCoopMatAD()) {
+            if (right->getType().isCoopMatAZD()) {
                 node.setType(right->getType());
             }
             return true;
@@ -3312,7 +3312,7 @@ bool TIntermediate::promoteBinary(TIntermBinary& node)
         case EOpSub:
         case EOpDiv:
         case EOpAssign:
-            if (!left->getType().isCoopMatAD() || !right->getType().isCoopMatAD()) {
+            if (!left->getType().isCoopMatAZD() || !right->getType().isCoopMatAZD()) {
                 return false;
             }
             return true;
@@ -3364,21 +3364,21 @@ bool TIntermediate::promoteBinary(TIntermBinary& node)
         return false;
     }
 
-    if (left->getType().isCoopVecAD() || right->getType().isCoopVecAD()) {
+    if (left->getType().isCoopVecAZD() || right->getType().isCoopVecAZD()) {
         if (left->getType().isCoopVecNV() || right->getType().isCoopVecNV()) {
             return false;
         }
-        if (left->getType().isCoopVecAD() && right->getType().isCoopVecAD() &&
+        if (left->getType().isCoopVecAZD() && right->getType().isCoopVecAZD() &&
             left->getType() != right->getType()) {
             return false;
         }
         switch (op) {
         case EOpMul:
         case EOpMulAssign:
-            if (!left->getType().isCoopVecAD() || !right->getType().isCoopVecAD()) {
+            if (!left->getType().isCoopVecAZD() || !right->getType().isCoopVecAZD()) {
                 node.setOp(op == EOpMulAssign ? EOpVectorTimesScalarAssign : EOpVectorTimesScalar);
             }
-            if (right->getType().isCoopVecAD()) {
+            if (right->getType().isCoopVecAZD()) {
                 node.setType(right->getType());
             }
             return true;
@@ -3390,7 +3390,7 @@ bool TIntermediate::promoteBinary(TIntermBinary& node)
         case EOpSub:
         case EOpDiv:
         case EOpAssign:
-            if (!left->getType().isCoopVecAD() || !right->getType().isCoopVecAD()) {
+            if (!left->getType().isCoopVecAZD() || !right->getType().isCoopVecAZD()) {
                 return false;
             }
             return true;

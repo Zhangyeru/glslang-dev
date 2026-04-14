@@ -1,0 +1,161 @@
+spv.coopvecAZDloadstore.comp
+; SPIR-V
+; Version: 1.0
+; Generator: Khronos Glslang Reference Front End; 11
+; Bound: 77
+; Schema: 0
+               OpCapability Shader
+               OpCapability Float16
+               OpCapability Int64
+               OpCapability StorageBuffer16BitAccess
+               OpCapability VulkanMemoryModel
+               OpCapability PhysicalStorageBufferAddresses
+               OpCapability CooperativeVectorAZD
+               OpExtension "SPV_AZD_cooperative_vector"
+               OpExtension "SPV_KHR_16bit_storage"
+               OpExtension "SPV_KHR_physical_storage_buffer"
+               OpExtension "SPV_KHR_storage_buffer_storage_class"
+               OpExtension "SPV_KHR_vulkan_memory_model"
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel PhysicalStorageBuffer64 Vulkan
+               OpEntryPoint GLCompute %main "main"
+               OpExecutionMode %main LocalSize 64 1 1
+               OpSource GLSL 450
+               OpSourceExtension "GL_AZD_cooperative_vector"
+               OpSourceExtension "GL_EXT_buffer_reference"
+               OpSourceExtension "GL_EXT_nonuniform_qualifier"
+               OpSourceExtension "GL_EXT_shader_explicit_arithmetic_types"
+               OpSourceExtension "GL_KHR_memory_scope_semantics"
+               OpName %main "main"
+               OpName %tempArg "tempArg"
+               OpName %MatrixBuf "MatrixBuf"
+               OpMemberName %MatrixBuf 0 "matrixData"
+               OpName %matrixBuf "matrixBuf"
+               OpName %v "v"
+               OpName %tempArg_0 "tempArg"
+               OpName %MatrixBuf2 "MatrixBuf2"
+               OpMemberName %MatrixBuf2 0 "matrixData"
+               OpName %matrixBuf2 "matrixBuf2"
+               OpName %tempArg_1 "tempArg"
+               OpName %MatrixBuf3 "MatrixBuf3"
+               OpMemberName %MatrixBuf3 0 "matrixData"
+               OpName %matrixBuf3 "matrixBuf3"
+               OpName %tempArg_2 "tempArg"
+               OpName %MatrixBuf4 "MatrixBuf4"
+               OpMemberName %MatrixBuf4 0 "matrixData"
+               OpName %matrixBuf4 "matrixBuf4"
+               OpName %tempArg_3 "tempArg"
+               OpName %matrixShmem "matrixShmem"
+               OpDecorate %_runtimearr_v3ulong ArrayStride 32
+               OpDecorate %MatrixBuf Block
+               OpMemberDecorate %MatrixBuf 0 Offset 0
+               OpDecorate %matrixBuf Binding 0
+               OpDecorate %matrixBuf DescriptorSet 0
+               OpDecorate %_runtimearr_half ArrayStride 2
+               OpDecorate %MatrixBuf2 Block
+               OpMemberDecorate %MatrixBuf2 0 Offset 0
+               OpDecorate %matrixBuf2 Binding 0
+               OpDecorate %matrixBuf2 DescriptorSet 0
+               OpDecorate %_runtimearr_float ArrayStride 4
+               OpDecorate %MatrixBuf3 Block
+               OpMemberDecorate %MatrixBuf3 0 Offset 0
+               OpDecorate %matrixBuf3 Binding 0
+               OpDecorate %matrixBuf3 DescriptorSet 0
+               OpDecorate %_runtimearr_half_0 ArrayStride 2
+               OpDecorate %MatrixBuf4 Block
+               OpMemberDecorate %MatrixBuf4 0 Offset 0
+               OpDecorate %matrixBuf4 AliasedPointer
+               OpDecorate %gl_WorkGroupSize BuiltIn WorkgroupSize
+       %void = OpTypeVoid
+          %3 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+       %uint = OpTypeInt 32 0
+     %uint_5 = OpConstant %uint 5
+          %9 = OpTypeCooperativeVectorAZD %float %uint_5
+%_ptr_Function_9 = OpTypePointer Function %9
+      %ulong = OpTypeInt 64 0
+    %v3ulong = OpTypeVector %ulong 3
+%_runtimearr_v3ulong = OpTypeRuntimeArray %v3ulong
+  %MatrixBuf = OpTypeStruct %_runtimearr_v3ulong
+%_ptr_StorageBuffer_MatrixBuf = OpTypePointer StorageBuffer %MatrixBuf
+  %matrixBuf = OpVariable %_ptr_StorageBuffer_MatrixBuf StorageBuffer
+        %int = OpTypeInt 32 1
+      %int_0 = OpConstant %int 0
+%_ptr_StorageBuffer__runtimearr_v3ulong = OpTypePointer StorageBuffer %_runtimearr_v3ulong
+       %half = OpTypeFloat 16
+%_runtimearr_half = OpTypeRuntimeArray %half
+ %MatrixBuf2 = OpTypeStruct %_runtimearr_half
+%_ptr_StorageBuffer_MatrixBuf2 = OpTypePointer StorageBuffer %MatrixBuf2
+ %matrixBuf2 = OpVariable %_ptr_StorageBuffer_MatrixBuf2 StorageBuffer
+%_ptr_StorageBuffer__runtimearr_half = OpTypePointer StorageBuffer %_runtimearr_half
+%_runtimearr_float = OpTypeRuntimeArray %float
+ %MatrixBuf3 = OpTypeStruct %_runtimearr_float
+%_ptr_StorageBuffer_MatrixBuf3 = OpTypePointer StorageBuffer %MatrixBuf3
+ %matrixBuf3 = OpVariable %_ptr_StorageBuffer_MatrixBuf3 StorageBuffer
+%_ptr_StorageBuffer__runtimearr_float = OpTypePointer StorageBuffer %_runtimearr_float
+               OpTypeForwardPointer %_ptr_PhysicalStorageBuffer_MatrixBuf4 PhysicalStorageBuffer
+%_runtimearr_half_0 = OpTypeRuntimeArray %half
+ %MatrixBuf4 = OpTypeStruct %_runtimearr_half_0
+%_ptr_PhysicalStorageBuffer_MatrixBuf4 = OpTypePointer PhysicalStorageBuffer %MatrixBuf4
+%_ptr_Function__ptr_PhysicalStorageBuffer_MatrixBuf4 = OpTypePointer Function %_ptr_PhysicalStorageBuffer_MatrixBuf4
+%_ptr_PhysicalStorageBuffer__runtimearr_half_0 = OpTypePointer PhysicalStorageBuffer %_runtimearr_half_0
+   %uint_100 = OpConstant %uint 100
+%_arr_uint_uint_100 = OpTypeArray %uint %uint_100
+%_ptr_Workgroup__arr_uint_uint_100 = OpTypePointer Workgroup %_arr_uint_uint_100
+%matrixShmem = OpVariable %_ptr_Workgroup__arr_uint_uint_100 Workgroup
+     %uint_2 = OpConstant %uint 2
+     %v3uint = OpTypeVector %uint 3
+    %uint_64 = OpConstant %uint 64
+     %uint_1 = OpConstant %uint 1
+%gl_WorkGroupSize = OpConstantComposite %v3uint %uint_64 %uint_1 %uint_1
+       %main = OpFunction %void None %3
+          %5 = OpLabel
+    %tempArg = OpVariable %_ptr_Function_9 Function
+          %v = OpVariable %_ptr_Function_9 Function
+  %tempArg_0 = OpVariable %_ptr_Function_9 Function
+  %tempArg_1 = OpVariable %_ptr_Function_9 Function
+  %tempArg_2 = OpVariable %_ptr_Function_9 Function
+ %matrixBuf4 = OpVariable %_ptr_Function__ptr_PhysicalStorageBuffer_MatrixBuf4 Function
+  %tempArg_3 = OpVariable %_ptr_Function_9 Function
+         %21 = OpAccessChain %_ptr_StorageBuffer__runtimearr_v3ulong %matrixBuf %int_0
+         %22 = OpCooperativeVectorLoadAZD %9 %21
+               OpStore %tempArg %22
+         %24 = OpLoad %9 %tempArg
+               OpStore %v %24
+         %25 = OpLoad %9 %v
+         %26 = OpAccessChain %_ptr_StorageBuffer__runtimearr_v3ulong %matrixBuf %int_0
+               OpCooperativeVectorStoreAZD %26 %25
+         %34 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %matrixBuf2 %int_0
+         %35 = OpCooperativeVectorLoadAZD %9 %34
+               OpStore %tempArg_0 %35
+         %36 = OpLoad %9 %tempArg_0
+               OpStore %v %36
+         %37 = OpLoad %9 %v
+         %38 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %matrixBuf2 %int_0
+               OpCooperativeVectorStoreAZD %38 %37
+         %45 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %matrixBuf3 %int_0
+         %46 = OpCooperativeVectorLoadAZD %9 %45
+               OpStore %tempArg_1 %46
+         %47 = OpLoad %9 %tempArg_1
+               OpStore %v %47
+         %48 = OpLoad %9 %v
+         %49 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %matrixBuf3 %int_0
+               OpCooperativeVectorStoreAZD %49 %48
+         %56 = OpLoad %_ptr_PhysicalStorageBuffer_MatrixBuf4 %matrixBuf4
+         %58 = OpAccessChain %_ptr_PhysicalStorageBuffer__runtimearr_half_0 %56 %int_0
+         %59 = OpCooperativeVectorLoadAZD %9 %58
+               OpStore %tempArg_2 %59
+         %60 = OpLoad %9 %tempArg_2
+               OpStore %v %60
+         %61 = OpLoad %9 %v
+         %62 = OpLoad %_ptr_PhysicalStorageBuffer_MatrixBuf4 %matrixBuf4
+         %63 = OpAccessChain %_ptr_PhysicalStorageBuffer__runtimearr_half_0 %62 %int_0
+               OpCooperativeVectorStoreAZD %63 %61
+         %70 = OpCooperativeVectorLoadAZD %9 %matrixShmem
+               OpStore %tempArg_3 %70
+         %71 = OpLoad %9 %tempArg_3
+               OpStore %v %71
+         %72 = OpLoad %9 %v
+               OpCooperativeVectorStoreAZD %matrixShmem %72
+               OpReturn
+               OpFunctionEnd

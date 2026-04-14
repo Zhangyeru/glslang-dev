@@ -1,6 +1,0 @@
-spv.coopvecADMatMul_Error.comp
-ERROR: 0:17: 'coopVecMatMulAD' : no matching overloaded function found 
-ERROR: 1 compilation errors.  No code generated.
-
-
-SPIR-V is not generated for failed compile or link

@@ -121,9 +121,9 @@ public:
 
     static bool useSpirvToolsDisassembler(const std::string& shaderName)
     {
-        return ((shaderName.rfind("spv.coopmatAD", 0) == 0) &&
+        return ((shaderName.rfind("spv.coopmatAZD", 0) == 0) &&
                 shaderName.find("Error") == std::string::npos) ||
-               ((shaderName.rfind("spv.coopvecAD", 0) == 0) &&
+               ((shaderName.rfind("spv.coopvecAZD", 0) == 0) &&
                 shaderName.find("Error") == std::string::npos);
     }
 

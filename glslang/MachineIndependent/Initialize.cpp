@@ -4632,23 +4632,23 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
 
             std::stringstream cooperativeMatrixADFuncs;
             for (auto t : allTypes) {
-                cooperativeMatrixADFuncs << "void coopMatLoadAD(out coopmatAD m, volatile coherent nontemporal " << t << "[] buf, vec2 srcMatrixShape, vec2 srcMatrixOffset, int matrixLayout);\n";
-                cooperativeMatrixADFuncs << "void coopMatStoreAD(coopmatAD m, volatile coherent nontemporal " << t << "[] buf, vec2 dstMatrixShape, vec2 dstMatrixOffset, int matrixLayout);\n";
+                cooperativeMatrixADFuncs << "void coopMatLoadAZD(out coopmatAZD m, volatile coherent nontemporal " << t << "[] buf, vec2 srcMatrixShape, vec2 srcMatrixOffset, int matrixLayout);\n";
+                cooperativeMatrixADFuncs << "void coopMatStoreAZD(coopmatAZD m, volatile coherent nontemporal " << t << "[] buf, vec2 dstMatrixShape, vec2 dstMatrixOffset, int matrixLayout);\n";
             }
-            cooperativeMatrixADFuncs << "void coopMatMulAD(out coopmatAD result, coopmatAD A, coopmatAD B);\n";
-            cooperativeMatrixADFuncs << "void coopMatMulAddAD(out coopmatAD result, coopmatAD A, coopmatAD B, coopmatAD C);\n";
-            cooperativeMatrixADFuncs << "coopmatAD coopMatReduceAD(coopmatAD matrix, int reduceMask, int combineOp);\n";
-            cooperativeMatrixADFuncs << "coopmatAD floatBitsToInt(coopmatAD value);\n";
-            cooperativeMatrixADFuncs << "coopmatAD floatBitsToUint(coopmatAD value);\n";
-            cooperativeMatrixADFuncs << "coopmatAD intBitsToFloat(coopmatAD value);\n";
-            cooperativeMatrixADFuncs << "coopmatAD uintBitsToFloat(coopmatAD value);\n";
-            cooperativeMatrixADFuncs << "coopmatAD float16BitsToInt16(coopmatAD value);\n";
-            cooperativeMatrixADFuncs << "coopmatAD float16BitsToUint16(coopmatAD value);\n";
-            cooperativeMatrixADFuncs << "coopmatAD halfBitsToUint16(coopmatAD value);\n";
-            cooperativeMatrixADFuncs << "coopmatAD int16BitsToFloat16(coopmatAD value);\n";
-            cooperativeMatrixADFuncs << "coopmatAD uint16BitsToFloat16(coopmatAD value);\n";
-            cooperativeMatrixADFuncs << "coopmatAD int16BitsToHalf(coopmatAD value);\n";
-            cooperativeMatrixADFuncs << "coopmatAD uint16BitsToHalf(coopmatAD value);\n";
+            cooperativeMatrixADFuncs << "void coopMatMulAZD(out coopmatAZD result, coopmatAZD A, coopmatAZD B);\n";
+            cooperativeMatrixADFuncs << "void coopMatMulAddAZD(out coopmatAZD result, coopmatAZD A, coopmatAZD B, coopmatAZD C);\n";
+            cooperativeMatrixADFuncs << "coopmatAZD coopMatReduceAZD(coopmatAZD matrix, int reduceMask, int combineOp);\n";
+            cooperativeMatrixADFuncs << "coopmatAZD floatBitsToInt(coopmatAZD value);\n";
+            cooperativeMatrixADFuncs << "coopmatAZD floatBitsToUint(coopmatAZD value);\n";
+            cooperativeMatrixADFuncs << "coopmatAZD intBitsToFloat(coopmatAZD value);\n";
+            cooperativeMatrixADFuncs << "coopmatAZD uintBitsToFloat(coopmatAZD value);\n";
+            cooperativeMatrixADFuncs << "coopmatAZD float16BitsToInt16(coopmatAZD value);\n";
+            cooperativeMatrixADFuncs << "coopmatAZD float16BitsToUint16(coopmatAZD value);\n";
+            cooperativeMatrixADFuncs << "coopmatAZD halfBitsToUint16(coopmatAZD value);\n";
+            cooperativeMatrixADFuncs << "coopmatAZD int16BitsToFloat16(coopmatAZD value);\n";
+            cooperativeMatrixADFuncs << "coopmatAZD uint16BitsToFloat16(coopmatAZD value);\n";
+            cooperativeMatrixADFuncs << "coopmatAZD int16BitsToHalf(coopmatAZD value);\n";
+            cooperativeMatrixADFuncs << "coopmatAZD uint16BitsToHalf(coopmatAZD value);\n";
             stageBuiltins[EShLangCompute].append(cooperativeMatrixADFuncs.str().c_str());
         }
 
@@ -4689,13 +4689,13 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
         commonBuiltins.append(cooperativeMatrixFuncs.str().c_str());
 
         commonBuiltins.append(
-            "const int RowMajorAD = 0;\n"
-            "const int ColumnMajorAD = 1;\n"
-            "const int ReduceRowAD = 0;\n"
-            "const int ReduceColumnAD = 1;\n"
-            "const int ReduceAddAD = 0;\n"
-            "const int ReduceMinAD = 1;\n"
-            "const int ReduceMaxAD = 2;\n"
+            "const int RowMajorAZD = 0;\n"
+            "const int ColumnMajorAZD = 1;\n"
+            "const int ReduceRowAZD = 0;\n"
+            "const int ReduceColumnAZD = 1;\n"
+            "const int ReduceAddAZD = 0;\n"
+            "const int ReduceMinAZD = 1;\n"
+            "const int ReduceMaxAZD = 2;\n"
             "\n"
             );
 
@@ -4860,28 +4860,28 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
             "\n";
 
         std::string cooperativeVectorADFuncs =
-            "void coopVecMatMulAD(out coopvecAD result, coopvecAD v, coopmatAD matrix);\n"
-            "void coopVecMatMulAddAD(out coopvecAD result, coopvecAD v, coopmatAD matrix, coopvecAD bias);\n"
-            "coopvecAD fma(coopvecAD, coopvecAD, coopvecAD);\n"
-            "coopvecAD min(coopvecAD, coopvecAD);\n"
-            "coopvecAD max(coopvecAD, coopvecAD);\n"
-            "coopvecAD step(coopvecAD, coopvecAD);\n"
-            "coopvecAD exp(coopvecAD);\n"
-            "coopvecAD log(coopvecAD);\n"
-            "coopvecAD tanh(coopvecAD);\n"
-            "coopvecAD atan(coopvecAD);\n"
-            "coopvecAD clamp(coopvecAD, coopvecAD, coopvecAD);\n"
-            "coopvecAD floatBitsToInt(coopvecAD value);\n"
-            "coopvecAD floatBitsToUint(coopvecAD value);\n"
-            "coopvecAD intBitsToFloat(coopvecAD value);\n"
-            "coopvecAD uintBitsToFloat(coopvecAD value);\n"
-            "coopvecAD float16BitsToInt16(coopvecAD value);\n"
-            "coopvecAD float16BitsToUint16(coopvecAD value);\n"
-            "coopvecAD halfBitsToUint16(coopvecAD value);\n"
-            "coopvecAD int16BitsToFloat16(coopvecAD value);\n"
-            "coopvecAD uint16BitsToFloat16(coopvecAD value);\n"
-            "coopvecAD int16BitsToHalf(coopvecAD value);\n"
-            "coopvecAD uint16BitsToHalf(coopvecAD value);\n"
+            "void coopVecMatMulAZD(out coopvecAZD result, coopvecAZD v, coopmatAZD matrix);\n"
+            "void coopVecMatMulAddAZD(out coopvecAZD result, coopvecAZD v, coopmatAZD matrix, coopvecAZD bias);\n"
+            "coopvecAZD fma(coopvecAZD, coopvecAZD, coopvecAZD);\n"
+            "coopvecAZD min(coopvecAZD, coopvecAZD);\n"
+            "coopvecAZD max(coopvecAZD, coopvecAZD);\n"
+            "coopvecAZD step(coopvecAZD, coopvecAZD);\n"
+            "coopvecAZD exp(coopvecAZD);\n"
+            "coopvecAZD log(coopvecAZD);\n"
+            "coopvecAZD tanh(coopvecAZD);\n"
+            "coopvecAZD atan(coopvecAZD);\n"
+            "coopvecAZD clamp(coopvecAZD, coopvecAZD, coopvecAZD);\n"
+            "coopvecAZD floatBitsToInt(coopvecAZD value);\n"
+            "coopvecAZD floatBitsToUint(coopvecAZD value);\n"
+            "coopvecAZD intBitsToFloat(coopvecAZD value);\n"
+            "coopvecAZD uintBitsToFloat(coopvecAZD value);\n"
+            "coopvecAZD float16BitsToInt16(coopvecAZD value);\n"
+            "coopvecAZD float16BitsToUint16(coopvecAZD value);\n"
+            "coopvecAZD halfBitsToUint16(coopvecAZD value);\n"
+            "coopvecAZD int16BitsToFloat16(coopvecAZD value);\n"
+            "coopvecAZD uint16BitsToFloat16(coopvecAZD value);\n"
+            "coopvecAZD int16BitsToHalf(coopvecAZD value);\n"
+            "coopvecAZD uint16BitsToHalf(coopvecAZD value);\n"
             "\n";
 
         commonBuiltins.append(cooperativeVectorFuncs.c_str());
@@ -4944,9 +4944,9 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
 
         std::stringstream cooperativeVectorADLoadStoreFuncs;
         for (uint32_t i = 0; i < sizeof(scalarAndVectorTypes)/sizeof(scalarAndVectorTypes[0]); ++i) {
-            cooperativeVectorADLoadStoreFuncs << "void coopVecLoadAD(out coopvecAD v, volatile coherent "
+            cooperativeVectorADLoadStoreFuncs << "void coopVecLoadAZD(out coopvecAZD v, volatile coherent "
                                               << scalarAndVectorTypes[i] << "[] buf);\n";
-            cooperativeVectorADLoadStoreFuncs << "void coopVecStoreAD(coopvecAD v, volatile coherent "
+            cooperativeVectorADLoadStoreFuncs << "void coopVecStoreAZD(coopvecAZD v, volatile coherent "
                                               << scalarAndVectorTypes[i] << "[] buf);\n";
         }
         commonBuiltins.append(cooperativeVectorADLoadStoreFuncs.str().c_str());
@@ -9524,11 +9524,11 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
         }
 
         {
-            symbolTable.setFunctionExtensions("coopMatLoadAD",   1, &E_GL_AD_cooperative_matrix);
-            symbolTable.setFunctionExtensions("coopMatStoreAD",  1, &E_GL_AD_cooperative_matrix);
-            symbolTable.setFunctionExtensions("coopMatMulAD",    1, &E_GL_AD_cooperative_matrix);
-            symbolTable.setFunctionExtensions("coopMatMulAddAD", 1, &E_GL_AD_cooperative_matrix);
-            symbolTable.setFunctionExtensions("coopMatReduceAD", 1, &E_GL_AD_cooperative_matrix);
+            symbolTable.setFunctionExtensions("coopMatLoadAZD",   1, &E_GL_AZD_cooperative_matrix);
+            symbolTable.setFunctionExtensions("coopMatStoreAZD",  1, &E_GL_AZD_cooperative_matrix);
+            symbolTable.setFunctionExtensions("coopMatMulAZD",    1, &E_GL_AZD_cooperative_matrix);
+            symbolTable.setFunctionExtensions("coopMatMulAddAZD", 1, &E_GL_AZD_cooperative_matrix);
+            symbolTable.setFunctionExtensions("coopMatReduceAZD", 1, &E_GL_AZD_cooperative_matrix);
         }
 
         {
@@ -9559,8 +9559,8 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
             symbolTable.setFunctionExtensions("coopVecOuterProductAccumulateNV",    1, &E_GL_NV_cooperative_vector);
             symbolTable.setFunctionExtensions("coopVecReduceSumAccumulateNV",       1, &E_GL_NV_cooperative_vector);
 
-            symbolTable.setFunctionExtensions("coopVecMatMulAD",                    1, &E_GL_AD_cooperative_vector);
-            symbolTable.setFunctionExtensions("coopVecMatMulAddAD",                 1, &E_GL_AD_cooperative_vector);
+            symbolTable.setFunctionExtensions("coopVecMatMulAZD",                    1, &E_GL_AZD_cooperative_vector);
+            symbolTable.setFunctionExtensions("coopVecMatMulAddAZD",                 1, &E_GL_AZD_cooperative_vector);
         }
 
         if ((profile != EEsProfile && version >= 450) || (profile == EEsProfile && version >= 320)) {
@@ -10685,13 +10685,13 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
         }
 
         symbolTable.relateToOperator("coopVecMatMulNV",              EOpCooperativeVectorMatMulNV);
-        symbolTable.relateToOperator("coopVecMatMulAD",              EOpCooperativeVectorMatMulAD);
+        symbolTable.relateToOperator("coopVecMatMulAZD",              EOpCooperativeVectorMatMulAZD);
         symbolTable.relateToOperator("coopVecMatMulAddNV",           EOpCooperativeVectorMatMulAddNV);
-        symbolTable.relateToOperator("coopVecMatMulAddAD",           EOpCooperativeVectorMatMulAddAD);
+        symbolTable.relateToOperator("coopVecMatMulAddAZD",           EOpCooperativeVectorMatMulAddAZD);
         symbolTable.relateToOperator("coopVecLoadNV",                EOpCooperativeVectorLoadNV);
-        symbolTable.relateToOperator("coopVecLoadAD",                EOpCooperativeVectorLoadAD);
+        symbolTable.relateToOperator("coopVecLoadAZD",                EOpCooperativeVectorLoadAZD);
         symbolTable.relateToOperator("coopVecStoreNV",               EOpCooperativeVectorStoreNV);
-        symbolTable.relateToOperator("coopVecStoreAD",               EOpCooperativeVectorStoreAD);
+        symbolTable.relateToOperator("coopVecStoreAZD",               EOpCooperativeVectorStoreAZD);
         symbolTable.relateToOperator("coopVecOuterProductAccumulateNV", EOpCooperativeVectorOuterProductAccumulateNV);
         symbolTable.relateToOperator("coopVecReduceSumAccumulateNV",    EOpCooperativeVectorReduceSumAccumulateNV);
     }
@@ -10789,11 +10789,11 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
         symbolTable.relateToOperator("coopMatLoadNV",              EOpCooperativeMatrixLoadNV);
         symbolTable.relateToOperator("coopMatStoreNV",             EOpCooperativeMatrixStoreNV);
         symbolTable.relateToOperator("coopMatMulAddNV",            EOpCooperativeMatrixMulAddNV);
-        symbolTable.relateToOperator("coopMatLoadAD",              EOpCooperativeMatrixLoadAD);
-        symbolTable.relateToOperator("coopMatStoreAD",             EOpCooperativeMatrixStoreAD);
-        symbolTable.relateToOperator("coopMatMulAD",               EOpCooperativeMatrixMulAD);
-        symbolTable.relateToOperator("coopMatMulAddAD",            EOpCooperativeMatrixMulAddAD);
-        symbolTable.relateToOperator("coopMatReduceAD",            EOpCooperativeMatrixReduceAD);
+        symbolTable.relateToOperator("coopMatLoadAZD",              EOpCooperativeMatrixLoadAZD);
+        symbolTable.relateToOperator("coopMatStoreAZD",             EOpCooperativeMatrixStoreAZD);
+        symbolTable.relateToOperator("coopMatMulAZD",               EOpCooperativeMatrixMulAZD);
+        symbolTable.relateToOperator("coopMatMulAddAZD",            EOpCooperativeMatrixMulAddAZD);
+        symbolTable.relateToOperator("coopMatReduceAZD",            EOpCooperativeMatrixReduceAZD);
 
         symbolTable.relateToOperator("coopMatLoad",                EOpCooperativeMatrixLoad);
         symbolTable.relateToOperator("coopMatStore",               EOpCooperativeMatrixStore);

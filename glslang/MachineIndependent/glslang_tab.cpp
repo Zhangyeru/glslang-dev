@@ -288,9 +288,9 @@ enum yysymbol_kind_t
   YYSYMBOL_ICOOPMATNV = 164,               /* ICOOPMATNV  */
   YYSYMBOL_UCOOPMATNV = 165,               /* UCOOPMATNV  */
   YYSYMBOL_COOPMAT = 166,                  /* COOPMAT  */
-  YYSYMBOL_COOPMATAD = 167,                /* COOPMATAD  */
+  YYSYMBOL_COOPMATAZD = 167,                /* COOPMATAZD  */
   YYSYMBOL_COOPVECNV = 168,                /* COOPVECNV  */
-  YYSYMBOL_COOPVECAD = 169,                /* COOPVECAD  */
+  YYSYMBOL_COOPVECAZD = 169,                /* COOPVECAZD  */
   YYSYMBOL_HITOBJECTNV = 170,              /* HITOBJECTNV  */
   YYSYMBOL_HITOBJECTATTRNV = 171,          /* HITOBJECTATTRNV  */
   YYSYMBOL_TENSORLAYOUTNV = 172,           /* TENSORLAYOUTNV  */
@@ -1284,7 +1284,7 @@ static const char *const yytname[] =
   "F64MAT2X4", "F64MAT3X2", "F64MAT3X3", "F64MAT3X4", "F64MAT4X2",
   "F64MAT4X3", "F64MAT4X4", "ATOMIC_UINT", "ACCSTRUCTNV", "ACCSTRUCTEXT",
   "RAYQUERYEXT", "FCOOPMATNV", "ICOOPMATNV", "UCOOPMATNV", "COOPMAT",
-  "COOPMATAD", "COOPVECNV", "COOPVECAD", "HITOBJECTNV", "HITOBJECTATTRNV",
+  "COOPMATAZD", "COOPVECNV", "COOPVECAZD", "HITOBJECTNV", "HITOBJECTATTRNV",
   "TENSORLAYOUTNV", "TENSORVIEWNV", "SAMPLERCUBEARRAY",
   "SAMPLERCUBEARRAYSHADOW", "ISAMPLERCUBEARRAY", "USAMPLERCUBEARRAY",
   "SAMPLER1D", "SAMPLER1DARRAY", "SAMPLER1DARRAYSHADOW", "ISAMPLER1D",
@@ -10940,15 +10940,15 @@ yyreduce:
 #line 10941 "MachineIndependent/glslang_tab.cpp"
     break;
 
-  case 538: /* type_specifier_nonarray: COOPMATAD  */
+  case 538: /* type_specifier_nonarray: COOPMATAZD  */
 #line 3546 "MachineIndependent/glslang.y"
                 {
-        parseContext.coopmatADCheck((yyvsp[0].lex).loc, "coopmatAD", parseContext.symbolTable.atBuiltInLevel());
+        parseContext.coopmatAZDCheck((yyvsp[0].lex).loc, "coopmatAZD", parseContext.symbolTable.atBuiltInLevel());
         (yyval.interm.type).init((yyvsp[0].lex).loc, parseContext.symbolTable.atGlobalLevel());
-        (yyval.interm.type).basicType = EbtCoopmatAD;
+        (yyval.interm.type).basicType = EbtCoopmatAZD;
         (yyval.interm.type).coopmatNV = false;
         (yyval.interm.type).coopmatKHR = false;
-        (yyval.interm.type).coopmatAD = true;
+        (yyval.interm.type).coopmatAZD = true;
     }
 #line 10954 "MachineIndependent/glslang_tab.cpp"
     break;
@@ -10993,13 +10993,13 @@ yyreduce:
 #line 10994 "MachineIndependent/glslang_tab.cpp"
     break;
 
-  case 543: /* type_specifier_nonarray: COOPVECAD  */
+  case 543: /* type_specifier_nonarray: COOPVECAZD  */
 #line 3574 "MachineIndependent/glslang.y"
                 {
-        parseContext.coopvecADCheck((yyvsp[0].lex).loc, "coopvecAD", parseContext.symbolTable.atBuiltInLevel());
+        parseContext.coopvecAZDCheck((yyvsp[0].lex).loc, "coopvecAZD", parseContext.symbolTable.atBuiltInLevel());
         (yyval.interm.type).init((yyvsp[0].lex).loc, parseContext.symbolTable.atGlobalLevel());
-        (yyval.interm.type).basicType = EbtCoopvecAD;
-        (yyval.interm.type).coopvecAD = true;
+        (yyval.interm.type).basicType = EbtCoopvecAZD;
+        (yyval.interm.type).coopvecAZD = true;
     }
 #line 11005 "MachineIndependent/glslang_tab.cpp"
     break;

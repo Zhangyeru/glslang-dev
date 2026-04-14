@@ -504,22 +504,22 @@ Id Builder::makeCooperativeMatrixTypeNV(Id component, Id scope, Id rows, Id cols
     return type->getResultId();
 }
 
-Id Builder::makeCooperativeMatrixTypeAD(Id component, Id rows, Id cols)
+Id Builder::makeCooperativeMatrixTypeAZD(Id component, Id rows, Id cols)
 {
     Instruction* type;
-    for (int t = 0; t < (int)groupedTypes[OpTypeCooperativeMatrixAD].size(); ++t) {
-        type = groupedTypes[OpTypeCooperativeMatrixAD][t];
+    for (int t = 0; t < (int)groupedTypes[OpTypeCooperativeMatrixAZD].size(); ++t) {
+        type = groupedTypes[OpTypeCooperativeMatrixAZD][t];
         if (type->getIdOperand(0) == component && type->getIdOperand(1) == rows &&
             type->getIdOperand(2) == cols)
             return type->getResultId();
     }
 
-    type = new Instruction(getUniqueId(), NoType, OpTypeCooperativeMatrixAD);
+    type = new Instruction(getUniqueId(), NoType, OpTypeCooperativeMatrixAZD);
     type->reserveOperands(3);
     type->addIdOperand(component);
     type->addIdOperand(rows);
     type->addIdOperand(cols);
-    groupedTypes[OpTypeCooperativeMatrixAD].push_back(type);
+    groupedTypes[OpTypeCooperativeMatrixAZD].push_back(type);
     constantsTypesGlobals.push_back(std::unique_ptr<Instruction>(type));
     module.mapInstruction(type);
 
@@ -531,8 +531,8 @@ Id Builder::makeCooperativeMatrixTypeWithSameShape(Id component, Id otherType)
     Instruction* instr = module.getInstruction(otherType);
     if (instr->getOpCode() == OpTypeCooperativeMatrixNV) {
         return makeCooperativeMatrixTypeNV(component, instr->getIdOperand(1), instr->getIdOperand(2), instr->getIdOperand(3));
-    } else if (instr->getOpCode() == OpTypeCooperativeMatrixAD) {
-        return makeCooperativeMatrixTypeAD(component, instr->getIdOperand(1), instr->getIdOperand(2));
+    } else if (instr->getOpCode() == OpTypeCooperativeMatrixAZD) {
+        return makeCooperativeMatrixTypeAZD(component, instr->getIdOperand(1), instr->getIdOperand(2));
     } else {
         assert(instr->getOpCode() == OpTypeCooperativeMatrixKHR);
         return makeCooperativeMatrixTypeKHR(component, instr->getIdOperand(1), instr->getIdOperand(2), instr->getIdOperand(3), instr->getIdOperand(4));
@@ -561,20 +561,20 @@ Id Builder::makeCooperativeVectorTypeNV(Id componentType, Id components)
     return type->getResultId();
 }
 
-Id Builder::makeCooperativeVectorTypeAD(Id componentType, Id components)
+Id Builder::makeCooperativeVectorTypeAZD(Id componentType, Id components)
 {
     Instruction* type;
-    for (int t = 0; t < (int)groupedTypes[OpTypeCooperativeVectorAD].size(); ++t) {
-        type = groupedTypes[OpTypeCooperativeVectorAD][t];
+    for (int t = 0; t < (int)groupedTypes[OpTypeCooperativeVectorAZD].size(); ++t) {
+        type = groupedTypes[OpTypeCooperativeVectorAZD][t];
         if (type->getIdOperand(0) == componentType &&
             type->getIdOperand(1) == components)
             return type->getResultId();
     }
 
-    type = new Instruction(getUniqueId(), NoType, OpTypeCooperativeVectorAD);
+    type = new Instruction(getUniqueId(), NoType, OpTypeCooperativeVectorAZD);
     type->addIdOperand(componentType);
     type->addIdOperand(components);
-    groupedTypes[OpTypeCooperativeVectorAD].push_back(type);
+    groupedTypes[OpTypeCooperativeVectorAZD].push_back(type);
     constantsTypesGlobals.push_back(std::unique_ptr<Instruction>(type));
     module.mapInstruction(type);
 
@@ -1430,7 +1430,7 @@ unsigned int Builder::getNumTypeConstituents(Id typeId) const
     case OpTypeMatrix:
         return instr->getImmediateOperand(1);
     case OpTypeCooperativeVectorNV:
-    case OpTypeCooperativeVectorAD:
+    case OpTypeCooperativeVectorAZD:
     case OpTypeArray:
     {
         Id lengthId = instr->getIdOperand(1);
@@ -1440,7 +1440,7 @@ unsigned int Builder::getNumTypeConstituents(Id typeId) const
         return instr->getNumOperands();
     case OpTypeCooperativeMatrixKHR:
     case OpTypeCooperativeMatrixNV:
-    case OpTypeCooperativeMatrixAD:
+    case OpTypeCooperativeMatrixAZD:
         // has only one constituent when used with OpCompositeConstruct.
         return 1;
     default:
@@ -1470,9 +1470,9 @@ Id Builder::getScalarTypeId(Id typeId) const
     case OpTypeArray:
     case OpTypeRuntimeArray:
     case OpTypePointer:
-    case OpTypeCooperativeMatrixAD:
+    case OpTypeCooperativeMatrixAZD:
     case OpTypeCooperativeVectorNV:
-    case OpTypeCooperativeVectorAD:
+    case OpTypeCooperativeVectorAZD:
         return getScalarTypeId(getContainedTypeId(typeId));
     default:
         assert(0);
@@ -1494,9 +1494,9 @@ Id Builder::getContainedTypeId(Id typeId, int member) const
     case OpTypeRuntimeArray:
     case OpTypeCooperativeMatrixKHR:
     case OpTypeCooperativeMatrixNV:
-    case OpTypeCooperativeMatrixAD:
+    case OpTypeCooperativeMatrixAZD:
     case OpTypeCooperativeVectorNV:
-    case OpTypeCooperativeVectorAD:
+    case OpTypeCooperativeVectorAZD:
         return instr->getIdOperand(0);
     case OpTypePointer:
         return instr->getIdOperand(1);
@@ -1967,9 +1967,9 @@ Id Builder::makeCompositeConstant(Id typeId, const std::vector<Id>& members, boo
     case OpTypeMatrix:
     case OpTypeCooperativeMatrixKHR:
     case OpTypeCooperativeMatrixNV:
-    case OpTypeCooperativeMatrixAD:
+    case OpTypeCooperativeMatrixAZD:
     case OpTypeCooperativeVectorNV:
-    case OpTypeCooperativeVectorAD:
+    case OpTypeCooperativeVectorAZD:
         if (! specConstant) {
             Id existing = findCompositeConstant(typeClass, opcode, typeId, members, numMembers);
             if (existing)
@@ -2770,15 +2770,15 @@ Id Builder::createCooperativeMatrixLengthNV(Id type)
     return length->getResultId();
 }
 
-Id Builder::createCooperativeMatrixLengthAD(Id type)
+Id Builder::createCooperativeMatrixLengthAZD(Id type)
 {
     spv::Id intType = makeUintType(32);
 
     if (generatingOpCodeForSpecConst) {
-        return createSpecConstantOp(OpCooperativeMatrixLengthAD, intType, std::vector<Id>(1, type), std::vector<Id>());
+        return createSpecConstantOp(OpCooperativeMatrixLengthAZD, intType, std::vector<Id>(1, type), std::vector<Id>());
     }
 
-    Instruction* length = new Instruction(getUniqueId(), intType, OpCooperativeMatrixLengthAD);
+    Instruction* length = new Instruction(getUniqueId(), intType, OpCooperativeMatrixLengthAZD);
     length->addIdOperand(type);
     addInstruction(std::unique_ptr<Instruction>(length));
 

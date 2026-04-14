@@ -1,9 +1,0 @@
-spv.coopmatAD_bitcastError.comp
-ERROR: 0:15: 'floatBitsToInt' : requires coopmatAD<float|float16_t, ...> 
-ERROR: 0:16: 'uintBitsToFloat' : requires coopmatAD<uint|uint16_t, ...> 
-ERROR: 0:17: 'float16BitsToInt16' : requires coopmatAD<float16_t, ...> 
-ERROR: 0:18: 'int16BitsToFloat16' : requires coopmatAD<int16_t, ...> 
-ERROR: 4 compilation errors.  No code generated.
-
-
-SPIR-V is not generated for failed compile or link

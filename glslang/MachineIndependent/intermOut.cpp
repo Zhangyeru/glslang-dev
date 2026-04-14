@@ -643,9 +643,9 @@ bool TOutputTraverser::visitAggregate(TVisit /* visit */, TIntermAggregate* node
     case EOpConstructReference:  out.debug << "Construct reference";  break;
     case EOpConstructCooperativeMatrixNV:  out.debug << "Construct cooperative matrix NV";  break;
     case EOpConstructCooperativeMatrixKHR:  out.debug << "Construct cooperative matrix KHR";  break;
-    case EOpConstructCooperativeMatrixAD:  out.debug << "Construct cooperative matrix AD";  break;
+    case EOpConstructCooperativeMatrixAZD:  out.debug << "Construct cooperative matrix AZD";  break;
     case EOpConstructCooperativeVectorNV:  out.debug << "Construct cooperative vector NV";  break;
-    case EOpConstructCooperativeVectorAD:  out.debug << "Construct cooperative vector AD";  break;
+    case EOpConstructCooperativeVectorAZD:  out.debug << "Construct cooperative vector AZD";  break;
     case EOpConstructAccStruct: out.debug << "Construct acceleration structure"; break;
 
     case EOpLessThan:         out.debug << "Compare Less Than";             break;
@@ -959,11 +959,11 @@ bool TOutputTraverser::visitAggregate(TVisit /* visit */, TIntermAggregate* node
     case EOpCooperativeMatrixMulAdd: out.debug << "MulAdd cooperative matrices KHR"; break;
     case EOpCooperativeMatrixLoadNV:  out.debug << "Load cooperative matrix NV"; break;
     case EOpCooperativeMatrixStoreNV:  out.debug << "Store cooperative matrix NV"; break;
-    case EOpCooperativeMatrixLoadAD:  out.debug << "Load cooperative matrix AD"; break;
-    case EOpCooperativeMatrixStoreAD:  out.debug << "Store cooperative matrix AD"; break;
-    case EOpCooperativeMatrixMulAD: out.debug << "Mul cooperative matrices AD"; break;
-    case EOpCooperativeMatrixMulAddAD: out.debug << "MulAdd cooperative matrices AD"; break;
-    case EOpCooperativeMatrixReduceAD: out.debug << "Reduce cooperative matrices AD"; break;
+    case EOpCooperativeMatrixLoadAZD:  out.debug << "Load cooperative matrix AZD"; break;
+    case EOpCooperativeMatrixStoreAZD:  out.debug << "Store cooperative matrix AZD"; break;
+    case EOpCooperativeMatrixMulAZD: out.debug << "Mul cooperative matrices AZD"; break;
+    case EOpCooperativeMatrixMulAddAZD: out.debug << "MulAdd cooperative matrices AZD"; break;
+    case EOpCooperativeMatrixReduceAZD: out.debug << "Reduce cooperative matrices AZD"; break;
     case EOpCooperativeMatrixLoadTensorNV:  out.debug << "Load cooperative matrix tensor NV"; break;
     case EOpCooperativeMatrixStoreTensorNV:  out.debug << "Store cooperative matrix tensor NV"; break;
     case EOpCooperativeMatrixMulAddNV: out.debug << "MulAdd cooperative matrices NV"; break;
@@ -972,13 +972,13 @@ bool TOutputTraverser::visitAggregate(TVisit /* visit */, TIntermAggregate* node
     case EOpCooperativeMatrixTransposeNV: out.debug << "Transpose cooperative matrix"; break;
 
     case EOpCooperativeVectorMatMulNV: out.debug << "Cooperative vector matrix multiply NV"; break;
-    case EOpCooperativeVectorMatMulAD: out.debug << "Cooperative vector matrix multiply AD"; break;
+    case EOpCooperativeVectorMatMulAZD: out.debug << "Cooperative vector matrix multiply AZD"; break;
     case EOpCooperativeVectorMatMulAddNV: out.debug << "Cooperative vector matrix multiply add NV"; break;
-    case EOpCooperativeVectorMatMulAddAD: out.debug << "Cooperative vector matrix multiply add AD"; break;
+    case EOpCooperativeVectorMatMulAddAZD: out.debug << "Cooperative vector matrix multiply add AZD"; break;
     case EOpCooperativeVectorLoadNV:  out.debug << "Load cooperative vector NV"; break;
-    case EOpCooperativeVectorLoadAD:  out.debug << "Load cooperative vector AD"; break;
+    case EOpCooperativeVectorLoadAZD:  out.debug << "Load cooperative vector AZD"; break;
     case EOpCooperativeVectorStoreNV:  out.debug << "Store cooperative vector NV"; break;
-    case EOpCooperativeVectorStoreAD:  out.debug << "Store cooperative vector AD"; break;
+    case EOpCooperativeVectorStoreAZD:  out.debug << "Store cooperative vector AZD"; break;
     case EOpCooperativeVectorOuterProductAccumulateNV: out.debug << "Cooperative vector outer product accumulate NV"; break;
     case EOpCooperativeVectorReduceSumAccumulateNV: out.debug << "Cooperative vector reduce sum accumulate NV"; break;
 
