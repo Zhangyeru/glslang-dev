@@ -288,9 +288,9 @@ enum yysymbol_kind_t
   YYSYMBOL_ICOOPMATNV = 164,               /* ICOOPMATNV  */
   YYSYMBOL_UCOOPMATNV = 165,               /* UCOOPMATNV  */
   YYSYMBOL_COOPMAT = 166,                  /* COOPMAT  */
-  YYSYMBOL_COOPMATAZD = 167,                /* COOPMATAZD  */
+  YYSYMBOL_COOPMATAZD = 167,               /* COOPMATAZD  */
   YYSYMBOL_COOPVECNV = 168,                /* COOPVECNV  */
-  YYSYMBOL_COOPVECAZD = 169,                /* COOPVECAZD  */
+  YYSYMBOL_COOPVECAZD = 169,               /* COOPVECAZD  */
   YYSYMBOL_HITOBJECTNV = 170,              /* HITOBJECTNV  */
   YYSYMBOL_HITOBJECTATTRNV = 171,          /* HITOBJECTATTRNV  */
   YYSYMBOL_TENSORLAYOUTNV = 172,           /* TENSORLAYOUTNV  */
@@ -1284,8 +1284,8 @@ static const char *const yytname[] =
   "F64MAT2X4", "F64MAT3X2", "F64MAT3X3", "F64MAT3X4", "F64MAT4X2",
   "F64MAT4X3", "F64MAT4X4", "ATOMIC_UINT", "ACCSTRUCTNV", "ACCSTRUCTEXT",
   "RAYQUERYEXT", "FCOOPMATNV", "ICOOPMATNV", "UCOOPMATNV", "COOPMAT",
-  "COOPMATAZD", "COOPVECNV", "COOPVECAZD", "HITOBJECTNV", "HITOBJECTATTRNV",
-  "TENSORLAYOUTNV", "TENSORVIEWNV", "SAMPLERCUBEARRAY",
+  "COOPMATAZD", "COOPVECNV", "COOPVECAZD", "HITOBJECTNV",
+  "HITOBJECTATTRNV", "TENSORLAYOUTNV", "TENSORVIEWNV", "SAMPLERCUBEARRAY",
   "SAMPLERCUBEARRAYSHADOW", "ISAMPLERCUBEARRAY", "USAMPLERCUBEARRAY",
   "SAMPLER1D", "SAMPLER1DARRAY", "SAMPLER1DARRAYSHADOW", "ISAMPLER1D",
   "SAMPLER1DSHADOW", "SAMPLER2DRECT", "SAMPLER2DRECTSHADOW",
@@ -10942,7 +10942,7 @@ yyreduce:
 
   case 538: /* type_specifier_nonarray: COOPMATAZD  */
 #line 3546 "MachineIndependent/glslang.y"
-                {
+                 {
         parseContext.coopmatAZDCheck((yyvsp[0].lex).loc, "coopmatAZD", parseContext.symbolTable.atBuiltInLevel());
         (yyval.interm.type).init((yyvsp[0].lex).loc, parseContext.symbolTable.atGlobalLevel());
         (yyval.interm.type).basicType = EbtCoopmatAZD;
@@ -10995,7 +10995,7 @@ yyreduce:
 
   case 543: /* type_specifier_nonarray: COOPVECAZD  */
 #line 3574 "MachineIndependent/glslang.y"
-                {
+                 {
         parseContext.coopvecAZDCheck((yyvsp[0].lex).loc, "coopvecAZD", parseContext.symbolTable.atBuiltInLevel());
         (yyval.interm.type).init((yyvsp[0].lex).loc, parseContext.symbolTable.atGlobalLevel());
         (yyval.interm.type).basicType = EbtCoopvecAZD;
