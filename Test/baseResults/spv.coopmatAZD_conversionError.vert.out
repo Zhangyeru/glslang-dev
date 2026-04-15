@@ -1,0 +1,8 @@
+spv.coopmatAZD_conversionError.vert
+ERROR: 0:12: 'constructor' : Cooperative matrix type parameters mismatch 
+ERROR: 0:13: 'constructor' : Cooperative matrix type parameters mismatch 
+ERROR: 0:14: 'constructor' : Cooperative matrix type parameters mismatch 
+ERROR: 3 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

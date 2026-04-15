@@ -1,0 +1,6 @@
+spv.coopvecAZDstore_Error.frag
+ERROR: 0:13: 'coopVecStoreAZD' : no matching overloaded function found 
+ERROR: 1 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

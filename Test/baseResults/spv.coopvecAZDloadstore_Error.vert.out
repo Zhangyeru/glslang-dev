@@ -1,0 +1,6 @@
+spv.coopvecAZDloadstore_Error.vert
+ERROR: 0:13: 'coopVecLoadAZD' : no matching overloaded function found 
+ERROR: 1 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

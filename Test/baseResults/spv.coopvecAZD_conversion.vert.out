@@ -1,0 +1,109 @@
+spv.coopvecAZD_conversion.vert
+; SPIR-V
+; Version: 1.0
+; Generator: Khronos Glslang Reference Front End; 11
+; Bound: 62
+; Schema: 0
+               OpCapability Shader
+               OpCapability Float16
+               OpCapability Int16
+               OpCapability VulkanMemoryModel
+               OpCapability CooperativeVectorAZD
+               OpExtension "SPV_AZD_cooperative_vector"
+               OpExtension "SPV_KHR_vulkan_memory_model"
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint Vertex %main "main" %_
+               OpSource GLSL 450
+               OpSourceExtension "GL_AZD_cooperative_vector"
+               OpSourceExtension "GL_EXT_shader_explicit_arithmetic_types"
+               OpName %main "main"
+               OpName %gl_PerVertex "gl_PerVertex"
+               OpMemberName %gl_PerVertex 0 "gl_Position"
+               OpMemberName %gl_PerVertex 1 "gl_PointSize"
+               OpMemberName %gl_PerVertex 2 "gl_ClipDistance"
+               OpMemberName %gl_PerVertex 3 "gl_CullDistance"
+               OpName %_ ""
+               OpName %u32 "u32"
+               OpName %f16 "f16"
+               OpName %i32 "i32"
+               OpName %i16 "i16"
+               OpName %f32 "f32"
+               OpName %u16 "u16"
+               OpDecorate %gl_PerVertex Block
+               OpMemberDecorate %gl_PerVertex 0 BuiltIn Position
+               OpMemberDecorate %gl_PerVertex 1 BuiltIn PointSize
+               OpMemberDecorate %gl_PerVertex 2 BuiltIn ClipDistance
+               OpMemberDecorate %gl_PerVertex 3 BuiltIn CullDistance
+       %void = OpTypeVoid
+          %3 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+    %v4float = OpTypeVector %float 4
+       %uint = OpTypeInt 32 0
+     %uint_1 = OpConstant %uint 1
+%_arr_float_uint_1 = OpTypeArray %float %uint_1
+%gl_PerVertex = OpTypeStruct %v4float %float %_arr_float_uint_1 %_arr_float_uint_1
+%_ptr_Output_gl_PerVertex = OpTypePointer Output %gl_PerVertex
+          %_ = OpVariable %_ptr_Output_gl_PerVertex Output
+        %int = OpTypeInt 32 1
+      %int_0 = OpConstant %int 0
+    %float_0 = OpConstant %float 0
+         %17 = OpConstantComposite %v4float %float_0 %float_0 %float_0 %float_0
+%_ptr_Output_v4float = OpTypePointer Output %v4float
+     %uint_5 = OpConstant %uint 5
+         %21 = OpTypeCooperativeVectorAZD %uint %uint_5
+%_ptr_Function_21 = OpTypePointer Function %21
+       %half = OpTypeFloat 16
+         %25 = OpTypeCooperativeVectorAZD %half %uint_5
+%_ptr_Function_25 = OpTypePointer Function %25
+         %30 = OpTypeCooperativeVectorAZD %int %uint_5
+%_ptr_Function_30 = OpTypePointer Function %30
+      %short = OpTypeInt 16 1
+         %36 = OpTypeCooperativeVectorAZD %short %uint_5
+%_ptr_Function_36 = OpTypePointer Function %36
+         %39 = OpTypeCooperativeVectorAZD %float %uint_5
+%_ptr_Function_39 = OpTypePointer Function %39
+     %ushort = OpTypeInt 16 0
+         %45 = OpTypeCooperativeVectorAZD %ushort %uint_5
+%_ptr_Function_45 = OpTypePointer Function %45
+       %main = OpFunction %void None %3
+          %5 = OpLabel
+        %u32 = OpVariable %_ptr_Function_21 Function
+        %f16 = OpVariable %_ptr_Function_25 Function
+        %i32 = OpVariable %_ptr_Function_30 Function
+        %i16 = OpVariable %_ptr_Function_36 Function
+        %f32 = OpVariable %_ptr_Function_39 Function
+        %u16 = OpVariable %_ptr_Function_45 Function
+         %19 = OpAccessChain %_ptr_Output_v4float %_ %int_0
+               OpStore %19 %17
+         %28 = OpLoad %25 %f16
+         %29 = OpConvertFToU %21 %28
+               OpStore %u32 %29
+         %33 = OpLoad %25 %f16
+         %34 = OpConvertFToS %30 %33
+               OpStore %i32 %34
+         %42 = OpLoad %39 %f32
+         %43 = OpConvertFToS %36 %42
+               OpStore %i16 %43
+         %48 = OpLoad %39 %f32
+         %49 = OpConvertFToU %45 %48
+               OpStore %u16 %49
+         %50 = OpLoad %45 %u16
+         %51 = OpUConvert %21 %50
+         %52 = OpBitcast %30 %51
+               OpStore %i32 %52
+         %53 = OpLoad %36 %i16
+         %54 = OpSConvert %30 %53
+         %55 = OpBitcast %21 %54
+               OpStore %u32 %55
+         %56 = OpLoad %45 %u16
+         %57 = OpConvertUToF %39 %56
+               OpStore %f32 %57
+         %58 = OpLoad %36 %i16
+         %59 = OpConvertSToF %25 %58
+               OpStore %f16 %59
+         %60 = OpLoad %39 %f32
+         %61 = OpFConvert %25 %60
+               OpStore %f16 %61
+               OpReturn
+               OpFunctionEnd

@@ -1,0 +1,38 @@
+#version 450 core
+#extension GL_KHR_memory_scope_semantics : enable
+#extension GL_AZD_cooperative_matrix : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(set = 0, binding = 0) buffer Buf {
+    float16_t data[];
+} buf;
+
+void main()
+{
+    gl_Position = vec4(0.0);
+
+    const vec2 srcMatrixShape = vec2(32.0, 64.0);
+    const vec2 srcMatrixOffset = vec2(1.0, 2.0);
+    const vec2 dstMatrixOffset = vec2(3.0, 4.0);
+
+    coopmatAZD<float16_t, 16, 8> A = coopmatAZD<float16_t, 16, 8>(0.0);
+    coopmatAZD<float16_t, 8, 8> B = coopmatAZD<float16_t, 8, 8>(1.0);
+    coopmatAZD<float16_t, 16, 8> C;
+    coopmatAZD<float16_t, 16, 8> M;
+    coopmatAZD<float16_t, 16, 8> R0;
+    coopmatAZD<float16_t, 16, 8> R1;
+
+    coopMatLoadAZD(C, buf.data, srcMatrixShape, srcMatrixOffset, RowMajorAZD);
+    coopMatMulAZD(M, A, B);
+    C = M;
+    coopMatMulAddAZD(C, A, B, C);
+    R0 = coopMatReduceAZD(C, ReduceRowAZD, ReduceAddAZD);
+    R1 = coopMatReduceAZD(C, ReduceColumnAZD, ReduceMaxAZD);
+    coopMatStoreAZD(C, buf.data, srcMatrixShape, dstMatrixOffset, ColumnMajorAZD);
+
+    int len = C.length();
+    coopmatAZD<float16_t, 16, 8> D = coopmatAZD<float16_t, 16, 8>(C);
+    C = D;
+    if (len == 0)
+        C = coopmatAZD<float16_t, 16, 8>(0.0);
+}

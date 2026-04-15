@@ -1,0 +1,13 @@
+spv.coopvecAZD_Error.vert
+ERROR: 0:12: 'assign' :  cannot convert from ' temp coopvecNV<5> float' to ' temp coopvecAZD<5> float'
+ERROR: 0:13: 'assign' :  cannot convert from ' temp coopvecAZD<5> float' to ' temp coopvecNV<5> float'
+ERROR: 0:14: ' temp coopvecAZD<5> float' : cannot construct with these arguments 
+ERROR: 0:16: 'bad1' : expected two type parameters 
+ERROR: 0:17: 'bad2' : expected positive number of components 
+ERROR: 0:18: '' : type parameter must be a non-negative integer
+ERROR: 0:18: 'bad3' : expected positive number of components 
+ERROR: 0:19: '' :  syntax error, unexpected RIGHT_ANGLE, expecting LEFT_PAREN
+ERROR: 8 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link
