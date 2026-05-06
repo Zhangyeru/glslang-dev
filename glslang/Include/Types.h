@@ -2779,8 +2779,51 @@ public:
     // See if two type's parameters match
     bool sameTypeParameters(const TType& right) const
     {
+        if (isCoopMatAZD() || right.isCoopMatAZD())
+            return sameCoopMatAZDTypeParameters(right);
+
         return ((typeParameters == nullptr && right.typeParameters == nullptr) ||
                 (typeParameters != nullptr && right.typeParameters != nullptr && *typeParameters == *right.typeParameters));
+    }
+
+    bool sameCoopMatAZDTypeParameters(const TType& right) const
+    {
+        if (!isCoopMatAZD() || !right.isCoopMatAZD())
+            return false;
+
+        if (typeParameters == nullptr || right.typeParameters == nullptr)
+            return typeParameters == right.typeParameters;
+
+        if (typeParameters->basicType != right.typeParameters->basicType)
+            return false;
+
+        const TArraySizes* leftSizes = typeParameters->arraySizes;
+        const TArraySizes* rightSizes = right.typeParameters->arraySizes;
+        if (leftSizes == nullptr || rightSizes == nullptr)
+            return leftSizes == rightSizes;
+
+        if (leftSizes->getNumDims() != rightSizes->getNumDims())
+            return false;
+
+        for (int dim = 0; dim < (int)leftSizes->getNumDims(); ++dim) {
+            if (leftSizes->getDimSize(dim) != rightSizes->getDimSize(dim))
+                return false;
+
+            TIntermTyped* leftNode = leftSizes->getDimNode(dim);
+            TIntermTyped* rightNode = rightSizes->getDimNode(dim);
+            if (leftNode == nullptr || rightNode == nullptr) {
+                if (leftNode != rightNode)
+                    return false;
+            } else if (leftNode != rightNode && !SameSpecializationConstants(leftNode, rightNode))
+                return false;
+        }
+
+        if (typeParameters->basicType == EbtSpirvType) {
+            assert(typeParameters->spirvType && right.typeParameters->spirvType);
+            return *typeParameters->spirvType == *right.typeParameters->spirvType;
+        }
+
+        return true;
     }
 
     // See if two type's SPIR-V type contents match

@@ -268,7 +268,8 @@ protected:
     spv::LinkageType convertGlslangLinkageToSpv(glslang::TLinkType glslangLinkType);
     void decorateStructType(const glslang::TType&, const glslang::TTypeList* glslangStruct, glslang::TLayoutPacking,
                             const glslang::TQualifier&, spv::Id, const std::vector<spv::Id>& spvMembers);
-    spv::Id makeArraySizeId(const glslang::TArraySizes&, int dim, bool allowZero = false, bool boolType = false);
+    spv::Id makeArraySizeId(const glslang::TArraySizes&, int dim, bool allowZero = false, bool boolType = false,
+                            bool cacheSpecNode = false);
     spv::Id accessChainLoad(const glslang::TType& type);
     void    accessChainStore(const glslang::TType& type, spv::Id rvalue);
     void multiTypeStore(const glslang::TType&, spv::Id rValue);
@@ -364,7 +365,7 @@ protected:
                                                // rather than a pointer
     std::unordered_map<std::string, spv::Function*> functionMap;
     std::unordered_map<const glslang::TTypeList*, spv::Id> structMap[glslang::ElpCount][glslang::ElmCount];
-    std::unordered_map<const glslang::TIntermTyped*, spv::Id> specConstantSizeIds;
+    std::unordered_map<const glslang::TIntermTyped*, spv::Id> coopMatAZDTypeParamSizeIds;
     // for mapping glslang block indices to spv indices (e.g., due to hidden members):
     std::unordered_map<long long, std::vector<int>> memberRemapper;
     // for mapping glslang symbol struct to symbol Id
@@ -5453,8 +5454,8 @@ spv::Id TGlslangToSpvTraverser::convertGlslangToSpvType(const glslang::TType& ty
             builder.addCapability(spv::CapabilityInt8);
         }
 
-        spv::Id rows = makeArraySizeId(*type.getTypeParameters()->arraySizes, 0);
-        spv::Id cols = makeArraySizeId(*type.getTypeParameters()->arraySizes, 1);
+        spv::Id rows = makeArraySizeId(*type.getTypeParameters()->arraySizes, 0, false, false, true);
+        spv::Id cols = makeArraySizeId(*type.getTypeParameters()->arraySizes, 1, false, false, true);
 
         spvType = builder.makeCooperativeMatrixTypeAZD(spvType, rows, cols);
     }
@@ -5878,22 +5879,26 @@ void TGlslangToSpvTraverser::decorateStructType(const glslang::TType& type,
 // This is not quite trivial, because of specialization constants.
 // Sometimes, a raw constant is turned into an Id, and sometimes
 // a specialization constant expression is.
-spv::Id TGlslangToSpvTraverser::makeArraySizeId(const glslang::TArraySizes& arraySizes, int dim, bool allowZero, bool boolType)
+spv::Id TGlslangToSpvTraverser::makeArraySizeId(const glslang::TArraySizes& arraySizes, int dim, bool allowZero,
+                                                bool boolType, bool cacheSpecNode)
 {
     // First, see if this is sized with a node, meaning a specialization constant:
     glslang::TIntermTyped* specNode = arraySizes.getDimNode(dim);
     if (specNode != nullptr) {
         builder.clearAccessChain();
 
-        auto existing = specConstantSizeIds.find(specNode);
-        if (existing != specConstantSizeIds.end())
-            return existing->second;
+        if (cacheSpecNode) {
+            auto existing = coopMatAZDTypeParamSizeIds.find(specNode);
+            if (existing != coopMatAZDTypeParamSizeIds.end())
+                return existing->second;
+        }
 
         SpecConstantOpModeGuard spec_constant_op_mode_setter(&builder);
         spec_constant_op_mode_setter.turnOnSpecConstantOpMode();
         specNode->traverse(this);
         spv::Id sizeId = accessChainLoad(specNode->getAsTyped()->getType());
-        specConstantSizeIds[specNode] = sizeId;
+        if (cacheSpecNode)
+            coopMatAZDTypeParamSizeIds[specNode] = sizeId;
         return sizeId;
     }
 
