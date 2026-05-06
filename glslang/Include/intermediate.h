@@ -1795,9 +1795,13 @@ protected:
 };
 
 // KHR_vulkan_glsl says "Two arrays sized with specialization constants are the same type only if
-// sized with the same symbol, involving no operations"
+// sized with the same symbol, involving no operations". The same AST node can also be reused internally
+// when it already represents one source type.
 inline bool SameSpecializationConstants(TIntermTyped* node1, TIntermTyped* node2)
 {
+    if (node1 == node2)
+        return true;
+
     return node1->getAsSymbolNode() && node2->getAsSymbolNode() &&
            node1->getAsSymbolNode()->getId() == node2->getAsSymbolNode()->getId();
 }

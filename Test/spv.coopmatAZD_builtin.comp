@@ -17,8 +17,15 @@ layout(set = 0, binding = 2) buffer BufU16 {
     uint16_t data[];
 } bufU16;
 
+layout(constant_id=0) const int Rows = 16;
+layout(constant_id=1) const int Columns = 16;
+
 void main()
 {
+    coopmatAZD<float16_t, (2*Rows), Columns> matA;
+
+    coopMatLoadAZD(matA, bufF16.data, vec2(32, 512), vec2(0, 16 * gl_WorkGroupID.x), 0);
+
     const vec2 shape16x8 = vec2(16.0, 8.0);
     const vec2 shape8x8 = vec2(8.0, 8.0);
     const vec2 shape8x16 = vec2(8.0, 16.0);
@@ -66,6 +73,7 @@ void main()
     int lu = uR.length();
 
     if (lf + li + lu == 0) {
+        coopMatStoreAZD(matA, bufF16.data, vec2(32, 512), vec2(0, 16 * gl_WorkGroupID.x), 0);
         fC = fR;
         iC = iR;
         uC = uR;

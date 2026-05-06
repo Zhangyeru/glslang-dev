@@ -364,6 +364,7 @@ protected:
                                                // rather than a pointer
     std::unordered_map<std::string, spv::Function*> functionMap;
     std::unordered_map<const glslang::TTypeList*, spv::Id> structMap[glslang::ElpCount][glslang::ElmCount];
+    std::unordered_map<const glslang::TIntermTyped*, spv::Id> specConstantSizeIds;
     // for mapping glslang block indices to spv indices (e.g., due to hidden members):
     std::unordered_map<long long, std::vector<int>> memberRemapper;
     // for mapping glslang symbol struct to symbol Id
@@ -5883,10 +5884,17 @@ spv::Id TGlslangToSpvTraverser::makeArraySizeId(const glslang::TArraySizes& arra
     glslang::TIntermTyped* specNode = arraySizes.getDimNode(dim);
     if (specNode != nullptr) {
         builder.clearAccessChain();
+
+        auto existing = specConstantSizeIds.find(specNode);
+        if (existing != specConstantSizeIds.end())
+            return existing->second;
+
         SpecConstantOpModeGuard spec_constant_op_mode_setter(&builder);
         spec_constant_op_mode_setter.turnOnSpecConstantOpMode();
         specNode->traverse(this);
-        return accessChainLoad(specNode->getAsTyped()->getType());
+        spv::Id sizeId = accessChainLoad(specNode->getAsTyped()->getType());
+        specConstantSizeIds[specNode] = sizeId;
+        return sizeId;
     }
 
     // Otherwise, need a compile-time (front end) size, get it:
