@@ -42,7 +42,7 @@ void main()
     coopMatLoadAZD(fC, bufF16.data, shape16x8, vec2(5.0, 6.0), gl_RowMajorAZD);
     coopMatMulAZD(fR, fA, fB);
     coopMatMulAddAZD(fC, fA, fB, fC);
-    fR = coopMatReduceAZD(fC, ReduceRowAZD, ReduceAddAZD);
+    fR = coopMatReduceAZD(fC, gl_ReduceRowAZD, ReduceAddAZD);
     coopMatStoreAZD(fR, bufF16.data, shape16x8, vec2(7.0, 8.0), gl_ColumnMajorAZD);
     int lf = fR.length();
 
@@ -55,7 +55,7 @@ void main()
     coopMatLoadAZD(iC, bufI8.data, shape16x16, vec2(13.0, 14.0), gl_RowMajorAZD);
     coopMatMulAZD(iR, iA, iB);
     coopMatMulAddAZD(iC, iA, iB, iC);
-    iR = coopMatReduceAZD(iC, ReduceColumnAZD, ReduceMinAZD);
+    iR = coopMatReduceAZD(iC, gl_ReduceColumnAZD, ReduceMinAZD);
     coopMatStoreAZD(iR, bufI8.data, shape16x16, vec2(15.0, 16.0), gl_ColumnMajorAZD);
     int li = iR.length();
 
@@ -68,7 +68,7 @@ void main()
     coopMatLoadAZD(uC, bufU16.data, shape4x4, vec2(21.0, 22.0), gl_RowMajorAZD);
     coopMatMulAZD(uR, uA, uB);
     coopMatMulAddAZD(uC, uA, uB, uC);
-    uR = coopMatReduceAZD(uC, ReduceRowAZD, ReduceMaxAZD);
+    uR = coopMatReduceAZD(uC, gl_ReduceRowAZD, ReduceMaxAZD);
     coopMatStoreAZD(uR, bufU16.data, shape4x4, vec2(23.0, 24.0), gl_ColumnMajorAZD);
     int lu = uR.length();
 
