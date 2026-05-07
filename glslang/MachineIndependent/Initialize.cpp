@@ -9524,11 +9524,11 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
         }
 
         {
-            symbolTable.setFunctionExtensions("coopMatLoadAZD",   1, &E_GL_AZD_cooperative_matrix);
-            symbolTable.setFunctionExtensions("coopMatStoreAZD",  1, &E_GL_AZD_cooperative_matrix);
-            symbolTable.setFunctionExtensions("coopMatMulAZD",    1, &E_GL_AZD_cooperative_matrix);
-            symbolTable.setFunctionExtensions("coopMatMulAddAZD", 1, &E_GL_AZD_cooperative_matrix);
-            symbolTable.setFunctionExtensions("coopMatReduceAZD", 1, &E_GL_AZD_cooperative_matrix);
+            symbolTable.setFunctionExtensions("coopMatLoadAZD",   1, &E_GL_AZD_neural_matrix);
+            symbolTable.setFunctionExtensions("coopMatStoreAZD",  1, &E_GL_AZD_neural_matrix);
+            symbolTable.setFunctionExtensions("coopMatMulAZD",    1, &E_GL_AZD_neural_matrix);
+            symbolTable.setFunctionExtensions("coopMatMulAddAZD", 1, &E_GL_AZD_neural_matrix);
+            symbolTable.setFunctionExtensions("coopMatReduceAZD", 1, &E_GL_AZD_neural_matrix);
         }
 
         {

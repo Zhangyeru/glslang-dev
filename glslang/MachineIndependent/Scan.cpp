@@ -1795,7 +1795,7 @@ int TScanContext::tokenizeIdentifier()
         afterType = true;
         parserToken->sType.lex.i = 1;
         if (parseContext.symbolTable.atBuiltInLevel() ||
-            parseContext.extensionTurnedOn(E_GL_AZD_cooperative_matrix))
+            parseContext.extensionTurnedOn(E_GL_AZD_neural_matrix))
             return keyword;
         return identifierOrType();
 

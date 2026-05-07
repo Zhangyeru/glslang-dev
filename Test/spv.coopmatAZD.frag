@@ -1,6 +1,6 @@
 #version 450 core
 #extension GL_KHR_memory_scope_semantics : enable
-#extension GL_AZD_cooperative_matrix : enable
+#extension GL_AZD_neural_matrix : enable
 #extension GL_EXT_shader_explicit_arithmetic_types : enable
 
 layout(location = 0) out vec4 outColor;
