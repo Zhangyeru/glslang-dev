@@ -24,13 +24,13 @@ void main()
     coopmatAZD<float16_t, 16, 8> R0;
     coopmatAZD<float16_t, 16, 8> R1;
 
-    coopMatLoadAZD(C, buf.data, srcMatrixShape, srcMatrixOffset, RowMajorAZD);
+    coopMatLoadAZD(C, buf.data, srcMatrixShape, srcMatrixOffset, gl_RowMajorAZD);
     coopMatMulAZD(M, A, B);
     C = M;
     coopMatMulAddAZD(C, A, B, C);
     R0 = coopMatReduceAZD(C, ReduceRowAZD, ReduceAddAZD);
     R1 = coopMatReduceAZD(C, ReduceColumnAZD, ReduceMaxAZD);
-    coopMatStoreAZD(C, buf.data, srcMatrixShape, dstMatrixOffset, ColumnMajorAZD);
+    coopMatStoreAZD(C, buf.data, srcMatrixShape, dstMatrixOffset, gl_ColumnMajorAZD);
 
     int len = C.length();
     coopmatAZD<float16_t, 16, 8> D = coopmatAZD<float16_t, 16, 8>(C);

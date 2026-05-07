@@ -1502,6 +1502,12 @@ enum CooperativeVectorMatrixLayout {
     CooperativeVectorMatrixLayoutMax = 0x7fffffff,
 };
 
+enum CooperativeVectorMatrixLayoutAZD {
+    CooperativeVectorMatrixLayoutAZDRowMajorAZD = 0,
+    CooperativeVectorMatrixLayoutAZDColumnMajorAZD = 1,
+    CooperativeVectorMatrixLayoutAZDMax = 0x7fffffff,
+};
+
 enum ComponentType {
     ComponentTypeFloat16NV = 0,
     ComponentTypeFloat32NV = 1,
@@ -4208,6 +4214,14 @@ inline const char* CooperativeVectorMatrixLayoutToString(CooperativeVectorMatrix
     case CooperativeVectorMatrixLayoutColumnMajorNV: return "ColumnMajorNV";
     case CooperativeVectorMatrixLayoutInferencingOptimalNV: return "InferencingOptimalNV";
     case CooperativeVectorMatrixLayoutTrainingOptimalNV: return "TrainingOptimalNV";
+    default: return "Unknown";
+    }
+}
+
+inline const char* CooperativeVectorMatrixLayoutAZDToString(CooperativeVectorMatrixLayoutAZD value) {
+    switch (value) {
+    case CooperativeVectorMatrixLayoutAZDRowMajorAZD: return "RowMajorAZD";
+    case CooperativeVectorMatrixLayoutAZDColumnMajorAZD: return "ColumnMajorAZD";
     default: return "Unknown";
     }
 }

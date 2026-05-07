@@ -4689,8 +4689,8 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
         commonBuiltins.append(cooperativeMatrixFuncs.str().c_str());
 
         commonBuiltins.append(
-            "const int RowMajorAZD = 0;\n"
-            "const int ColumnMajorAZD = 1;\n"
+            "const int gl_RowMajorAZD = 0;\n"
+            "const int gl_ColumnMajorAZD = 1;\n"
             "const int ReduceRowAZD = 0;\n"
             "const int ReduceColumnAZD = 1;\n"
             "const int ReduceAddAZD = 0;\n"
