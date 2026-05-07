@@ -28,8 +28,8 @@ void main()
     coopMatMulAZD(M, A, B);
     C = M;
     coopMatMulAddAZD(C, A, B, C);
-    R0 = coopMatReduceAZD(C, gl_ReduceRowAZD, ReduceAddAZD);
-    R1 = coopMatReduceAZD(C, gl_ReduceColumnAZD, ReduceMaxAZD);
+    R0 = coopMatReduceAZD(C, gl_ReduceRowAZD, gl_ReduceAddAZD);
+    R1 = coopMatReduceAZD(C, gl_ReduceColumnAZD, gl_ReduceMaxAZD);
     coopMatStoreAZD(C, buf.data, srcMatrixShape, dstMatrixOffset, gl_ColumnMajorAZD);
 
     int len = C.length();

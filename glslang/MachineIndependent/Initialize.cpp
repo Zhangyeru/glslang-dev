@@ -4693,9 +4693,9 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
             "const int gl_ColumnMajorAZD = 1;\n"
             "const int gl_ReduceRowAZD = 0;\n"
             "const int gl_ReduceColumnAZD = 1;\n"
-            "const int ReduceAddAZD = 0;\n"
-            "const int ReduceMinAZD = 1;\n"
-            "const int ReduceMaxAZD = 2;\n"
+            "const int gl_ReduceAddAZD = 0;\n"
+            "const int gl_ReduceMinAZD = 1;\n"
+            "const int gl_ReduceMaxAZD = 2;\n"
             "\n"
             );
 
