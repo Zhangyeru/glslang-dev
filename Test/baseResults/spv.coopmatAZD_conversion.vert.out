@@ -9,7 +9,7 @@ spv.coopmatAZD_conversion.vert
                OpCapability Int16
                OpCapability VulkanMemoryModel
                OpCapability CooperativeMatrixAZD
-               OpExtension "SPV_AZD_cooperative_matrix"
+               OpExtension "SPV_AZD_neural_matrix"
                OpExtension "SPV_KHR_vulkan_memory_model"
           %1 = OpExtInstImport "GLSL.std.450"
                OpMemoryModel Logical Vulkan

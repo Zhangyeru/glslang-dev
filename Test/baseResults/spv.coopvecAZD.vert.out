@@ -12,8 +12,8 @@ spv.coopvecAZD.vert
                OpCapability ReplicatedCompositesEXT
                OpCapability CooperativeVectorAZD
                OpCapability CooperativeMatrixAZD
-               OpExtension "SPV_AZD_cooperative_matrix"
                OpExtension "SPV_AZD_cooperative_vector"
+               OpExtension "SPV_AZD_neural_matrix"
                OpExtension "SPV_EXT_replicated_composites"
                OpExtension "SPV_KHR_vulkan_memory_model"
           %1 = OpExtInstImport "GLSL.std.450"

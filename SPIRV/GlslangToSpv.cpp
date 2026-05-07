@@ -124,7 +124,7 @@ spv::Capability getCooperativeMatrixAZDCapability()
 
 const char* getCooperativeMatrixAZDExtension()
 {
-    return spv::E_SPV_AZD_cooperative_matrix;
+    return spv::E_SPV_AZD_neural_matrix;
 }
 
 const char* getCooperativeVectorAZDExtension()
@@ -5445,7 +5445,7 @@ spv::Id TGlslangToSpvTraverser::convertGlslangToSpvType(const glslang::TType& ty
 
     if (type.isCoopMatAZD()) {
         builder.addCapability(spv::CapabilityCooperativeMatrixAZD);
-        builder.addExtension(spv::E_SPV_AZD_cooperative_matrix);
+        builder.addExtension(spv::E_SPV_AZD_neural_matrix);
 
         if (type.getBasicType() == glslang::EbtFloat16)
             builder.addCapability(spv::CapabilityFloat16);

@@ -12,7 +12,7 @@ spv.coopmatAZD_builtin.comp
                OpCapability StorageBuffer8BitAccess
                OpCapability VulkanMemoryModel
                OpCapability CooperativeMatrixAZD
-               OpExtension "SPV_AZD_cooperative_matrix"
+               OpExtension "SPV_AZD_neural_matrix"
                OpExtension "SPV_KHR_16bit_storage"
                OpExtension "SPV_KHR_8bit_storage"
                OpExtension "SPV_KHR_storage_buffer_storage_class"
