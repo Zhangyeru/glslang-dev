@@ -1,0 +1,6 @@
+spv.cpAsyncGroupBarrier_Error.comp
+ERROR: 0:11: 'cp_async_wait_group' : argument must be a compile-time constant n
+ERROR: 1 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

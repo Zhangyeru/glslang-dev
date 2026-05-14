@@ -4681,6 +4681,14 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
             cooperativeMatrixFuncs << "void coopMatLoadTensorNV(inout coopmat m, volatile coherent nontemporal uint8_t[] buf, uint element, tensorLayoutNV t, tensorViewNV v, __function f);\n";
             cooperativeMatrixFuncs << "void coopMatStoreTensorNV(coopmat m, volatile coherent nontemporal uint8_t[] buf, uint element, tensorLayoutNV t);\n";
             cooperativeMatrixFuncs << "void coopMatStoreTensorNV(coopmat m, volatile coherent nontemporal uint8_t[] buf, uint element, tensorLayoutNV t, tensorViewNV v);\n";
+            cooperativeMatrixFuncs << "void cp_async_tensor_global_shared(int[] dstMem, tensorMap1D tensorShape, int coord);\n";
+            cooperativeMatrixFuncs << "void cp_async_tensor_global_shared(int[] dstMem, tensorMap2D tensorShape, ivec2 coord);\n";
+            cooperativeMatrixFuncs << "void cp_async_tensor_global_shared(int[] dstMem, tensorMap3D tensorShape, ivec3 coord);\n";
+            cooperativeMatrixFuncs << "void cp_async_tensor_global_shared(int[] dstMem, tensorMap4D tensorShape, ivec4 coord);\n";
+            cooperativeMatrixFuncs << "void cp_async_commit_group();\n";
+            cooperativeMatrixFuncs << "void cp_async_wait_group(int n);\n";
+            cooperativeMatrixFuncs << "void barrier_arrive(int id, int n);\n";
+            cooperativeMatrixFuncs << "void barrier_wait(int id, int n);\n";
         }
 
         cooperativeMatrixFuncs <<
@@ -10802,6 +10810,11 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
 
         symbolTable.relateToOperator("coopMatLoadTensorNV",        EOpCooperativeMatrixLoadTensorNV);
         symbolTable.relateToOperator("coopMatStoreTensorNV",       EOpCooperativeMatrixStoreTensorNV);
+        symbolTable.relateToOperator("cp_async_tensor_global_shared", EOpCpAsyncTensorGlobalShared);
+        symbolTable.relateToOperator("cp_async_commit_group",      EOpCpAsyncCommitGroup);
+        symbolTable.relateToOperator("cp_async_wait_group",        EOpCpAsyncWaitGroup);
+        symbolTable.relateToOperator("barrier_arrive",             EOpBarrierArrive);
+        symbolTable.relateToOperator("barrier_wait",               EOpBarrierWait);
 
         symbolTable.relateToOperator("coopMatReduceNV",            EOpCooperativeMatrixReduceNV);
         symbolTable.relateToOperator("coopMatPerElementNV",        EOpCooperativeMatrixPerElementOpNV);

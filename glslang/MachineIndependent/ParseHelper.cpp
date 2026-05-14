@@ -3189,6 +3189,63 @@ void TParseContext::builtInOpCheck(const TSourceLoc& loc, const TFunction& fnCan
         break;
     }
 
+    case EOpCpAsyncTensorGlobalShared:
+    {
+        const TIntermTyped* base = TIntermediate::traverseLValueBase(arg0, true, true);
+        const char* errMsg = "Only l-values corresponding to shared variables can be used with "
+                             "cp_async_tensor_global_shared.";
+        if (base) {
+            const TType* refType = (base->getType().isReference()) ? base->getType().getReferentType() : nullptr;
+            const TQualifier& qualifier =
+                (refType != nullptr) ? refType->getQualifier() : base->getType().getQualifier();
+            if (qualifier.storage != EvqShared)
+                error(loc, errMsg, fnCandidate.getName().c_str(), "");
+        } else {
+            error(loc, errMsg, fnCandidate.getName().c_str(), "");
+        }
+
+        const TType& tensorMapType = (*argp)[1]->getAsTyped()->getType();
+        const TType& coordType = (*argp)[2]->getAsTyped()->getType();
+        int tensorMapDim = 0;
+        if (tensorMapType.getBasicType() == EbtSampler && tensorMapType.getSampler().isTensorMap()) {
+            switch (tensorMapType.getSampler().dim) {
+            case Esd1D: tensorMapDim = 1; break;
+            case Esd2D: tensorMapDim = 2; break;
+            case Esd3D: tensorMapDim = 3; break;
+            case Esd4D: tensorMapDim = 4; break;
+            default: break;
+            }
+        }
+        if (tensorMapDim != coordType.getVectorSize())
+            error(loc, "tensor map dimension must match coordinate dimension",
+                  fnCandidate.getName().c_str(), "");
+
+        break;
+    }
+
+    case EOpCpAsyncWaitGroup:
+    {
+        const TIntermConstantUnion* waitCount = arg0->getAsConstantUnion();
+        if (waitCount == nullptr) {
+            error(loc, "argument must be a compile-time constant", fnCandidate.getName().c_str(), "n");
+        } else if (waitCount->getConstArray()[0].getIConst() < 0) {
+            error(loc, "argument must be non-negative", fnCandidate.getName().c_str(), "n");
+        }
+        break;
+    }
+
+    case EOpBarrierArrive:
+    case EOpBarrierWait:
+    {
+        const char* argNames[] = { "id", "n" };
+        for (int i = 0; i < 2; ++i) {
+            const TIntermConstantUnion* constant = (*argp)[i]->getAsTyped()->getAsConstantUnion();
+            if (constant != nullptr && constant->getConstArray()[0].getIConst() < 0)
+                error(loc, "argument must be non-negative", fnCandidate.getName().c_str(), argNames[i]);
+        }
+        break;
+    }
+
     case EOpInterpolateAtCentroid:
     case EOpInterpolateAtSample:
     case EOpInterpolateAtOffset:
@@ -7868,6 +7925,15 @@ const TFunction* TParseContext::findFunction400(const TSourceLoc& loc, const TFu
             return true;
         if (from.coopVecAZDParameterOK(to))
             return true;
+        if (builtIn && op == EOpCpAsyncTensorGlobalShared && param == 0 &&
+            from.isArray() && to.isArray() &&
+            (from.getQualifier().storage == EvqShared || to.getQualifier().storage == EvqShared)) {
+            TType fromElementType(from, 0);
+            TType toElementType(to, 0);
+            return fromElementType.getBasicType() == EbtInt &&
+                   toElementType.getBasicType() == EbtInt &&
+                   !fromElementType.isArray() && !toElementType.isArray();
+        }
         // Preserve the legacy one-dimensional array matching for builtins that
         // consume raw buffer data, and only enable nested array matching for
         // AZD cooperative matrix/vector load-store builtins.
@@ -7971,6 +8037,15 @@ const TFunction* TParseContext::findFunctionExplicitTypes(const TSourceLoc& loc,
             return true;
         if (from.coopVecAZDParameterOK(to))
             return true;
+        if (builtIn && op == EOpCpAsyncTensorGlobalShared && param == 0 &&
+            from.isArray() && to.isArray() &&
+            (from.getQualifier().storage == EvqShared || to.getQualifier().storage == EvqShared)) {
+            TType fromElementType(from, 0);
+            TType toElementType(to, 0);
+            return fromElementType.getBasicType() == EbtInt &&
+                   toElementType.getBasicType() == EbtInt &&
+                   !fromElementType.isArray() && !toElementType.isArray();
+        }
         // Preserve the legacy one-dimensional array matching for builtins that
         // consume raw buffer data, and only enable nested array matching for
         // AZD cooperative matrix/vector load-store builtins.

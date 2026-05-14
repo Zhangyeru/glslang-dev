@@ -2345,6 +2345,11 @@ enum Op {
     OpMaskedGatherINTEL = 6428,
     OpMaskedScatterINTEL = 6429,
     OpTypeTensorMap = 6466,
+    OpCpAsyncTensorGlobalShared = 6470,
+    OpCpAsyncCommitGroup = 6474,
+    OpCpAsyncWaitGroup = 6475,
+    OpBarrierArrive = 6476,
+    OpBarrierWait = 6477,
     OpMax = 0x7fffffff,
 };
 
@@ -2858,6 +2863,11 @@ inline void HasResultAndType(Op opcode, bool *hasResult, bool *hasResultType) {
     case OpTypeTensorLayoutNV: *hasResult = true; *hasResultType = false; break;
     case OpTypeTensorViewNV: *hasResult = true; *hasResultType = false; break;
     case OpTypeTensorMap: *hasResult = true; *hasResultType = false; break;
+    case OpCpAsyncTensorGlobalShared: *hasResult = false; *hasResultType = false; break;
+    case OpCpAsyncCommitGroup: *hasResult = false; *hasResultType = false; break;
+    case OpCpAsyncWaitGroup: *hasResult = false; *hasResultType = false; break;
+    case OpBarrierArrive: *hasResult = false; *hasResultType = false; break;
+    case OpBarrierWait: *hasResult = false; *hasResultType = false; break;
     case OpCreateTensorLayoutNV: *hasResult = true; *hasResultType = true; break;
     case OpTensorLayoutSetDimensionNV: *hasResult = true; *hasResultType = true; break;
     case OpTensorLayoutSetStrideNV: *hasResult = true; *hasResultType = true; break;
@@ -4782,6 +4792,11 @@ inline const char* OpToString(Op value) {
     case OpTypeTensorLayoutNV: return "OpTypeTensorLayoutNV";
     case OpTypeTensorViewNV: return "OpTypeTensorViewNV";
     case OpTypeTensorMap: return "OpTypeTensorMap";
+    case OpCpAsyncTensorGlobalShared: return "OpCpAsyncTensorGlobalShared";
+    case OpCpAsyncCommitGroup: return "OpCpAsyncCommitGroup";
+    case OpCpAsyncWaitGroup: return "OpCpAsyncWaitGroup";
+    case OpBarrierArrive: return "OpBarrierArrive";
+    case OpBarrierWait: return "OpBarrierWait";
     case OpCreateTensorLayoutNV: return "OpCreateTensorLayoutNV";
     case OpTensorLayoutSetDimensionNV: return "OpTensorLayoutSetDimensionNV";
     case OpTensorLayoutSetStrideNV: return "OpTensorLayoutSetStrideNV";

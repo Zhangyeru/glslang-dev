@@ -464,6 +464,11 @@ enum TOperator {
     EOpCooperativeMatrixReduceNV,
     EOpCooperativeMatrixPerElementOpNV,
     EOpCooperativeMatrixTransposeNV,
+    EOpCpAsyncTensorGlobalShared,
+    EOpCpAsyncCommitGroup,
+    EOpCpAsyncWaitGroup,
+    EOpBarrierArrive,
+    EOpBarrierWait,
 
     EOpCreateTensorLayoutNV,
     EOpTensorLayoutSetBlockSizeNV,

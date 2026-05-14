@@ -122,6 +122,8 @@ public:
     static bool useSpirvToolsDisassembler(const std::string& shaderName)
     {
         return shaderName == "spv.tensorMap.comp" ||
+               shaderName == "spv.cpAsyncTensor.comp" ||
+               shaderName == "spv.cpAsyncGroupBarrier.comp" ||
                ((shaderName.rfind("spv.coopmatAZD", 0) == 0) &&
                 shaderName.find("Error") == std::string::npos) ||
                ((shaderName.rfind("spv.coopvecAZD", 0) == 0) &&

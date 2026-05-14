@@ -970,7 +970,6 @@ bool TOutputTraverser::visitAggregate(TVisit /* visit */, TIntermAggregate* node
     case EOpCooperativeMatrixReduceNV: out.debug << "Reduce cooperative matrices"; break;
     case EOpCooperativeMatrixPerElementOpNV: out.debug << "cooperative matrix per element op"; break;
     case EOpCooperativeMatrixTransposeNV: out.debug << "Transpose cooperative matrix"; break;
-
     case EOpCooperativeVectorMatMulNV: out.debug << "Cooperative vector matrix multiply NV"; break;
     case EOpCooperativeVectorMatMulAZD: out.debug << "Cooperative vector matrix multiply AZD"; break;
     case EOpCooperativeVectorMatMulAddNV: out.debug << "Cooperative vector matrix multiply add NV"; break;
@@ -1040,6 +1039,11 @@ bool TOutputTraverser::visitAggregate(TVisit /* visit */, TIntermAggregate* node
     case EOpTensorViewSetDimensionNV:       out.debug << "setTensorViewDimensions"; break;
     case EOpTensorViewSetStrideNV:          out.debug << "setTensorViewStride"; break;
     case EOpTensorViewSetClipNV:            out.debug << "clipTensorView"; break;
+    case EOpCpAsyncTensorGlobalShared:      out.debug << "cpAsyncTensorGlobalShared"; break;
+    case EOpCpAsyncCommitGroup:             out.debug << "cpAsyncCommitGroup"; break;
+    case EOpCpAsyncWaitGroup:               out.debug << "cpAsyncWaitGroup"; break;
+    case EOpBarrierArrive:                  out.debug << "barrierArrive"; break;
+    case EOpBarrierWait:                    out.debug << "barrierWait"; break;
 
     default: out.debug.message(EPrefixError, "Bad aggregation op");
     }

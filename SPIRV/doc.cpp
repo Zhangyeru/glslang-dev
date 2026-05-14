@@ -1601,6 +1601,11 @@ const char* OpcodeString(int op)
     case OpTypeTensorLayoutNV:              return "OpTypeTensorLayoutNV";
     case OpTypeTensorViewNV:                return "OpTypeTensorViewNV";
     case OpTypeTensorMap:                   return "OpTypeTensorMap";
+    case OpCpAsyncTensorGlobalShared:       return "OpCpAsyncTensorGlobalShared";
+    case OpCpAsyncCommitGroup:              return "OpCpAsyncCommitGroup";
+    case OpCpAsyncWaitGroup:                return "OpCpAsyncWaitGroup";
+    case OpBarrierArrive:                   return "OpBarrierArrive";
+    case OpBarrierWait:                     return "OpBarrierWait";
     case OpCreateTensorLayoutNV:            return "OpCreateTensorLayoutNV";
     case OpTensorLayoutSetBlockSizeNV:      return "OpTensorLayoutSetBlockSizeNV";
     case OpTensorLayoutSetDimensionNV:      return "OpTensorLayoutSetDimensionNV";
@@ -1822,6 +1827,11 @@ void Parameterize()
         InstructionDesc[OpTypeTensorLayoutNV].setResultAndType(true, false);
         InstructionDesc[OpTypeTensorViewNV].setResultAndType(true, false);
         InstructionDesc[OpTypeTensorMap].setResultAndType(true, false);
+        InstructionDesc[OpCpAsyncTensorGlobalShared].setResultAndType(false, false);
+        InstructionDesc[OpCpAsyncCommitGroup].setResultAndType(false, false);
+        InstructionDesc[OpCpAsyncWaitGroup].setResultAndType(false, false);
+        InstructionDesc[OpBarrierArrive].setResultAndType(false, false);
+        InstructionDesc[OpBarrierWait].setResultAndType(false, false);
         InstructionDesc[OpCooperativeMatrixStoreTensorNV].setResultAndType(false, false);
         InstructionDesc[OpTypeCooperativeVectorNV].setResultAndType(true, false);
         InstructionDesc[OpTypeCooperativeVectorAZD].setResultAndType(true, false);
@@ -3785,6 +3795,16 @@ void Parameterize()
         InstructionDesc[OpTypeTensorViewNV].operands.push(OperandVariableIds, "'p'");
 
         InstructionDesc[OpTypeTensorMap].operands.push(OperandLiteralNumber, "'Dim'");
+
+        InstructionDesc[OpCpAsyncTensorGlobalShared].operands.push(OperandLiteralNumber, "'Dim'");
+        InstructionDesc[OpCpAsyncTensorGlobalShared].operands.push(OperandId, "'DstMem'");
+        InstructionDesc[OpCpAsyncTensorGlobalShared].operands.push(OperandId, "'TensorMap'");
+        InstructionDesc[OpCpAsyncTensorGlobalShared].operands.push(OperandId, "'Coord'");
+        InstructionDesc[OpCpAsyncWaitGroup].operands.push(OperandLiteralNumber, "'N'");
+        InstructionDesc[OpBarrierArrive].operands.push(OperandId, "'Id'");
+        InstructionDesc[OpBarrierArrive].operands.push(OperandId, "'N'");
+        InstructionDesc[OpBarrierWait].operands.push(OperandId, "'Id'");
+        InstructionDesc[OpBarrierWait].operands.push(OperandId, "'N'");
 
         InstructionDesc[OpTensorLayoutSetBlockSizeNV].operands.push(OperandId, "'TensorLayout'");
         InstructionDesc[OpTensorLayoutSetBlockSizeNV].operands.push(OperandVariableIds, "'BlockSize'");

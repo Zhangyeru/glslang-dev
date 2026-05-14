@@ -414,6 +414,9 @@ INSTANTIATE_TEST_SUITE_P(
         "spv.coopmatKHR_Error.comp",
         "spv.coopmatKHR_constructor.comp",
         "spv.coopmatKHR_constructorError.comp",
+        "spv.cpAsyncGroupBarrier_BarrierError.comp",
+        "spv.cpAsyncGroupBarrier_Error.comp",
+        "spv.cpAsyncTensor_Error.comp",
         "spv.coopvec.comp",
         "spv.coopvec2.comp",
         "spv.coopvecAZD.comp",
@@ -660,6 +663,8 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     Glsl, CompileVulkanToSpirvToolsTest,
     ::testing::ValuesIn(std::vector<std::string>({
+        "spv.cpAsyncGroupBarrier.comp",
+        "spv.cpAsyncTensor.comp",
         "spv.tensorMap.comp",
     })),
     FileNameAsCustomTestSuffix

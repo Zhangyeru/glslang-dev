@@ -1,0 +1,72 @@
+spv.cpAsyncTensor.comp
+; SPIR-V
+; Version: 1.0
+; Generator: Khronos Glslang Reference Front End; 11
+; Bound: 41
+; Schema: 0
+               OpCapability Shader
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint GLCompute %main "main"
+               OpExecutionMode %main LocalSize 1 1 1
+               OpSource GLSL 450
+               OpName %main "main"
+               OpName %dstMem "dstMem"
+               OpName %tm1 "tm1"
+               OpName %tm2 "tm2"
+               OpName %tm3 "tm3"
+               OpName %tm4 "tm4"
+               OpDecorate %tm1 Binding 0
+               OpDecorate %tm1 DescriptorSet 0
+               OpDecorate %tm2 Binding 1
+               OpDecorate %tm2 DescriptorSet 0
+               OpDecorate %tm3 Binding 2
+               OpDecorate %tm3 DescriptorSet 0
+               OpDecorate %tm4 Binding 3
+               OpDecorate %tm4 DescriptorSet 0
+               OpDecorate %gl_WorkGroupSize BuiltIn WorkgroupSize
+       %void = OpTypeVoid
+          %3 = OpTypeFunction %void
+        %int = OpTypeInt 32 1
+       %uint = OpTypeInt 32 0
+    %uint_16 = OpConstant %uint 16
+%_arr_int_uint_16 = OpTypeArray %int %uint_16
+%_ptr_Workgroup__arr_int_uint_16 = OpTypePointer Workgroup %_arr_int_uint_16
+     %dstMem = OpVariable %_ptr_Workgroup__arr_int_uint_16 Workgroup
+         %12 = OpTypeTensorMap 1
+%_ptr_UniformConstant_12 = OpTypePointer UniformConstant %12
+        %tm1 = OpVariable %_ptr_UniformConstant_12 UniformConstant
+      %int_0 = OpConstant %int 0
+         %17 = OpTypeTensorMap 2
+%_ptr_UniformConstant_17 = OpTypePointer UniformConstant %17
+        %tm2 = OpVariable %_ptr_UniformConstant_17 UniformConstant
+      %v2int = OpTypeVector %int 2
+      %int_1 = OpConstant %int 1
+         %23 = OpConstantComposite %v2int %int_0 %int_1
+         %24 = OpTypeTensorMap 3
+%_ptr_UniformConstant_24 = OpTypePointer UniformConstant %24
+        %tm3 = OpVariable %_ptr_UniformConstant_24 UniformConstant
+      %v3int = OpTypeVector %int 3
+      %int_2 = OpConstant %int 2
+         %30 = OpConstantComposite %v3int %int_0 %int_1 %int_2
+         %31 = OpTypeTensorMap 4
+%_ptr_UniformConstant_31 = OpTypePointer UniformConstant %31
+        %tm4 = OpVariable %_ptr_UniformConstant_31 UniformConstant
+      %v4int = OpTypeVector %int 4
+      %int_3 = OpConstant %int 3
+         %37 = OpConstantComposite %v4int %int_0 %int_1 %int_2 %int_3
+     %v3uint = OpTypeVector %uint 3
+     %uint_1 = OpConstant %uint 1
+%gl_WorkGroupSize = OpConstantComposite %v3uint %uint_1 %uint_1 %uint_1
+       %main = OpFunction %void None %3
+          %5 = OpLabel
+         %15 = OpLoad %12 %tm1
+               OpCpAsyncTensorGlobalShared 1 %dstMem %15 %int_0
+         %20 = OpLoad %17 %tm2
+               OpCpAsyncTensorGlobalShared 2 %dstMem %20 %23
+         %27 = OpLoad %24 %tm3
+               OpCpAsyncTensorGlobalShared 3 %dstMem %27 %30
+         %34 = OpLoad %31 %tm4
+               OpCpAsyncTensorGlobalShared 4 %dstMem %34 %37
+               OpReturn
+               OpFunctionEnd

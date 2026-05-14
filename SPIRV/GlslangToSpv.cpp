@@ -2987,6 +2987,16 @@ bool TGlslangToSpvTraverser::visitUnary(glslang::TVisit /* visit */, glslang::TI
         builder.createNoResultOp(spv::OpHitObjectRecordEmptyNV, operand);
         return false;
 
+    case glslang::EOpCpAsyncWaitGroup:
+        {
+            std::vector<spv::IdImmediate> idImmOps;
+            const glslang::TIntermConstantUnion* waitCount = node->getOperand()->getAsConstantUnion();
+            unsigned count = waitCount != nullptr ? waitCount->getConstArray()[0].getIConst() : 0;
+            idImmOps.push_back(spv::IdImmediate(false, count)); // N
+            builder.createNoResultOp(spv::OpCpAsyncWaitGroup, idImmOps);
+            return false;
+        }
+
     case glslang::EOpCreateTensorLayoutNV:
         result = builder.createOp(spv::OpCreateTensorLayoutNV, resultType(), std::vector<spv::Id>{});
         builder.clearAccessChain();
@@ -3549,6 +3559,11 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
     case glslang::EOpCooperativeVectorStoreAZD:
     case glslang::EOpCooperativeVectorOuterProductAccumulateNV:
     case glslang::EOpCooperativeVectorReduceSumAccumulateNV:
+    case glslang::EOpCpAsyncTensorGlobalShared:
+    case glslang::EOpCpAsyncCommitGroup:
+    case glslang::EOpCpAsyncWaitGroup:
+    case glslang::EOpBarrierArrive:
+    case glslang::EOpBarrierWait:
         noReturnValue = true;
         break;
     case glslang::EOpBeginInvocationInterlock:
@@ -3916,6 +3931,10 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
             break;
         case glslang::EOpCooperativeVectorReduceSumAccumulateNV:
             if (arg == 1)
+                lvalue = true;
+            break;
+        case glslang::EOpCpAsyncTensorGlobalShared:
+            if (arg == 0)
                 lvalue = true;
             break;
         case glslang::EOpCooperativeMatrixReduceNV:
@@ -4506,6 +4525,39 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         idImmOps.push_back(spv::IdImmediate(true, operands[2])); // Offset
         idImmOps.push_back(spv::IdImmediate(true, operands[0])); // A
         builder.createNoResultOp(spv::OpCooperativeVectorReduceSumAccumulateNV, idImmOps);
+        result = 0;
+    } else if (node->getOp() == glslang::EOpCpAsyncTensorGlobalShared) {
+        std::vector<spv::IdImmediate> idImmOps;
+
+        unsigned dim = TranslateTensorMapDimensionality(
+            glslangOperands[1]->getAsTyped()->getType().getSampler());
+        idImmOps.push_back(spv::IdImmediate(false, dim));       // Dim
+        idImmOps.push_back(spv::IdImmediate(true, operands[0])); // DstMem
+        idImmOps.push_back(spv::IdImmediate(true, operands[1])); // TensorMap
+        idImmOps.push_back(spv::IdImmediate(true, operands[2])); // Coord
+        builder.createNoResultOp(spv::OpCpAsyncTensorGlobalShared, idImmOps);
+        result = 0;
+    } else if (node->getOp() == glslang::EOpCpAsyncCommitGroup) {
+        builder.createNoResultOp(spv::OpCpAsyncCommitGroup);
+        result = 0;
+    } else if (node->getOp() == glslang::EOpCpAsyncWaitGroup) {
+        std::vector<spv::IdImmediate> idImmOps;
+        const glslang::TIntermConstantUnion* waitCount = glslangOperands[0]->getAsConstantUnion();
+        unsigned count = waitCount != nullptr ? waitCount->getConstArray()[0].getIConst() : 0;
+        idImmOps.push_back(spv::IdImmediate(false, count)); // N
+        builder.createNoResultOp(spv::OpCpAsyncWaitGroup, idImmOps);
+        result = 0;
+    } else if (node->getOp() == glslang::EOpBarrierArrive) {
+        std::vector<spv::IdImmediate> idImmOps;
+        idImmOps.push_back(spv::IdImmediate(true, operands[0])); // Id
+        idImmOps.push_back(spv::IdImmediate(true, operands[1])); // N
+        builder.createNoResultOp(spv::OpBarrierArrive, idImmOps);
+        result = 0;
+    } else if (node->getOp() == glslang::EOpBarrierWait) {
+        std::vector<spv::IdImmediate> idImmOps;
+        idImmOps.push_back(spv::IdImmediate(true, operands[0])); // Id
+        idImmOps.push_back(spv::IdImmediate(true, operands[1])); // N
+        builder.createNoResultOp(spv::OpBarrierWait, idImmOps);
         result = 0;
     } else if (node->getOp() == glslang::EOpCooperativeMatrixMulAZD) {
         spv::Id typeId = builder.getContainedTypeId(builder.getTypeId(operands[0]));

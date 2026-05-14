@@ -1,0 +1,6 @@
+spv.cpAsyncGroupBarrier_BarrierError.comp
+ERROR: 0:7: 'barrier_wait' : argument must be non-negative n
+ERROR: 1 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link
