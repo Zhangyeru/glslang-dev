@@ -98,6 +98,8 @@ void TType::buildMangledName(TString& mangledName) const
             mangledName += "I";  // a normal image or subpass
         else if (sampler.isPureSampler())
             mangledName += "p";  // a "pure" sampler
+        else if (sampler.isTensorMap())
+            mangledName += "tm"; // tensor map
         else if (!sampler.isCombined())
             mangledName += "t";  // a "pure" texture
         else
@@ -118,6 +120,7 @@ void TType::buildMangledName(TString& mangledName) const
         case EsdRect:     mangledName += "R2"; break;
         case EsdBuffer:   mangledName += "B";  break;
         case EsdSubpass:  mangledName += "P";  break;
+        case Esd4D:       mangledName += "4";  break;
         default: break; // some compilers want this
         }
 

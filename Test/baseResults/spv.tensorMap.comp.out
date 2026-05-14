@@ -1,0 +1,48 @@
+spv.tensorMap.comp
+; SPIR-V
+; Version: 1.0
+; Generator: Khronos Glslang Reference Front End; 11
+; Bound: 22
+; Schema: 0
+               OpCapability Shader
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint GLCompute %main "main"
+               OpExecutionMode %main LocalSize 1 1 1
+               OpSource GLSL 450
+               OpName %main "main"
+               OpName %tm1 "tm1"
+               OpName %tm2 "tm2"
+               OpName %tm3 "tm3"
+               OpName %tm4 "tm4"
+               OpDecorate %gl_WorkGroupSize BuiltIn WorkgroupSize
+               OpDecorate %tm1 Binding 0
+               OpDecorate %tm1 DescriptorSet 0
+               OpDecorate %tm2 Binding 1
+               OpDecorate %tm2 DescriptorSet 0
+               OpDecorate %tm3 Binding 2
+               OpDecorate %tm3 DescriptorSet 0
+               OpDecorate %tm4 Binding 3
+               OpDecorate %tm4 DescriptorSet 0
+       %void = OpTypeVoid
+          %3 = OpTypeFunction %void
+       %uint = OpTypeInt 32 0
+     %v3uint = OpTypeVector %uint 3
+     %uint_1 = OpConstant %uint 1
+%gl_WorkGroupSize = OpConstantComposite %v3uint %uint_1 %uint_1 %uint_1
+         %10 = OpTypeTensorMap 1
+%_ptr_UniformConstant_10 = OpTypePointer UniformConstant %10
+        %tm1 = OpVariable %_ptr_UniformConstant_10 UniformConstant
+         %13 = OpTypeTensorMap 2
+%_ptr_UniformConstant_13 = OpTypePointer UniformConstant %13
+        %tm2 = OpVariable %_ptr_UniformConstant_13 UniformConstant
+         %16 = OpTypeTensorMap 3
+%_ptr_UniformConstant_16 = OpTypePointer UniformConstant %16
+        %tm3 = OpVariable %_ptr_UniformConstant_16 UniformConstant
+         %19 = OpTypeTensorMap 4
+%_ptr_UniformConstant_19 = OpTypePointer UniformConstant %19
+        %tm4 = OpVariable %_ptr_UniformConstant_19 UniformConstant
+       %main = OpFunction %void None %3
+          %5 = OpLabel
+               OpReturn
+               OpFunctionEnd

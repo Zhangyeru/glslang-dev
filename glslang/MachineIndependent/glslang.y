@@ -217,6 +217,8 @@ extern int yylex(YYSTYPE*, TParseContext&);
 %token <lex> F16IMAGECUBE F16IMAGE1DARRAY F16IMAGE2DARRAY F16IMAGECUBEARRAY
 %token <lex> F16IMAGEBUFFER F16IMAGE2DMS F16IMAGE2DMSARRAY
 
+%token <lex> TENSORMAP1D TENSORMAP2D TENSORMAP3D TENSORMAP4D
+
 %token <lex> I64IMAGE1D U64IMAGE1D
 %token <lex> I64IMAGE2D U64IMAGE2D
 %token <lex> I64IMAGE3D U64IMAGE3D
@@ -3434,6 +3436,26 @@ type_specifier_nonarray
         $$.init($1.loc, parseContext.symbolTable.atGlobalLevel());
         $$.basicType = EbtSampler;
         $$.sampler.setImage(EbtUint64, Esd2D, true, false, true);
+    }
+    | TENSORMAP1D {
+        $$.init($1.loc, parseContext.symbolTable.atGlobalLevel());
+        $$.basicType = EbtSampler;
+        $$.sampler.setTensorMap(Esd1D);
+    }
+    | TENSORMAP2D {
+        $$.init($1.loc, parseContext.symbolTable.atGlobalLevel());
+        $$.basicType = EbtSampler;
+        $$.sampler.setTensorMap(Esd2D);
+    }
+    | TENSORMAP3D {
+        $$.init($1.loc, parseContext.symbolTable.atGlobalLevel());
+        $$.basicType = EbtSampler;
+        $$.sampler.setTensorMap(Esd3D);
+    }
+    | TENSORMAP4D {
+        $$.init($1.loc, parseContext.symbolTable.atGlobalLevel());
+        $$.basicType = EbtSampler;
+        $$.sampler.setTensorMap(Esd4D);
     }
     | SAMPLEREXTERNALOES {  // GL_OES_EGL_image_external
         $$.init($1.loc, parseContext.symbolTable.atGlobalLevel());

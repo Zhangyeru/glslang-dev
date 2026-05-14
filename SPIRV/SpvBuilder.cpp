@@ -840,6 +840,31 @@ Id Builder::makeImageType(Id sampledType, Dim dim, bool depth, bool arrayed, boo
     return type->getResultId();
 }
 
+Id Builder::makeTensorMapType(unsigned dim)
+{
+    Instruction* type;
+    for (int t = 0; t < (int)groupedTypes[OpTypeTensorMap].size(); ++t) {
+        type = groupedTypes[OpTypeTensorMap][t];
+        if (type->getImmediateOperand(0) == dim)
+            return type->getResultId();
+    }
+
+    type = new Instruction(getUniqueId(), NoType, OpTypeTensorMap);
+    type->addImmediateOperand(dim);
+
+    groupedTypes[OpTypeTensorMap].push_back(type);
+    constantsTypesGlobals.push_back(std::unique_ptr<Instruction>(type));
+    module.mapInstruction(type);
+
+    if (emitNonSemanticShaderDebugInfo)
+    {
+        auto const debugResultId = makeCompositeDebugType({}, "type.tensor.map", NonSemanticShaderDebugInfo100Class, true);
+        debugId[type->getResultId()] = debugResultId;
+    }
+
+    return type->getResultId();
+}
+
 Id Builder::makeSampledImageType(Id imageType)
 {
     // try to find it

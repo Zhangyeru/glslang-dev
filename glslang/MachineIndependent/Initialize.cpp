@@ -496,6 +496,7 @@ TBuiltIns::TBuiltIns()
     dimMap[EsdBuffer] = 1;
     dimMap[EsdSubpass] = 2;  // potentially unused for now
     dimMap[EsdAttachmentEXT] = 2;  // potentially unused for now
+    dimMap[Esd4D] = 4;  // only used by tensor maps
 }
 
 TBuiltIns::~TBuiltIns()
@@ -6829,7 +6830,7 @@ void TBuiltIns::add2ndGenerationSamplingImaging(int version, EProfile profile, c
 
                 for (int arrayed = 0; arrayed <= 1; ++arrayed) { // loop over "bool" arrayed or not
                     for (int dim = Esd1D; dim < EsdNumDims; ++dim) { // 1D, ..., buffer, subpass
-                        if (dim == EsdAttachmentEXT)
+                        if (dim == EsdAttachmentEXT || dim == Esd4D)
                             continue;
                         if (dim == EsdSubpass && spvVersion.vulkan == 0)
                             continue;

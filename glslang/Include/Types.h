@@ -73,6 +73,7 @@ enum TSamplerDim {
     EsdBuffer,
     EsdSubpass,  // goes only with non-sampled image (image is true)
     EsdAttachmentEXT,
+    Esd4D,
     EsdNumDims
 };
 
@@ -85,6 +86,7 @@ struct TSampler {   // misnomer now; includes images, textures without sampler, 
     bool      image : 1;  // image, combined should be false
     bool   combined : 1;  // true means texture is combined with a sampler, false means texture with no sampler
     bool    sampler : 1;  // true means a pure sampler, other fields should be clear()
+    bool  tensorMap : 1;
 
     unsigned int vectorSize : 3;  // vector return type size.
     // Some languages support structures as sample results.  Storing the whole structure in the
@@ -111,6 +113,7 @@ struct TSampler {   // misnomer now; includes images, textures without sampler, 
     bool isRect()        const { return dim == EsdRect; }
     bool isSubpass()     const { return dim == EsdSubpass; }
     bool isAttachmentEXT()  const { return dim == EsdAttachmentEXT; }
+    bool isTensorMap()   const { return tensorMap; }
     bool isCombined()    const { return combined; }
     bool isImage()       const { return image && !isSubpass() && !isAttachmentEXT();}
     bool isImageClass()  const { return image; }
@@ -118,7 +121,7 @@ struct TSampler {   // misnomer now; includes images, textures without sampler, 
     bool isExternal()    const { return external; }
     void setExternal(bool e) { external = e; }
     bool isYuv()         const { return yuv; }
-    bool isTexture()     const { return !sampler && !image; }
+    bool isTexture()     const { return !sampler && !image && !tensorMap; }
     bool isPureSampler() const { return sampler; }
 
     void setCombined(bool c) { combined = c; }
@@ -137,6 +140,7 @@ struct TSampler {   // misnomer now; includes images, textures without sampler, 
         image = false;
         combined = false;
         sampler = false;
+        tensorMap = false;
         external = false;
         yuv = false;
 
@@ -190,6 +194,13 @@ struct TSampler {   // misnomer now; includes images, textures without sampler, 
         shadow = s;
     }
 
+    void setTensorMap(TSamplerDim d)
+    {
+        clear();
+        dim = d;
+        tensorMap = true;
+    }
+
     // make a subpass input attachment
     void setSubpass(TBasicType t, bool m = false)
     {
@@ -219,6 +230,7 @@ struct TSampler {   // misnomer now; includes images, textures without sampler, 
           isImageClass() == right.isImageClass() &&
             isCombined() == right.isCombined() &&
          isPureSampler() == right.isPureSampler() &&
+          isTensorMap() == right.isTensorMap() &&
             isExternal() == right.isExternal() &&
                  isYuv() == right.isYuv()
 #ifdef ENABLE_HLSL
@@ -239,6 +251,18 @@ struct TSampler {   // misnomer now; includes images, textures without sampler, 
 
         if (isPureSampler()) {
             s.append("sampler");
+            return s;
+        }
+
+        if (isTensorMap()) {
+            s.append("tensorMap");
+            switch (dim) {
+            case Esd1D: s.append("1D"); break;
+            case Esd2D: s.append("2D"); break;
+            case Esd3D: s.append("3D"); break;
+            case Esd4D: s.append("4D"); break;
+            default: break;
+            }
             return s;
         }
 
@@ -282,6 +306,7 @@ struct TSampler {   // misnomer now; includes images, textures without sampler, 
         case EsdBuffer:     s.append("Buffer");  break;
         case EsdSubpass:    s.append("Input"); break;
         case EsdAttachmentEXT: s.append(""); break;
+        case Esd4D:         s.append("4D");      break;
         default:  break;  // some compilers want this
         }
         if (isMultiSample())

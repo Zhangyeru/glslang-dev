@@ -65,6 +65,7 @@ std::string FileNameAsCustomTestSuffixIoMap(
 }
 
 using CompileVulkanToSpirvTest = GlslangTest<::testing::TestWithParam<std::string>>;
+using CompileVulkanToSpirvToolsTest = GlslangTest<::testing::TestWithParam<std::string>>;
 using CompileVulkanToSpirvTestNoLink = GlslangTest<::testing::TestWithParam<std::string>>;
 using CompileVulkanToSpirvDeadCodeElimTest = GlslangTest<::testing::TestWithParam<std::string>>;
 using CompileVulkan1_1ToSpirvTest = GlslangTest<::testing::TestWithParam<std::string>>;
@@ -88,6 +89,16 @@ using GlslNonSemanticShaderDebugInfoTest = GlslangTest<::testing::TestWithParam<
 // generate SPIR-V.
 TEST_P(CompileVulkanToSpirvTest, FromFile)
 {
+    loadFileCompileAndCheck(GlobalTestSettings.testRoot, GetParam(),
+                            Source::GLSL, Semantics::Vulkan, glslang::EShTargetVulkan_1_0, glslang::EShTargetSpv_1_0,
+                            Target::Spv);
+}
+
+TEST_P(CompileVulkanToSpirvToolsTest, FromFile)
+{
+#if !ENABLE_OPT
+    GTEST_SKIP() << "SPIRV-Tools is required for this test baseline";
+#endif
     loadFileCompileAndCheck(GlobalTestSettings.testRoot, GetParam(),
                             Source::GLSL, Semantics::Vulkan, glslang::EShTargetVulkan_1_0, glslang::EShTargetSpv_1_0,
                             Target::Spv);
@@ -642,6 +653,14 @@ INSTANTIATE_TEST_SUITE_P(
     Glsl, CompileVulkanToSpirvTestNoLink,
     ::testing::ValuesIn(std::vector<std::string>({
         "spv.exportFunctions.comp",
+    })),
+    FileNameAsCustomTestSuffix
+);
+
+INSTANTIATE_TEST_SUITE_P(
+    Glsl, CompileVulkanToSpirvToolsTest,
+    ::testing::ValuesIn(std::vector<std::string>({
+        "spv.tensorMap.comp",
     })),
     FileNameAsCustomTestSuffix
 );

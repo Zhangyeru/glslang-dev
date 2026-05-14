@@ -457,6 +457,10 @@ const std::unordered_map<const char*, int, str_hash, str_eq> KeywordMap {
     {"image2DMSArray",IMAGE2DMSARRAY},
     {"iimage2DMSArray",IIMAGE2DMSARRAY},
     {"uimage2DMSArray",UIMAGE2DMSARRAY},
+    {"tensorMap1D",TENSORMAP1D},
+    {"tensorMap2D",TENSORMAP2D},
+    {"tensorMap3D",TENSORMAP3D},
+    {"tensorMap4D",TENSORMAP4D},
     {"i64image1D",I64IMAGE1D},
     {"u64image1D",U64IMAGE1D},
     {"i64image2D",I64IMAGE2D},
@@ -1301,6 +1305,13 @@ int TScanContext::tokenizeIdentifier()
             return secondGenerationImage();
         }
         return identifierOrType();
+
+    case TENSORMAP1D:
+    case TENSORMAP2D:
+    case TENSORMAP3D:
+    case TENSORMAP4D:
+        afterType = true;
+        return keyword;
 
     case DOUBLE:
     case DVEC2:

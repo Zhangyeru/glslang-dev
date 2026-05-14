@@ -453,6 +453,20 @@ spv::Dim TranslateDimensionality(const glslang::TSampler& sampler)
     }
 }
 
+unsigned TranslateTensorMapDimensionality(const glslang::TSampler& sampler)
+{
+    assert(sampler.isTensorMap());
+    switch (sampler.dim) {
+    case glslang::Esd1D: return 1;
+    case glslang::Esd2D: return 2;
+    case glslang::Esd3D: return 3;
+    case glslang::Esd4D: return 4;
+    default:
+        assert(0);
+        return 2;
+    }
+}
+
 // Translate glslang precision to SPIR-V precision decorations.
 spv::Decoration TranslatePrecisionDecoration(glslang::TPrecisionQualifier glslangPrecision)
 {
@@ -5276,7 +5290,9 @@ spv::Id TGlslangToSpvTraverser::convertGlslangToSpvType(const glslang::TType& ty
     case glslang::EbtSampler:
         {
             const glslang::TSampler& sampler = type.getSampler();
-            if (sampler.isPureSampler()) {
+            if (sampler.isTensorMap()) {
+                spvType = builder.makeTensorMapType(TranslateTensorMapDimensionality(sampler));
+            } else if (sampler.isPureSampler()) {
                 spvType = builder.makeSamplerType();
             } else {
                 // an image is present, make its type

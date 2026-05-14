@@ -1600,6 +1600,7 @@ const char* OpcodeString(int op)
     case OpCooperativeMatrixPerElementOpNV: return "OpCooperativeMatrixPerElementOpNV";
     case OpTypeTensorLayoutNV:              return "OpTypeTensorLayoutNV";
     case OpTypeTensorViewNV:                return "OpTypeTensorViewNV";
+    case OpTypeTensorMap:                   return "OpTypeTensorMap";
     case OpCreateTensorLayoutNV:            return "OpCreateTensorLayoutNV";
     case OpTensorLayoutSetBlockSizeNV:      return "OpTensorLayoutSetBlockSizeNV";
     case OpTensorLayoutSetDimensionNV:      return "OpTensorLayoutSetDimensionNV";
@@ -1820,6 +1821,7 @@ void Parameterize()
         InstructionDesc[OpAssumeTrueKHR].setResultAndType(false, false);
         InstructionDesc[OpTypeTensorLayoutNV].setResultAndType(true, false);
         InstructionDesc[OpTypeTensorViewNV].setResultAndType(true, false);
+        InstructionDesc[OpTypeTensorMap].setResultAndType(true, false);
         InstructionDesc[OpCooperativeMatrixStoreTensorNV].setResultAndType(false, false);
         InstructionDesc[OpTypeCooperativeVectorNV].setResultAndType(true, false);
         InstructionDesc[OpTypeCooperativeVectorAZD].setResultAndType(true, false);
@@ -3781,6 +3783,8 @@ void Parameterize()
         InstructionDesc[OpTypeTensorViewNV].operands.push(OperandId, "'Dim'");
         InstructionDesc[OpTypeTensorViewNV].operands.push(OperandId, "'HasDimensions'");
         InstructionDesc[OpTypeTensorViewNV].operands.push(OperandVariableIds, "'p'");
+
+        InstructionDesc[OpTypeTensorMap].operands.push(OperandLiteralNumber, "'Dim'");
 
         InstructionDesc[OpTensorLayoutSetBlockSizeNV].operands.push(OperandId, "'TensorLayout'");
         InstructionDesc[OpTensorLayoutSetBlockSizeNV].operands.push(OperandVariableIds, "'BlockSize'");

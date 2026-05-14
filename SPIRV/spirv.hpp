@@ -2344,6 +2344,7 @@ enum Op {
     OpGroupLogicalXorKHR = 6408,
     OpMaskedGatherINTEL = 6428,
     OpMaskedScatterINTEL = 6429,
+    OpTypeTensorMap = 6466,
     OpMax = 0x7fffffff,
 };
 
@@ -2856,6 +2857,7 @@ inline void HasResultAndType(Op opcode, bool *hasResult, bool *hasResultType) {
     case OpCooperativeMatrixPerElementOpNV: *hasResult = true; *hasResultType = true; break;
     case OpTypeTensorLayoutNV: *hasResult = true; *hasResultType = false; break;
     case OpTypeTensorViewNV: *hasResult = true; *hasResultType = false; break;
+    case OpTypeTensorMap: *hasResult = true; *hasResultType = false; break;
     case OpCreateTensorLayoutNV: *hasResult = true; *hasResultType = true; break;
     case OpTensorLayoutSetDimensionNV: *hasResult = true; *hasResultType = true; break;
     case OpTensorLayoutSetStrideNV: *hasResult = true; *hasResultType = true; break;
@@ -4779,6 +4781,7 @@ inline const char* OpToString(Op value) {
     case OpCooperativeMatrixPerElementOpNV: return "OpCooperativeMatrixPerElementOpNV";
     case OpTypeTensorLayoutNV: return "OpTypeTensorLayoutNV";
     case OpTypeTensorViewNV: return "OpTypeTensorViewNV";
+    case OpTypeTensorMap: return "OpTypeTensorMap";
     case OpCreateTensorLayoutNV: return "OpCreateTensorLayoutNV";
     case OpTensorLayoutSetDimensionNV: return "OpTensorLayoutSetDimensionNV";
     case OpTensorLayoutSetStrideNV: return "OpTensorLayoutSetStrideNV";
