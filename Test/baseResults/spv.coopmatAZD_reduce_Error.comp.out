@@ -1,0 +1,7 @@
+spv.coopmatAZD_reduce_Error.comp
+ERROR: 0:12: 'reduceMask' : must be in the range [0, 1] 
+ERROR: 0:12: 'combineOp' : must be in the range [0, 2] 
+ERROR: 2 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

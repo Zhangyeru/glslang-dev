@@ -1,16 +1,15 @@
 #version 450 core
 #extension GL_KHR_memory_scope_semantics : enable
 #extension GL_AZD_neural_matrix : enable
-#extension GL_AZD_cooperative_vector : enable
 #extension GL_EXT_shader_explicit_arithmetic_types : enable
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 void main()
 {
-    coopvecAZD<float, 99> badResult;
-    coopvecAZD<float16_t, 19> badInput;
-    coopmatAZD<float16_t, 100, 20> matrix;
+    coopmatAZD<float16_t, 16, 8> A;
+    coopmatAZD<float16_t, 16, 8> B;
+    coopmatAZD<float, 16, 8> result;
 
-    coopVecMatMulAZD(badResult, badInput, matrix);
+    coopMatMulAZD(result, A, B);
 }

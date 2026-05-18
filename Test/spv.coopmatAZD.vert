@@ -17,20 +17,20 @@ void main()
 
     coopmatAZD<float16_t, 16, 8> A = coopmatAZD<float16_t, 16, 8>(0.0);
     coopmatAZD<float16_t, 8, 8> B = coopmatAZD<float16_t, 8, 8>(1.0);
+    coopmatAZD<float16_t, 8, 8> S = coopmatAZD<float16_t, 8, 8>(2.0);
     coopmatAZD<float16_t, 16, 8> C;
-    coopmatAZD<float16_t, 16, 8> M;
+    coopmatAZD<float, 8, 8> M;
     coopmatAZD<float16_t, 16, 8> R0;
     coopmatAZD<float16_t, 16, 8> R1;
 
     coopMatLoadAZD(C, buf.data, srcMatrixShape, srcMatrixOffset, gl_RowMajorAZD);
-    coopMatMulAZD(M, A, B);
-    C = M;
+    coopMatMulAZD(M, S, B);
     coopMatMulAddAZD(C, A, B, C);
     R0 = coopMatReduceAZD(C, gl_ReduceRowAZD, gl_ReduceAddAZD);
     R1 = coopMatReduceAZD(C, gl_ReduceColumnAZD, gl_ReduceMaxAZD);
     coopMatStoreAZD(C, buf.data, srcMatrixShape, dstMatrixOffset, gl_ColumnMajorAZD);
 
-    int len = C.length();
+    int len = C.length() + M.length();
     coopmatAZD<float16_t, 16, 8> D = coopmatAZD<float16_t, 16, 8>(C);
     C = D;
     if (len == 0)

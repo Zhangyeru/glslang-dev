@@ -1,16 +1,15 @@
 #version 450 core
 #extension GL_KHR_memory_scope_semantics : enable
+#extension GL_AZD_neural_matrix : enable
 #extension GL_AZD_cooperative_vector : enable
 #extension GL_EXT_shader_explicit_arithmetic_types : enable
 
-layout(set = 0, binding = 0) buffer MatrixBuf {
-    float16_t matrixData[];
-} matrixBuf;
-
 void main()
 {
-    coopvecAZD<float, 20> vIn;
-    coopvecAZD<float, 100> vOut;
+    coopvecAZD<float, 100> result;
+    coopvecAZD<float16_t, 20> vInput;
+    coopvecAZD<float16_t, 99> badBias;
+    coopmatAZD<float16_t, 100, 20> matrix;
 
-    coopVecMatMulAddAZD(vOut, vIn, gl_ComponentTypeFloat16NV, matrixBuf.matrixData, 11, gl_ComponentTypeFloat16NV, matrixBuf.matrixData, 50, gl_ComponentTypeFloat16NV, 100, 20, gl_CooperativeVectorMatrixLayoutRowMajorNV, false, 300);
+    coopVecMatMulAddAZD(result, vInput, matrix, badBias);
 }

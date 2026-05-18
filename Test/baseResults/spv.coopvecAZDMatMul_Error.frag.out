@@ -1,6 +1,7 @@
 spv.coopvecAZDMatMul_Error.frag
-ERROR: 0:15: 'coopVecMatMulAZD' : no matching overloaded function found 
-ERROR: 1 compilation errors.  No code generated.
+ERROR: 0:13: 'coopVecMatMulAZD' : result vector component count must match matrix row count 
+ERROR: 0:13: 'coopVecMatMulAZD' : input vector component count must match matrix column count 
+ERROR: 2 compilation errors.  No code generated.
 
 
 SPIR-V is not generated for failed compile or link

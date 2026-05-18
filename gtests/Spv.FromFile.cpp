@@ -89,6 +89,10 @@ using GlslNonSemanticShaderDebugInfoTest = GlslangTest<::testing::TestWithParam<
 // generate SPIR-V.
 TEST_P(CompileVulkanToSpirvTest, FromFile)
 {
+#if !ENABLE_OPT
+    if (useSpirvToolsDisassembler(GetParam()))
+        GTEST_SKIP() << "SPIRV-Tools is required for this test baseline";
+#endif
     loadFileCompileAndCheck(GlobalTestSettings.testRoot, GetParam(),
                             Source::GLSL, Semantics::Vulkan, glslang::EShTargetVulkan_1_0, glslang::EShTargetSpv_1_0,
                             Target::Spv);
@@ -406,6 +410,9 @@ INSTANTIATE_TEST_SUITE_P(
         "spv.coopmatAZD_Error.comp",
         "spv.coopmatAZD_Error.vert",
         "spv.coopmatAZD_Error.frag",
+        "spv.coopmatAZD_mul_Error.comp",
+        "spv.coopmatAZD_mulAdd_Error.comp",
+        "spv.coopmatAZD_reduce_Error.comp",
         "spv.coopmat_Error.comp",
         "spv.coopmatKHR.comp",
         "spv.coopmat_armlayout.comp",

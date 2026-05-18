@@ -245,6 +245,45 @@ bool handleCoopMatAZDBitcastBuiltin(TParseContext& parseContext, const TSourceLo
     }
 }
 
+int getCoopAZDTypeParameterDim(const TType& type, int dim)
+{
+    const TTypeParameters* params = type.getTypeParameters();
+    if (params == nullptr || params->arraySizes == nullptr || params->arraySizes->getNumDims() <= dim)
+        return 0;
+
+    return params->arraySizes->getDimSize(dim);
+}
+
+int getCoopVecAZDComponents(const TType& type)
+{
+    return getCoopAZDTypeParameterDim(type, 0);
+}
+
+int getCoopMatAZDRows(const TType& type)
+{
+    return getCoopAZDTypeParameterDim(type, 0);
+}
+
+int getCoopMatAZDColumns(const TType& type)
+{
+    return getCoopAZDTypeParameterDim(type, 1);
+}
+
+bool getConstantIntValue(TIntermNode* node, int& value)
+{
+    const TConstUnionArray* constArray = nullptr;
+    if (const TIntermConstantUnion* constant = node->getAsConstantUnion())
+        constArray = &constant->getConstArray();
+    else if (const TIntermSymbol* symbol = node->getAsSymbolNode())
+        constArray = &symbol->getConstArray();
+
+    if (constArray == nullptr || constArray->size() == 0)
+        return false;
+
+    value = (*constArray)[0].getIConst();
+    return true;
+}
+
 bool handleCoopVecAZDMatMulBuiltin(TParseContext& parseContext, const TSourceLoc& loc,
                                   const TIntermOperator& callNode, const TIntermSequence& arguments)
 {
@@ -255,8 +294,14 @@ bool handleCoopVecAZDMatMulBuiltin(TParseContext& parseContext, const TSourceLoc
 
         if (!resultType.isCoopVecAZD() || !inputType.isCoopVecAZD() || !matrixType.isCoopMatAZD())
             parseContext.error(loc, "requires coopVecMatMulAZD(out coopvecAZD, coopvecAZD, coopmatAZD)", "coopVecMatMulAZD", "");
-        else if (inputType.getBasicType() != matrixType.getBasicType())
-            parseContext.error(loc, "input vector and matrix component types must match", "coopVecMatMulAZD", "");
+        else {
+            if (inputType.getBasicType() != matrixType.getBasicType())
+                parseContext.error(loc, "input vector and matrix component types must match", "coopVecMatMulAZD", "");
+            if (getCoopVecAZDComponents(resultType) != getCoopMatAZDRows(matrixType))
+                parseContext.error(loc, "result vector component count must match matrix row count", "coopVecMatMulAZD", "");
+            if (getCoopVecAZDComponents(inputType) != getCoopMatAZDColumns(matrixType))
+                parseContext.error(loc, "input vector component count must match matrix column count", "coopVecMatMulAZD", "");
+        }
 
         return true;
     }
@@ -270,12 +315,66 @@ bool handleCoopVecAZDMatMulBuiltin(TParseContext& parseContext, const TSourceLoc
         if (!resultType.isCoopVecAZD() || !inputType.isCoopVecAZD() || !matrixType.isCoopMatAZD() || !biasType.isCoopVecAZD())
             parseContext.error(loc, "requires coopVecMatMulAddAZD(out coopvecAZD, coopvecAZD, coopmatAZD, coopvecAZD)", "coopVecMatMulAddAZD", "");
         else {
-            if (resultType.getBasicType() != biasType.getBasicType() ||
-                resultType.getVectorSize() != biasType.getVectorSize())
-                parseContext.error(loc, "result and bias types must match", "coopVecMatMulAddAZD", "");
+            if (resultType.getBasicType() != biasType.getBasicType())
+                parseContext.error(loc, "result and bias component types must match", "coopVecMatMulAddAZD", "");
+            if (getCoopVecAZDComponents(resultType) != getCoopVecAZDComponents(biasType))
+                parseContext.error(loc, "result and bias component counts must match", "coopVecMatMulAddAZD", "");
 
             if (inputType.getBasicType() != matrixType.getBasicType())
                 parseContext.error(loc, "input vector and matrix component types must match", "coopVecMatMulAddAZD", "");
+            if (getCoopVecAZDComponents(resultType) != getCoopMatAZDRows(matrixType))
+                parseContext.error(loc, "result vector component count must match matrix row count", "coopVecMatMulAddAZD", "");
+            if (getCoopVecAZDComponents(inputType) != getCoopMatAZDColumns(matrixType))
+                parseContext.error(loc, "input vector component count must match matrix column count", "coopVecMatMulAddAZD", "");
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
+bool handleCoopMatAZDMultiplyBuiltin(TParseContext& parseContext, const TSourceLoc& loc,
+                                     const TIntermOperator& callNode, const TIntermSequence& arguments)
+{
+    if (callNode.getOp() == EOpCooperativeMatrixMulAZD && arguments.size() == 3) {
+        const TType& resultType = arguments[0]->getAsTyped()->getType();
+        const TType& aType = arguments[1]->getAsTyped()->getType();
+        const TType& bType = arguments[2]->getAsTyped()->getType();
+
+        if (!resultType.isCoopMatAZD() || !aType.isCoopMatAZD() || !bType.isCoopMatAZD())
+            parseContext.error(loc, "requires coopMatMulAZD(out coopmatAZD, coopmatAZD, coopmatAZD)", "coopMatMulAZD", "");
+        else {
+            if (!aType.sameTypeParameters(bType))
+                parseContext.error(loc, "A and B types must match", "coopMatMulAZD", "");
+            if (getCoopMatAZDRows(aType) != getCoopMatAZDRows(resultType))
+                parseContext.error(loc, "A row count must match result row count", "coopMatMulAZD", "");
+            if (getCoopMatAZDColumns(bType) != getCoopMatAZDColumns(resultType))
+                parseContext.error(loc, "B column count must match result column count", "coopMatMulAZD", "");
+            if (getCoopMatAZDColumns(aType) != getCoopMatAZDRows(bType))
+                parseContext.error(loc, "A column count must match B row count", "coopMatMulAZD", "");
+        }
+
+        return true;
+    }
+
+    if (callNode.getOp() == EOpCooperativeMatrixMulAddAZD && arguments.size() == 4) {
+        const TType& resultType = arguments[0]->getAsTyped()->getType();
+        const TType& aType = arguments[1]->getAsTyped()->getType();
+        const TType& bType = arguments[2]->getAsTyped()->getType();
+        const TType& cType = arguments[3]->getAsTyped()->getType();
+
+        if (!resultType.isCoopMatAZD() || !aType.isCoopMatAZD() || !bType.isCoopMatAZD() || !cType.isCoopMatAZD())
+            parseContext.error(loc, "requires coopMatMulAddAZD(out coopmatAZD, coopmatAZD, coopmatAZD, coopmatAZD)", "coopMatMulAddAZD", "");
+        else {
+            if (getCoopMatAZDRows(aType) != getCoopMatAZDRows(cType) ||
+                getCoopMatAZDRows(aType) != getCoopMatAZDRows(resultType))
+                parseContext.error(loc, "A, C, and result row counts must match", "coopMatMulAddAZD", "");
+            if (getCoopMatAZDColumns(bType) != getCoopMatAZDColumns(cType) ||
+                getCoopMatAZDColumns(bType) != getCoopMatAZDColumns(resultType))
+                parseContext.error(loc, "B, C, and result column counts must match", "coopMatMulAddAZD", "");
+            if (getCoopMatAZDColumns(aType) != getCoopMatAZDRows(bType))
+                parseContext.error(loc, "A column count must match B row count", "coopMatMulAddAZD", "");
         }
 
         return true;
@@ -3391,6 +3490,13 @@ void TParseContext::builtInOpCheck(const TSourceLoc& loc, const TFunction& fnCan
                 break;
         }
         break;
+    case EOpCooperativeMatrixMulAZD:
+    case EOpCooperativeMatrixMulAddAZD:
+        {
+            if (handleCoopMatAZDMultiplyBuiltin(*this, loc, callNode, *argp))
+                break;
+        }
+        break;
     case EOpCooperativeVectorMatMulNV:
     case EOpCooperativeVectorMatMulAddNV:
         {
@@ -3430,8 +3536,18 @@ void TParseContext::builtInOpCheck(const TSourceLoc& loc, const TFunction& fnCan
     case EOpCooperativeMatrixReduceAZD:
         if (!(*argp)[1]->getAsTyped()->getType().getQualifier().isConstant())
             error(loc, "argument must be compile-time constant", "reduceMask", "");
+        else {
+            int reduceMask = 0;
+            if (getConstantIntValue((*argp)[1], reduceMask) && (reduceMask < 0 || reduceMask > 1))
+                error(loc, "must be in the range [0, 1]", "reduceMask", "");
+        }
         if (!(*argp)[2]->getAsTyped()->getType().getQualifier().isConstant())
             error(loc, "argument must be compile-time constant", "combineOp", "");
+        else {
+            int combineOp = 0;
+            if (getConstantIntValue((*argp)[2], combineOp) && (combineOp < 0 || combineOp > 2))
+                error(loc, "must be in the range [0, 2]", "combineOp", "");
+        }
         break;
     default:
         break;
