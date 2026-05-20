@@ -1,0 +1,32 @@
+#version 450 core
+#extension GL_KHR_memory_scope_semantics : enable
+#extension GL_AZD_neural_matrix : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer BufA { float16_t a_data[]; } bufA;
+layout(set = 0, binding = 1) buffer BufB { float16_t b_data[]; } bufB;
+layout(set = 0, binding = 2) buffer BufC { float16_t c_data[]; } bufC;
+layout(set = 0, binding = 3) buffer BufD { float16_t d_data[]; } bufD;
+
+// Test 1: Normal matmuladd D = A*B + C
+// A(16x8) -> MatrixUseAAZD, B(8x16) -> MatrixUseBAZD, C(16x16)/D -> MatrixAccumulatorAZD
+void main()
+{
+    const vec2 shapeA = vec2(16.0, 8.0);
+    const vec2 shapeB = vec2(8.0, 16.0);
+    const vec2 shapeC = vec2(16.0, 16.0);
+    const vec2 zeroOffset = vec2(0.0, 0.0);
+
+    coopmatAZD<float16_t, 16, 8>  A;
+    coopmatAZD<float16_t, 8, 16>  B;
+    coopmatAZD<float16_t, 16, 16> C;
+    coopmatAZD<float16_t, 16, 16> D;
+
+    coopMatLoadAZD(A, bufA.a_data, shapeA, zeroOffset, gl_RowMajorAZD);
+    coopMatLoadAZD(B, bufB.b_data, shapeB, zeroOffset, gl_RowMajorAZD);
+    coopMatLoadAZD(C, bufC.c_data, shapeC, zeroOffset, gl_RowMajorAZD);
+    coopMatMulAddAZD(D, A, B, C);
+    coopMatStoreAZD(D, bufD.d_data, shapeC, zeroOffset, gl_ColumnMajorAZD);
+}

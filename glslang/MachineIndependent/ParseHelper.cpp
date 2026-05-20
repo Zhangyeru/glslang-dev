@@ -355,6 +355,10 @@ bool handleCoopMatAZDMultiplyBuiltin(TParseContext& parseContext, const TSourceL
                 parseContext.error(loc, "A column count must match B row count", "coopMatMulAZD", "");
         }
 
+        parseContext.recordCoopMatAZDLogicalValueUse(loc, arguments[1]->getAsTyped(), false, "coopMatMulAZD");
+        parseContext.recordCoopMatAZDLogicalValueUse(loc, arguments[2]->getAsTyped(), false, "coopMatMulAZD");
+        parseContext.recordCoopMatAZDLogicalValueUse(loc, arguments[0]->getAsTyped(), true, "coopMatMulAZD");
+
         return true;
     }
 
@@ -376,6 +380,11 @@ bool handleCoopMatAZDMultiplyBuiltin(TParseContext& parseContext, const TSourceL
             if (getCoopMatAZDColumns(aType) != getCoopMatAZDRows(bType))
                 parseContext.error(loc, "A column count must match B row count", "coopMatMulAddAZD", "");
         }
+
+        parseContext.recordCoopMatAZDLogicalValueUse(loc, arguments[1]->getAsTyped(), false, "coopMatMulAddAZD");
+        parseContext.recordCoopMatAZDLogicalValueUse(loc, arguments[2]->getAsTyped(), false, "coopMatMulAddAZD");
+        parseContext.recordCoopMatAZDLogicalValueUse(loc, arguments[3]->getAsTyped(), true, "coopMatMulAddAZD");
+        parseContext.recordCoopMatAZDLogicalValueUse(loc, arguments[0]->getAsTyped(), true, "coopMatMulAddAZD");
 
         return true;
     }
@@ -1664,6 +1673,8 @@ TIntermAggregate* TParseContext::handleFunctionDefinition(const TSourceLoc& loc,
             if (! symbolTable.insert(*variable))
                 error(loc, "redefinition", variable->getName().c_str(), "");
             else {
+                registerCoopMatAZDFunctionParameter(function, i, *variable);
+
                 // Transfer ownership of name pointer to symbol table.
                 param.name = nullptr;
 
@@ -1840,6 +1851,9 @@ TIntermTyped* TParseContext::handleFunctionCall(const TSourceLoc& loc, TFunction
             } else {
                 // This is a function call not mapped to built-in operator.
                 // It could still be a built-in function, but only if PureOperatorBuiltins == false.
+                if (! builtIn)
+                    applyCoopMatAZDFunctionCallRoles(loc, *fnCandidate, arguments, true);
+
                 result = intermediate.setAggregateOperator(arguments, EOpFunctionCall, fnCandidate->getType(), loc);
                 TIntermAggregate* call = result->getAsAggregate();
                 call->setName(fnCandidate->getMangledName());
@@ -2272,6 +2286,7 @@ void TParseContext::computeBuiltinPrecisions(TIntermTyped& node, const TFunction
 TIntermNode* TParseContext::handleReturnValue(const TSourceLoc& loc, TIntermTyped* value)
 {
     storage16BitAssignmentCheck(loc, value->getType(), "return");
+    recordCoopMatAZDFunctionReturnRole(loc, value);
 
     functionReturnsValue = true;
     TIntermBranch* branch = nullptr;
@@ -2556,7 +2571,212 @@ TIntermTyped* TParseContext::addAssign(const TSourceLoc& loc, TOperator op, TInt
     if (op == EOpAssign && left->getBasicType() == EbtSampler && right->getBasicType() == EbtSampler)
         requireExtensions(loc, 1, &E_GL_ARB_bindless_texture, "sampler assignment for bindless texture");
 
-    return intermediate.addAssign(op, left, right, loc);
+    TIntermTyped* result = intermediate.addAssign(op, left, right, loc);
+
+    return result;
+}
+
+void TParseContext::registerCoopMatAZDFunctionParameter(const TFunction& function, int parameterIndex,
+                                                        const TVariable& variable)
+{
+    coopMatAZDFunctionDisplayNames[function.getMangledName()] = function.getName();
+
+    if (!variable.getType().isCoopMatAZD())
+        return;
+
+    const TString& functionName = function.getMangledName();
+    coopMatAZDParameterSymbols[variable.getUniqueId()] = std::make_pair(functionName, parameterIndex);
+
+    TVector<int>& parameterRoles = coopMatAZDFunctionParameterRoles[functionName];
+    if (parameterRoles.size() < static_cast<size_t>(function.getParamCount()))
+        parameterRoles.resize(function.getParamCount(), 0);
+}
+
+void TParseContext::applyCoopMatAZDFunctionCallRoles(const TSourceLoc& loc, const TFunction& function,
+                                                     TIntermNode* arguments, bool deferUnknownSummary)
+{
+    coopMatAZDFunctionDisplayNames[function.getMangledName()] = function.getName();
+
+    if (!arguments || function.getParamCount() == 0)
+        return;
+
+    TIntermAggregate* aggregate = arguments->getAsAggregate();
+    TVector<TIntermTyped*> argumentNodes;
+    bool hasCoopMatAZDArgument = false;
+    for (int i = 0; i < function.getParamCount(); ++i) {
+        TIntermNode* argument = function.getParamCount() == 1 ? arguments :
+            (aggregate ? aggregate->getSequence()[i] : arguments);
+        TIntermTyped* typedArgument = argument ? argument->getAsTyped() : nullptr;
+        argumentNodes.push_back(typedArgument);
+        hasCoopMatAZDArgument = hasCoopMatAZDArgument ||
+            (typedArgument && typedArgument->getType().isCoopMatAZD());
+    }
+
+    if (!hasCoopMatAZDArgument)
+        return;
+
+    const TString& functionName = function.getMangledName();
+    const auto rolesIter = coopMatAZDFunctionParameterRoles.find(functionName);
+    if (rolesIter != coopMatAZDFunctionParameterRoles.end()) {
+        const TVector<int>& parameterRoles = rolesIter->second;
+        for (int i = 0; i < function.getParamCount() && i < static_cast<int>(parameterRoles.size()); ++i) {
+            if ((parameterRoles[i] & 1) != 0)
+                recordCoopMatAZDLogicalValueUse(loc, argumentNodes[i], false, function.getName().c_str());
+            if ((parameterRoles[i] & 2) != 0)
+                recordCoopMatAZDLogicalValueUse(loc, argumentNodes[i], true, function.getName().c_str());
+        }
+    }
+
+    if (deferUnknownSummary && !function.isDefined()) {
+        CoopMatAZDFunctionCallRecord callRecord;
+        callRecord.loc = loc;
+        callRecord.calleeName = function.getName();
+        callRecord.arguments = argumentNodes;
+        coopMatAZDPendingFunctionCalls[functionName].push_back(callRecord);
+    }
+}
+
+void TParseContext::applyPendingCoopMatAZDFunctionCalls(const TString& functionName)
+{
+    const auto rolesIter = coopMatAZDFunctionParameterRoles.find(functionName);
+    const auto callsIter = coopMatAZDPendingFunctionCalls.find(functionName);
+    if (rolesIter == coopMatAZDFunctionParameterRoles.end() ||
+        callsIter == coopMatAZDPendingFunctionCalls.end())
+        return;
+
+    const TVector<int>& parameterRoles = rolesIter->second;
+    for (const CoopMatAZDFunctionCallRecord& callRecord : callsIter->second) {
+        for (int i = 0; i < static_cast<int>(callRecord.arguments.size()) &&
+                        i < static_cast<int>(parameterRoles.size()); ++i) {
+            if ((parameterRoles[i] & 1) != 0)
+                recordCoopMatAZDLogicalValueUse(callRecord.loc, callRecord.arguments[i], false,
+                                                callRecord.calleeName.c_str());
+            if ((parameterRoles[i] & 2) != 0)
+                recordCoopMatAZDLogicalValueUse(callRecord.loc, callRecord.arguments[i], true,
+                                                callRecord.calleeName.c_str());
+        }
+    }
+}
+
+int TParseContext::getCoopMatAZDExpressionRole(TIntermTyped* node) const
+{
+    if (!node || !node->getType().isCoopMatAZD())
+        return 0;
+
+    if (TIntermSymbol* symbol = node->getAsSymbolNode()) {
+        const auto roleIter = coopMatAZDLogicalValueRoles.find(symbol->getId());
+        return roleIter == coopMatAZDLogicalValueRoles.end() ? 0 : roleIter->second;
+    }
+
+    if (TIntermAggregate* aggregate = node->getAsAggregate()) {
+        if (aggregate->getOp() == EOpFunctionCall) {
+            const auto roleIter = coopMatAZDFunctionReturnRoles.find(aggregate->getName());
+            return roleIter == coopMatAZDFunctionReturnRoles.end() ? 0 : roleIter->second;
+        }
+    }
+
+    return 0;
+}
+
+void TParseContext::recordCoopMatAZDFunctionReturnRole(const TSourceLoc& loc, TIntermTyped* node)
+{
+    if (!currentFunctionType || !currentFunctionType->isCoopMatAZD() ||
+        !node || !node->getType().isCoopMatAZD())
+        return;
+
+    const int role = getCoopMatAZDExpressionRole(node);
+    if (role == 0)
+        return;
+
+    int& returnRole = coopMatAZDFunctionReturnRoles[currentCaller];
+    if (returnRole != 0 && returnRole != role) {
+        error(loc, "AZD cooperative matrix function return value cannot be used as both OperandAB and Accumulator",
+              "return", "");
+    }
+
+    const int oldReturnRole = returnRole;
+    returnRole |= role;
+    if (returnRole != oldReturnRole)
+        applyPendingCoopMatAZDFunctionReturnUses(currentCaller);
+}
+
+void TParseContext::applyPendingCoopMatAZDFunctionReturnUses(const TString& functionName)
+{
+    const auto roleIter = coopMatAZDFunctionReturnRoles.find(functionName);
+    const auto usesIter = coopMatAZDPendingFunctionReturnUses.find(functionName);
+    if (roleIter == coopMatAZDFunctionReturnRoles.end() ||
+        usesIter == coopMatAZDPendingFunctionReturnUses.end())
+        return;
+
+    const int returnRole = roleIter->second;
+    if (returnRole == 0)
+        return;
+
+    for (const CoopMatAZDFunctionReturnUseRecord& useRecord : usesIter->second) {
+        if (returnRole != useRecord.role) {
+            error(useRecord.loc, "AZD cooperative matrix function return value cannot be used as both OperandAB and Accumulator",
+                  useRecord.calleeName.c_str(), "");
+        }
+    }
+}
+
+void TParseContext::recordCoopMatAZDLogicalValueUse(const TSourceLoc& loc, TIntermTyped* node,
+                                                    bool accumulator, const char* token)
+{
+    if (!node || !node->getType().isCoopMatAZD())
+        return;
+
+    TIntermSymbol* symbol = node->getAsSymbolNode();
+    if (!symbol) {
+        TIntermAggregate* aggregate = node->getAsAggregate();
+        if (!aggregate || aggregate->getOp() != EOpFunctionCall)
+            return;
+
+        const TString& functionName = aggregate->getName();
+        const int role = accumulator ? 2 : 1;
+        const auto returnRoleIter = coopMatAZDFunctionReturnRoles.find(functionName);
+        if (returnRoleIter != coopMatAZDFunctionReturnRoles.end() &&
+            returnRoleIter->second != 0) {
+            if (returnRoleIter->second != role) {
+                error(loc, "AZD cooperative matrix function return value cannot be used as both OperandAB and Accumulator",
+                      token, "");
+            }
+            return;
+        }
+
+        CoopMatAZDFunctionReturnUseRecord useRecord;
+        useRecord.loc = loc;
+        const auto displayNameIter = coopMatAZDFunctionDisplayNames.find(functionName);
+        useRecord.calleeName = displayNameIter == coopMatAZDFunctionDisplayNames.end() ?
+            TString(token) : displayNameIter->second;
+        useRecord.role = role;
+        coopMatAZDPendingFunctionReturnUses[functionName].push_back(useRecord);
+        return;
+    }
+
+    const int role = accumulator ? 2 : 1;
+    int& existingRole = coopMatAZDLogicalValueRoles[symbol->getId()];
+    if (existingRole != 0 && (existingRole & role) == 0) {
+        error(loc, "same AZD cooperative matrix logical value cannot be used directly as both OperandAB and Accumulator",
+              token, "");
+    }
+    existingRole |= role;
+
+    const auto parameterIter = coopMatAZDParameterSymbols.find(symbol->getId());
+    if (parameterIter == coopMatAZDParameterSymbols.end())
+        return;
+
+    const TString& functionName = parameterIter->second.first;
+    const int parameterIndex = parameterIter->second.second;
+    TVector<int>& parameterRoles = coopMatAZDFunctionParameterRoles[functionName];
+    if (parameterRoles.size() <= static_cast<size_t>(parameterIndex))
+        parameterRoles.resize(parameterIndex + 1, 0);
+
+    int& parameterRole = parameterRoles[parameterIndex];
+    const int oldParameterRole = parameterRole;
+    parameterRole |= role;
+    if (parameterRole != oldParameterRole)
+        applyPendingCoopMatAZDFunctionCalls(functionName);
 }
 
 void TParseContext::memorySemanticsCheck(const TSourceLoc& loc, const TFunction& fnCandidate, const TIntermOperator& callNode)

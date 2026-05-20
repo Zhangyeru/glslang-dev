@@ -1,0 +1,7 @@
+spv.coopmatAZD_roleBlockError.comp
+ERROR: 0:29: 'coopMatMulAddAZD' : same AZD cooperative matrix logical value cannot be used directly as both OperandAB and Accumulator 
+ERROR: 0:34: 'coopMatMulAddAZD' : same AZD cooperative matrix logical value cannot be used directly as both OperandAB and Accumulator 
+ERROR: 2 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

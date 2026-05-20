@@ -2,7 +2,7 @@ spv.coopmatAZD_builtin.comp
 ; SPIR-V
 ; Version: 1.0
 ; Generator: Khronos Glslang Reference Front End; 11
-; Bound: 262
+; Bound: 266
 ; Schema: 0
                OpCapability Shader
                OpCapability Float16
@@ -54,6 +54,7 @@ spv.coopmatAZD_builtin.comp
                OpName %iB "iB"
                OpName %tempArg_7 "tempArg"
                OpName %iC "iC"
+               OpName %iOperand "iOperand"
                OpName %tempArg_8 "tempArg"
                OpName %iMulR "iMulR"
                OpName %tempArg_9 "tempArg"
@@ -68,6 +69,7 @@ spv.coopmatAZD_builtin.comp
                OpName %uB "uB"
                OpName %tempArg_12 "tempArg"
                OpName %uC "uC"
+               OpName %uOperand "uOperand"
                OpName %tempArg_13 "tempArg"
                OpName %uMulR "uMulR"
                OpName %tempArg_14 "tempArg"
@@ -169,42 +171,42 @@ spv.coopmatAZD_builtin.comp
    %float_13 = OpConstant %float 13
    %float_14 = OpConstant %float 14
         %140 = OpConstantComposite %v2float %float_13 %float_14
-        %144 = OpTypeCooperativeMatrixAZD %int %uint_16 %uint_16
-%_ptr_Function_144 = OpTypePointer Function %144
-        %149 = OpConstantNull %144
+        %146 = OpTypeCooperativeMatrixAZD %int %uint_16 %uint_16
+%_ptr_Function_146 = OpTypePointer Function %146
+        %151 = OpConstantNull %146
    %float_15 = OpConstant %float 15
-        %165 = OpConstantComposite %v2float %float_15 %float_16
+        %167 = OpConstantComposite %v2float %float_15 %float_16
      %ushort = OpTypeInt 16 0
      %uint_4 = OpConstant %uint 4
-        %174 = OpTypeCooperativeMatrixAZD %ushort %uint_4 %uint_16
-%_ptr_Function_174 = OpTypePointer Function %174
+        %176 = OpTypeCooperativeMatrixAZD %ushort %uint_4 %uint_16
+%_ptr_Function_176 = OpTypePointer Function %176
 %_runtimearr_ushort = OpTypeRuntimeArray %ushort
      %BufU16 = OpTypeStruct %_runtimearr_ushort
 %_ptr_StorageBuffer_BufU16 = OpTypePointer StorageBuffer %BufU16
      %bufU16 = OpVariable %_ptr_StorageBuffer_BufU16 StorageBuffer
 %_ptr_StorageBuffer__runtimearr_ushort = OpTypePointer StorageBuffer %_runtimearr_ushort
-        %183 = OpConstantComposite %v2float %float_4 %float_16
+        %185 = OpConstantComposite %v2float %float_4 %float_16
    %float_17 = OpConstant %float 17
    %float_18 = OpConstant %float 18
-        %186 = OpConstantComposite %v2float %float_17 %float_18
-        %190 = OpTypeCooperativeMatrixAZD %ushort %uint_16 %uint_4
-%_ptr_Function_190 = OpTypePointer Function %190
-        %194 = OpConstantComposite %v2float %float_16 %float_4
+        %188 = OpConstantComposite %v2float %float_17 %float_18
+        %192 = OpTypeCooperativeMatrixAZD %ushort %uint_16 %uint_4
+%_ptr_Function_192 = OpTypePointer Function %192
+        %196 = OpConstantComposite %v2float %float_16 %float_4
    %float_19 = OpConstant %float 19
    %float_20 = OpConstant %float 20
-        %197 = OpConstantComposite %v2float %float_19 %float_20
-        %201 = OpTypeCooperativeMatrixAZD %ushort %uint_4 %uint_4
-%_ptr_Function_201 = OpTypePointer Function %201
-        %205 = OpConstantComposite %v2float %float_4 %float_4
+        %199 = OpConstantComposite %v2float %float_19 %float_20
+        %203 = OpTypeCooperativeMatrixAZD %ushort %uint_4 %uint_4
+%_ptr_Function_203 = OpTypePointer Function %203
+        %207 = OpConstantComposite %v2float %float_4 %float_4
    %float_21 = OpConstant %float 21
    %float_22 = OpConstant %float 22
-        %208 = OpConstantComposite %v2float %float_21 %float_22
-        %212 = OpTypeCooperativeMatrixAZD %uint %uint_4 %uint_4
-%_ptr_Function_212 = OpTypePointer Function %212
-        %217 = OpConstantNull %212
+        %210 = OpConstantComposite %v2float %float_21 %float_22
+        %216 = OpTypeCooperativeMatrixAZD %uint %uint_4 %uint_4
+%_ptr_Function_216 = OpTypePointer Function %216
+        %221 = OpConstantNull %216
    %float_23 = OpConstant %float 23
    %float_24 = OpConstant %float 24
-        %234 = OpConstantComposite %v2float %float_23 %float_24
+        %238 = OpConstantComposite %v2float %float_23 %float_24
        %bool = OpTypeBool
      %uint_1 = OpConstant %uint 1
 %gl_WorkGroupSize = OpConstantComposite %v3uint %uint_1 %uint_1 %uint_1
@@ -229,21 +231,23 @@ spv.coopmatAZD_builtin.comp
          %iB = OpVariable %_ptr_Function_122 Function
   %tempArg_7 = OpVariable %_ptr_Function_133 Function
          %iC = OpVariable %_ptr_Function_133 Function
-  %tempArg_8 = OpVariable %_ptr_Function_144 Function
-      %iMulR = OpVariable %_ptr_Function_144 Function
+   %iOperand = OpVariable %_ptr_Function_133 Function
+  %tempArg_8 = OpVariable %_ptr_Function_146 Function
+      %iMulR = OpVariable %_ptr_Function_146 Function
   %tempArg_9 = OpVariable %_ptr_Function_133 Function
          %iR = OpVariable %_ptr_Function_133 Function
          %li = OpVariable %_ptr_Function_int Function
- %tempArg_10 = OpVariable %_ptr_Function_174 Function
-         %uA = OpVariable %_ptr_Function_174 Function
- %tempArg_11 = OpVariable %_ptr_Function_190 Function
-         %uB = OpVariable %_ptr_Function_190 Function
- %tempArg_12 = OpVariable %_ptr_Function_201 Function
-         %uC = OpVariable %_ptr_Function_201 Function
- %tempArg_13 = OpVariable %_ptr_Function_212 Function
-      %uMulR = OpVariable %_ptr_Function_212 Function
- %tempArg_14 = OpVariable %_ptr_Function_201 Function
-         %uR = OpVariable %_ptr_Function_201 Function
+ %tempArg_10 = OpVariable %_ptr_Function_176 Function
+         %uA = OpVariable %_ptr_Function_176 Function
+ %tempArg_11 = OpVariable %_ptr_Function_192 Function
+         %uB = OpVariable %_ptr_Function_192 Function
+ %tempArg_12 = OpVariable %_ptr_Function_203 Function
+         %uC = OpVariable %_ptr_Function_203 Function
+   %uOperand = OpVariable %_ptr_Function_203 Function
+ %tempArg_13 = OpVariable %_ptr_Function_216 Function
+      %uMulR = OpVariable %_ptr_Function_216 Function
+ %tempArg_14 = OpVariable %_ptr_Function_203 Function
+         %uR = OpVariable %_ptr_Function_203 Function
          %lu = OpVariable %_ptr_Function_int Function
          %21 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %bufF16 %int_0
          %35 = OpAccessChain %_ptr_Input_uint %gl_WorkGroupID %uint_0
@@ -310,95 +314,99 @@ spv.coopmatAZD_builtin.comp
                OpStore %tempArg_7 %141
         %143 = OpLoad %133 %tempArg_7
                OpStore %iC %143
-        %147 = OpLoad %133 %iC
-        %148 = OpLoad %133 %iC
-        %150 = OpCooperativeMatrixMulAddAZD %144 %147 %148 %149
-               OpStore %tempArg_8 %150
-        %152 = OpLoad %144 %tempArg_8
-               OpStore %iMulR %152
-        %154 = OpLoad %107 %iA
-        %155 = OpLoad %122 %iB
-        %156 = OpLoad %133 %iC
-        %157 = OpCooperativeMatrixMulAddAZD %133 %154 %155 %156
-               OpStore %tempArg_9 %157
-        %158 = OpLoad %133 %tempArg_9
-               OpStore %iC %158
-        %160 = OpLoad %133 %iC
-        %161 = OpCooperativeMatrixReduceAZD %133 %160 %int_1 %int_1
-               OpStore %iR %161
-        %162 = OpLoad %133 %iR
-        %163 = OpAccessChain %_ptr_StorageBuffer__runtimearr_char %bufI8 %int_0
-               OpCooperativeMatrixStoreAZD %163 %162 %137 %165 %int_1
-        %167 = OpCooperativeMatrixLengthAZD %uint %133
-        %168 = OpBitcast %int %167
-        %169 = OpCooperativeMatrixLengthAZD %uint %144
+        %145 = OpLoad %133 %iC
+               OpStore %iOperand %145
+        %149 = OpLoad %133 %iOperand
+        %150 = OpLoad %133 %iOperand
+        %152 = OpCooperativeMatrixMulAddAZD %146 %149 %150 %151
+               OpStore %tempArg_8 %152
+        %154 = OpLoad %146 %tempArg_8
+               OpStore %iMulR %154
+        %156 = OpLoad %107 %iA
+        %157 = OpLoad %122 %iB
+        %158 = OpLoad %133 %iC
+        %159 = OpCooperativeMatrixMulAddAZD %133 %156 %157 %158
+               OpStore %tempArg_9 %159
+        %160 = OpLoad %133 %tempArg_9
+               OpStore %iC %160
+        %162 = OpLoad %133 %iC
+        %163 = OpCooperativeMatrixReduceAZD %133 %162 %int_1 %int_1
+               OpStore %iR %163
+        %164 = OpLoad %133 %iR
+        %165 = OpAccessChain %_ptr_StorageBuffer__runtimearr_char %bufI8 %int_0
+               OpCooperativeMatrixStoreAZD %165 %164 %137 %167 %int_1
+        %169 = OpCooperativeMatrixLengthAZD %uint %133
         %170 = OpBitcast %int %169
-        %171 = OpIAdd %int %168 %170
-               OpStore %li %171
-        %182 = OpAccessChain %_ptr_StorageBuffer__runtimearr_ushort %bufU16 %int_0
-        %187 = OpCooperativeMatrixLoadAZD %174 %182 %183 %186 %int_0
-               OpStore %tempArg_10 %187
-        %189 = OpLoad %174 %tempArg_10
-               OpStore %uA %189
-        %193 = OpAccessChain %_ptr_StorageBuffer__runtimearr_ushort %bufU16 %int_0
-        %198 = OpCooperativeMatrixLoadAZD %190 %193 %194 %197 %int_1
-               OpStore %tempArg_11 %198
-        %200 = OpLoad %190 %tempArg_11
-               OpStore %uB %200
-        %204 = OpAccessChain %_ptr_StorageBuffer__runtimearr_ushort %bufU16 %int_0
-        %209 = OpCooperativeMatrixLoadAZD %201 %204 %205 %208 %int_0
-               OpStore %tempArg_12 %209
-        %211 = OpLoad %201 %tempArg_12
-               OpStore %uC %211
-        %215 = OpLoad %201 %uC
-        %216 = OpLoad %201 %uC
-        %218 = OpCooperativeMatrixMulAddAZD %212 %215 %216 %217
-               OpStore %tempArg_13 %218
-        %220 = OpLoad %212 %tempArg_13
-               OpStore %uMulR %220
-        %222 = OpLoad %174 %uA
-        %223 = OpLoad %190 %uB
-        %224 = OpLoad %201 %uC
-        %225 = OpCooperativeMatrixMulAddAZD %201 %222 %223 %224
-               OpStore %tempArg_14 %225
-        %226 = OpLoad %201 %tempArg_14
-               OpStore %uC %226
-        %228 = OpLoad %201 %uC
-        %229 = OpCooperativeMatrixReduceAZD %201 %228 %int_0 %int_2
-               OpStore %uR %229
-        %230 = OpLoad %201 %uR
-        %231 = OpAccessChain %_ptr_StorageBuffer__runtimearr_ushort %bufU16 %int_0
-               OpCooperativeMatrixStoreAZD %231 %230 %205 %234 %int_1
-        %236 = OpCooperativeMatrixLengthAZD %uint %201
-        %237 = OpBitcast %int %236
-        %238 = OpCooperativeMatrixLengthAZD %uint %212
-        %239 = OpBitcast %int %238
-        %240 = OpIAdd %int %237 %239
-               OpStore %lu %240
-        %241 = OpLoad %int %lf
-        %242 = OpLoad %int %li
-        %243 = OpIAdd %int %241 %242
-        %244 = OpLoad %int %lu
-        %245 = OpIAdd %int %243 %244
-        %247 = OpIEqual %bool %245 %int_0
-               OpSelectionMerge %249 None
-               OpBranchConditional %247 %248 %249
-        %248 = OpLabel
-        %250 = OpLoad %12 %matA
-        %251 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %bufF16 %int_0
-        %252 = OpAccessChain %_ptr_Input_uint %gl_WorkGroupID %uint_0
-        %253 = OpLoad %uint %252
-        %254 = OpIMul %uint %uint_16 %253
-        %255 = OpConvertUToF %float %254
-        %256 = OpCompositeConstruct %v2float %float_0 %255
-               OpCooperativeMatrixStoreAZD %251 %250 %26 %256 %int_0
-        %257 = OpLoad %44 %fR
-               OpStore %fC %257
-        %258 = OpLoad %133 %iR
-               OpStore %iC %258
-        %259 = OpLoad %201 %uR
-               OpStore %uC %259
-               OpBranch %249
-        %249 = OpLabel
+        %171 = OpCooperativeMatrixLengthAZD %uint %146
+        %172 = OpBitcast %int %171
+        %173 = OpIAdd %int %170 %172
+               OpStore %li %173
+        %184 = OpAccessChain %_ptr_StorageBuffer__runtimearr_ushort %bufU16 %int_0
+        %189 = OpCooperativeMatrixLoadAZD %176 %184 %185 %188 %int_0
+               OpStore %tempArg_10 %189
+        %191 = OpLoad %176 %tempArg_10
+               OpStore %uA %191
+        %195 = OpAccessChain %_ptr_StorageBuffer__runtimearr_ushort %bufU16 %int_0
+        %200 = OpCooperativeMatrixLoadAZD %192 %195 %196 %199 %int_1
+               OpStore %tempArg_11 %200
+        %202 = OpLoad %192 %tempArg_11
+               OpStore %uB %202
+        %206 = OpAccessChain %_ptr_StorageBuffer__runtimearr_ushort %bufU16 %int_0
+        %211 = OpCooperativeMatrixLoadAZD %203 %206 %207 %210 %int_0
+               OpStore %tempArg_12 %211
+        %213 = OpLoad %203 %tempArg_12
+               OpStore %uC %213
+        %215 = OpLoad %203 %uC
+               OpStore %uOperand %215
+        %219 = OpLoad %203 %uOperand
+        %220 = OpLoad %203 %uOperand
+        %222 = OpCooperativeMatrixMulAddAZD %216 %219 %220 %221
+               OpStore %tempArg_13 %222
+        %224 = OpLoad %216 %tempArg_13
+               OpStore %uMulR %224
+        %226 = OpLoad %176 %uA
+        %227 = OpLoad %192 %uB
+        %228 = OpLoad %203 %uC
+        %229 = OpCooperativeMatrixMulAddAZD %203 %226 %227 %228
+               OpStore %tempArg_14 %229
+        %230 = OpLoad %203 %tempArg_14
+               OpStore %uC %230
+        %232 = OpLoad %203 %uC
+        %233 = OpCooperativeMatrixReduceAZD %203 %232 %int_0 %int_2
+               OpStore %uR %233
+        %234 = OpLoad %203 %uR
+        %235 = OpAccessChain %_ptr_StorageBuffer__runtimearr_ushort %bufU16 %int_0
+               OpCooperativeMatrixStoreAZD %235 %234 %207 %238 %int_1
+        %240 = OpCooperativeMatrixLengthAZD %uint %203
+        %241 = OpBitcast %int %240
+        %242 = OpCooperativeMatrixLengthAZD %uint %216
+        %243 = OpBitcast %int %242
+        %244 = OpIAdd %int %241 %243
+               OpStore %lu %244
+        %245 = OpLoad %int %lf
+        %246 = OpLoad %int %li
+        %247 = OpIAdd %int %245 %246
+        %248 = OpLoad %int %lu
+        %249 = OpIAdd %int %247 %248
+        %251 = OpIEqual %bool %249 %int_0
+               OpSelectionMerge %253 None
+               OpBranchConditional %251 %252 %253
+        %252 = OpLabel
+        %254 = OpLoad %12 %matA
+        %255 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %bufF16 %int_0
+        %256 = OpAccessChain %_ptr_Input_uint %gl_WorkGroupID %uint_0
+        %257 = OpLoad %uint %256
+        %258 = OpIMul %uint %uint_16 %257
+        %259 = OpConvertUToF %float %258
+        %260 = OpCompositeConstruct %v2float %float_0 %259
+               OpCooperativeMatrixStoreAZD %255 %254 %26 %260 %int_0
+        %261 = OpLoad %44 %fR
+               OpStore %fC %261
+        %262 = OpLoad %133 %iR
+               OpStore %iC %262
+        %263 = OpLoad %203 %uR
+               OpStore %uC %263
+               OpBranch %253
+        %253 = OpLabel
                OpReturn
                OpFunctionEnd
