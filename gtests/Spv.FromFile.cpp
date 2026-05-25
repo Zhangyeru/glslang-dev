@@ -408,6 +408,8 @@ INSTANTIATE_TEST_SUITE_P(
         "spv.coopmatAZD_roleBlockError.comp",
         "spv.coopmatAZD_roleFunctionError.comp",
         "spv.coopmatAZD_roleReturnError.comp",
+        "spv.coopmatAZD_roleReturnForwardError.comp",
+        "spv.coopmatAZD_roleLValueError.comp",
         "spv.coopmatAZD_arithmetic.comp",
         "spv.coopmatAZD_arithmetic.vert",
         "spv.coopmatAZD_arithmetic.frag",

@@ -361,9 +361,13 @@ public:
     void registerCoopMatAZDFunctionParameter(const TFunction&, int parameterIndex, const TVariable&);
     void applyCoopMatAZDFunctionCallRoles(const TSourceLoc&, const TFunction&, TIntermNode*, bool deferUnknownSummary);
     void applyPendingCoopMatAZDFunctionCalls(const TString& functionName);
+    bool getCoopMatAZDLogicalValueKey(TIntermTyped*, TString&) const;
+    bool getCoopMatAZDFunctionCallName(TIntermTyped*, TString&) const;
     int getCoopMatAZDExpressionRole(TIntermTyped*) const;
     void recordCoopMatAZDFunctionReturnRole(const TSourceLoc&, TIntermTyped*);
+    void mergeCoopMatAZDFunctionReturnRole(const TSourceLoc&, const TString& functionName, int role, const char* token);
     void applyPendingCoopMatAZDFunctionReturnUses(const TString& functionName);
+    void applyPendingCoopMatAZDFunctionReturnDependencies(const TString& functionName);
     void builtInOpCheck(const TSourceLoc&, const TFunction&, TIntermOperator&);
     void nonOpBuiltInCheck(const TSourceLoc&, const TFunction&, TIntermAggregate&);
     void userFunctionCallCheck(const TSourceLoc&, TIntermAggregate&);
@@ -560,7 +564,7 @@ protected:
     TVector<TIntermTyped*> needsIndexLimitationChecking;
     TStructRecord matrixFixRecord;
     TStructRecord packingFixRecord;
-    std::map<long long, int> coopMatAZDLogicalValueRoles;
+    std::map<TString, int> coopMatAZDLogicalValueRoles;
     std::map<long long, std::pair<TString, int>> coopMatAZDParameterSymbols;
     std::map<TString, TVector<int>> coopMatAZDFunctionParameterRoles;
     std::map<TString, int> coopMatAZDFunctionReturnRoles;
@@ -575,8 +579,14 @@ protected:
         TString calleeName;
         int role;
     };
+    struct CoopMatAZDFunctionReturnDependencyRecord {
+        TSourceLoc loc;
+        TString dependentFunctionName;
+        TString calleeName;
+    };
     std::map<TString, TVector<CoopMatAZDFunctionCallRecord>> coopMatAZDPendingFunctionCalls;
     std::map<TString, TVector<CoopMatAZDFunctionReturnUseRecord>> coopMatAZDPendingFunctionReturnUses;
+    std::map<TString, TVector<CoopMatAZDFunctionReturnDependencyRecord>> coopMatAZDPendingFunctionReturnDependencies;
 
     //
     // Geometry shader input arrays:

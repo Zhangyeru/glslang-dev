@@ -1,0 +1,6 @@
+spv.coopmatAZD_roleReturnForwardError.comp
+ERROR: 0:35: 'wrapper' : AZD cooperative matrix function return value cannot be used as both OperandAB and Accumulator 
+ERROR: 1 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link
