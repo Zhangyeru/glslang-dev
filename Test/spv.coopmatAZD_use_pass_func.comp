@@ -1,0 +1,61 @@
+#version 450 core
+#extension GL_KHR_memory_scope_semantics : enable
+#extension GL_AZD_neural_matrix : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer Buf { float16_t data[]; } buf;
+
+void useAsAccumulator(coopmatAZD<float16_t, 16, 16> P,
+                      coopmatAZD<float16_t, 16, 16> A,
+                      coopmatAZD<float16_t, 16, 16> B)
+{
+    coopmatAZD<float16_t, 16, 16> D;
+    coopMatMulAddAZD(D, A, B, P);
+}
+
+void useBothOperands(coopmatAZD<float16_t, 16, 16> P,
+                     coopmatAZD<float16_t, 16, 16> C)
+{
+    coopmatAZD<float16_t, 16, 16> D;
+    coopMatMulAddAZD(D, P, P, C);
+}
+
+coopmatAZD<float16_t, 16, 16> makeAccumulator(coopmatAZD<float16_t, 16, 16> A,
+                                               coopmatAZD<float16_t, 16, 16> B,
+                                               coopmatAZD<float16_t, 16, 16> C)
+{
+    coopmatAZD<float16_t, 16, 16> D;
+    coopMatMulAddAZD(D, A, B, C);
+    return D;
+}
+
+coopmatAZD<float16_t, 16, 16> passThrough(coopmatAZD<float16_t, 16, 16> X)
+{
+    coopmatAZD<float16_t, 16, 16> Y = X;
+    return Y;
+}
+
+void main()
+{
+    const vec2 shape = vec2(16.0, 16.0);
+    const vec2 zeroOffset = vec2(0.0, 0.0);
+
+    coopmatAZD<float16_t, 16, 16> A, B, C, X;
+    coopmatAZD<float16_t, 16, 16> R, S, T, D0;
+
+    coopMatLoadAZD(A, buf.data, shape, zeroOffset, gl_RowMajorAZD);
+    coopMatLoadAZD(B, buf.data, shape, zeroOffset, gl_RowMajorAZD);
+    coopMatLoadAZD(C, buf.data, shape, zeroOffset, gl_RowMajorAZD);
+    coopMatLoadAZD(X, buf.data, shape, zeroOffset, gl_RowMajorAZD);
+
+    R = makeAccumulator(A, B, C);
+    useBothOperands(R, C);
+
+    S = X;
+    useAsAccumulator(S, A, B);
+
+    T = passThrough(C);
+    coopMatMulAddAZD(D0, T, B, C);
+}
