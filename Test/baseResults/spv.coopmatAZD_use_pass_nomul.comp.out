@@ -1,0 +1,86 @@
+spv.coopmatAZD_use_pass_nomul.comp
+; SPIR-V
+; Version: 1.0
+; Generator: Khronos Glslang Reference Front End; 11
+; Bound: 40
+; Schema: 0
+               OpCapability Shader
+               OpCapability Float16
+               OpCapability StorageBuffer16BitAccess
+               OpCapability VulkanMemoryModel
+               OpCapability CooperativeMatrixAZD
+               OpExtension "SPV_AZD_neural_matrix"
+               OpExtension "SPV_KHR_16bit_storage"
+               OpExtension "SPV_KHR_storage_buffer_storage_class"
+               OpExtension "SPV_KHR_vulkan_memory_model"
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint GLCompute %main "main"
+               OpExecutionMode %main LocalSize 1 1 1
+               OpSource GLSL 450
+               OpSourceExtension "GL_AZD_neural_matrix"
+               OpSourceExtension "GL_EXT_shader_explicit_arithmetic_types"
+               OpSourceExtension "GL_KHR_memory_scope_semantics"
+               OpName %main "main"
+               OpName %tempArg "tempArg"
+               OpName %InBuf "InBuf"
+               OpMemberName %InBuf 0 "data"
+               OpName %inBuf "inBuf"
+               OpName %value "value"
+               OpName %OutBuf "OutBuf"
+               OpMemberName %OutBuf 0 "data"
+               OpName %outBuf "outBuf"
+               OpDecorate %_runtimearr_half ArrayStride 2
+               OpDecorate %InBuf Block
+               OpMemberDecorate %InBuf 0 Offset 0
+               OpDecorate %inBuf Binding 0
+               OpDecorate %inBuf DescriptorSet 0
+               OpDecorate %_runtimearr_half_0 ArrayStride 2
+               OpDecorate %OutBuf Block
+               OpMemberDecorate %OutBuf 0 Offset 0
+               OpDecorate %outBuf Binding 1
+               OpDecorate %outBuf DescriptorSet 0
+               OpDecorate %gl_WorkGroupSize BuiltIn WorkgroupSize
+       %void = OpTypeVoid
+          %3 = OpTypeFunction %void
+       %half = OpTypeFloat 16
+       %uint = OpTypeInt 32 0
+    %uint_16 = OpConstant %uint 16
+          %9 = OpTypeCooperativeMatrixAZD %half %uint_16 %uint_16
+%_ptr_Function_9 = OpTypePointer Function %9
+%_runtimearr_half = OpTypeRuntimeArray %half
+      %InBuf = OpTypeStruct %_runtimearr_half
+%_ptr_StorageBuffer_InBuf = OpTypePointer StorageBuffer %InBuf
+      %inBuf = OpVariable %_ptr_StorageBuffer_InBuf StorageBuffer
+        %int = OpTypeInt 32 1
+      %int_0 = OpConstant %int 0
+%_ptr_StorageBuffer__runtimearr_half = OpTypePointer StorageBuffer %_runtimearr_half
+      %float = OpTypeFloat 32
+    %v2float = OpTypeVector %float 2
+   %float_16 = OpConstant %float 16
+         %23 = OpConstantComposite %v2float %float_16 %float_16
+    %float_0 = OpConstant %float 0
+         %25 = OpConstantComposite %v2float %float_0 %float_0
+%_runtimearr_half_0 = OpTypeRuntimeArray %half
+     %OutBuf = OpTypeStruct %_runtimearr_half_0
+%_ptr_StorageBuffer_OutBuf = OpTypePointer StorageBuffer %OutBuf
+     %outBuf = OpVariable %_ptr_StorageBuffer_OutBuf StorageBuffer
+%_ptr_StorageBuffer__runtimearr_half_0 = OpTypePointer StorageBuffer %_runtimearr_half_0
+      %int_1 = OpConstant %int 1
+     %v3uint = OpTypeVector %uint 3
+     %uint_1 = OpConstant %uint 1
+%gl_WorkGroupSize = OpConstantComposite %v3uint %uint_1 %uint_1 %uint_1
+       %main = OpFunction %void None %3
+          %5 = OpLabel
+    %tempArg = OpVariable %_ptr_Function_9 Function
+      %value = OpVariable %_ptr_Function_9 Function
+         %19 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %inBuf %int_0
+         %26 = OpCooperativeMatrixLoadAZD %9 %19 %23 %25 %int_0
+               OpStore %tempArg %26
+         %28 = OpLoad %9 %tempArg
+               OpStore %value %28
+         %29 = OpLoad %9 %value
+         %35 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half_0 %outBuf %int_0
+               OpCooperativeMatrixStoreAZD %35 %29 %23 %25 %int_1
+               OpReturn
+               OpFunctionEnd
