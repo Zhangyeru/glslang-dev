@@ -1,0 +1,46 @@
+#version 460
+
+#extension GL_EXT_scalar_block_layout : require
+#extension GL_EXT_shader_8bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int32 : require
+#extension GL_AZD_neural_matrix : require
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(scalar, set = 0, binding = 0) buffer InMatABlock {
+    uint8_t x[];
+} inMatA;
+
+layout(scalar, set = 0, binding = 1) buffer InMatBBlock {
+    uint8_t x[];
+} inMatB;
+
+layout(scalar, set = 0, binding = 2) buffer InMatCBlock {
+    uint32_t x[];
+} inMatC;
+
+layout(scalar, set = 0, binding = 3) buffer OutMatBlock {
+    uint32_t x[];
+} outMat;
+
+void main()
+{
+    coopmatAZD<uint8_t, 16, 32> matA;
+    coopMatLoadAZD(matA, inMatA.x, vec2(16, 32), vec2(0, 0), 0);
+
+    coopmatAZD<uint8_t, 32, 16> matB;
+    coopMatLoadAZD(matB, inMatB.x, vec2(32, 16), vec2(0, 0), 1);
+
+    coopmatAZD<uint32_t, 16, 16> matC;
+    coopMatLoadAZD(matC, inMatC.x, vec2(16, 16), vec2(0, 0), 0);
+
+    coopmatAZD<uint32_t, 16, 16> matD;
+    coopMatMulAddAZD(matD, matA, matB, matC);
+
+    coopmatAZD<uint8_t, 16, 16> matE = coopmatAZD<uint8_t, 16, 16>(matD);
+    coopmatAZD<uint32_t, 32, 16> matF;
+
+    coopMatMulAZD(matF, matB, matE);
+    coopMatStoreAZD(matF, outMat.x, vec2(32, 16), vec2(0, 0), 0);
+}

@@ -413,6 +413,7 @@ INSTANTIATE_TEST_SUITE_P(
         "spv.coopmatAZD_use_pass_block.comp",
         "spv.coopmatAZD_use_pass_array.comp",
         "spv.coopmatAZD_use_pass_func.comp",
+        "spv.coopmatAZD_use_pass_matmul_rect.comp",
         "spv.coopmatAZD_arithmetic.comp",
         "spv.coopmatAZD_arithmetic.vert",
         "spv.coopmatAZD_arithmetic.frag",

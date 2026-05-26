@@ -374,8 +374,6 @@ bool handleCoopMatAZDMultiplyBuiltin(TParseContext& parseContext, const TSourceL
         if (!resultType.isCoopMatAZD() || !aType.isCoopMatAZD() || !bType.isCoopMatAZD())
             parseContext.error(loc, "requires coopMatMulAZD(out coopmatAZD, coopmatAZD, coopmatAZD)", "coopMatMulAZD", "");
         else {
-            if (!aType.sameTypeParameters(bType))
-                parseContext.error(loc, "A and B types must match", "coopMatMulAZD", "");
             if (getCoopMatAZDRows(aType) != getCoopMatAZDRows(resultType))
                 parseContext.error(loc, "A row count must match result row count", "coopMatMulAZD", "");
             if (getCoopMatAZDColumns(bType) != getCoopMatAZDColumns(resultType))
