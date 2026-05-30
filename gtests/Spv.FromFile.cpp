@@ -39,6 +39,9 @@
 #include <gtest/gtest.h>
 
 #include "TestFixture.h"
+#if ENABLE_OPT
+#include "spirv-tools/optimizer.hpp"
+#endif
 
 namespace glslangtest {
 namespace {
@@ -66,6 +69,7 @@ std::string FileNameAsCustomTestSuffixIoMap(
 
 using CompileVulkanToSpirvTest = GlslangTest<::testing::TestWithParam<std::string>>;
 using CompileVulkanToSpirvToolsTest = GlslangTest<::testing::TestWithParam<std::string>>;
+using CompileVulkanToSpirvAzdLowerToStandardTest = GlslangTest<::testing::TestWithParam<std::string>>;
 using CompileVulkanToSpirvTestNoLink = GlslangTest<::testing::TestWithParam<std::string>>;
 using CompileVulkanToSpirvDeadCodeElimTest = GlslangTest<::testing::TestWithParam<std::string>>;
 using CompileVulkan1_1ToSpirvTest = GlslangTest<::testing::TestWithParam<std::string>>;
@@ -106,6 +110,55 @@ TEST_P(CompileVulkanToSpirvToolsTest, FromFile)
     loadFileCompileAndCheck(GlobalTestSettings.testRoot, GetParam(),
                             Source::GLSL, Semantics::Vulkan, glslang::EShTargetVulkan_1_0, glslang::EShTargetSpv_1_0,
                             Target::Spv);
+}
+
+TEST_P(CompileVulkanToSpirvAzdLowerToStandardTest, FromFile)
+{
+#if !ENABLE_OPT
+    GTEST_SKIP() << "SPIRV-Tools is required for this test baseline";
+#else
+    const std::string testName = GetParam();
+    const std::string inputFname = GlobalTestSettings.testRoot + "/" + testName;
+    const std::string expectedOutputFname =
+        GlobalTestSettings.testRoot + "/baseResults/" + testName + ".lower.out";
+    std::string input;
+    std::string expectedOutput;
+
+    tryLoadFile(inputFname, "input", &input);
+    tryLoadFile(expectedOutputFname, "expected output", &expectedOutput);
+
+    const EShMessages controls = DeriveOptions(Source::GLSL, Semantics::Vulkan, Target::Spv);
+    GlslangResult result = compileAndLink(testName, input, "", controls, glslang::EShTargetVulkan_1_0,
+                                          glslang::EShTargetSpv_1_0);
+    ASSERT_FALSE(result.spirvBinary.empty()) << result.spirvWarningsErrors;
+
+    std::ostringstream optimizerMessages;
+    spvtools::Optimizer optimizer(spv_target_env::SPV_ENV_UNIVERSAL_1_5);
+    optimizer.SetMessageConsumer(
+        [&optimizerMessages](spv_message_level_t, const char* source, const spv_position_t& position,
+                             const char* message) {
+            if (source != nullptr)
+                optimizerMessages << source << ":";
+            optimizerMessages << position.line << ":" << position.column << ":" << position.index << ": "
+                              << message << "\n";
+        });
+    ASSERT_TRUE(optimizer.RegisterPassFromFlag("--azd-lower-to-standard"));
+
+    std::vector<uint32_t> optimized;
+    ASSERT_TRUE(optimizer.Run(result.spirvBinary.data(), result.spirvBinary.size(), &optimized))
+        << optimizerMessages.str();
+
+    std::ostringstream disassembly;
+    glslang::SpirvToolsDisassemble(disassembly, optimized, spv_target_env::SPV_ENV_UNIVERSAL_1_5);
+    result.spirv = disassembly.str();
+    EXPECT_EQ(std::string::npos, result.spirv.find("AZD"));
+    EXPECT_EQ(std::string::npos, result.spirv.find("CooperativeMatrixKHR"));
+
+    std::ostringstream stream;
+    outputResultToStream(&stream, result, controls);
+    checkEqAndUpdateIfRequested(expectedOutput, stream.str(), expectedOutputFname,
+                                result.spirvWarningsErrors + optimizerMessages.str());
+#endif
 }
 
 // Compiling GLSL to SPIR-V under Vulkan semantics without linking. Expected to successfully generate SPIR-V.
@@ -415,6 +468,7 @@ INSTANTIATE_TEST_SUITE_P(
         "spv.coopmatAZD_use_pass_func.comp",
         "spv.coopmatAZD_use_pass_matmul_rect.comp",
         "spv.coopmatAZD_use_pass_nomul.comp",
+        "spv.coopmatAZD_lower_tile.comp",
         "spv.coopmatAZD_arithmetic.comp",
         "spv.coopmatAZD_arithmetic.vert",
         "spv.coopmatAZD_arithmetic.frag",
@@ -441,6 +495,7 @@ INSTANTIATE_TEST_SUITE_P(
         "spv.coopvec.comp",
         "spv.coopvec2.comp",
         "spv.coopvecAZD.comp",
+        "spv.coopvecAZD_lower_tile.comp",
         "spv.coopvecAZD.vert",
         "spv.coopvecAZD.frag",
         "spv.coopvecAZD_bitcast.comp",
@@ -687,6 +742,15 @@ INSTANTIATE_TEST_SUITE_P(
         "spv.cpAsyncGroupBarrier.comp",
         "spv.cpAsyncTensor.comp",
         "spv.tensorMap.comp",
+    })),
+    FileNameAsCustomTestSuffix
+);
+
+INSTANTIATE_TEST_SUITE_P(
+    Glsl, CompileVulkanToSpirvAzdLowerToStandardTest,
+    ::testing::ValuesIn(std::vector<std::string>({
+        "spv.coopmatAZD_lower_tile.comp",
+        "spv.coopvecAZD_lower_tile.comp",
     })),
     FileNameAsCustomTestSuffix
 );
