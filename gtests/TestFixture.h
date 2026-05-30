@@ -42,6 +42,7 @@
 #include <streambuf>
 #include <tuple>
 #include <string>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -206,6 +207,7 @@ public:
         bool validationResult;
         std::string spirvWarningsErrors;
         std::string spirv;  // Optional SPIR-V disassembly text.
+        std::vector<uint32_t> spirvBinary;  // Optional SPIR-V binary.
     };
 
     // Compiles and the given source |code| of the given shader |stage| into
@@ -368,7 +370,8 @@ public:
                 program.getInfoDebugLog(),
                 validation_result,
                 logger.getAllMessages(),
-                disassembly_stream.str()};
+                disassembly_stream.str(),
+                spirv_binary};
     }
 
     // Compiles and links the given source |code| of the given shader
