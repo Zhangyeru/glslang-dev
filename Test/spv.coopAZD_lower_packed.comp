@@ -1,0 +1,44 @@
+#version 450 core
+#extension GL_AZD_neural_matrix : enable
+#extension GL_AZD_cooperative_vector : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+void main()
+{
+    coopmatAZD<float16_t, 8, 8> a16;
+    coopmatAZD<float16_t, 8, 8> b16;
+    coopmatAZD<float16_t, 8, 8> c16;
+    coopmatAZD<float16_t, 8, 8> d16;
+    coopMatMulAddAZD(d16, a16, b16, c16);
+
+    coopmatAZD<float, 8, 8> a32;
+    coopmatAZD<float, 8, 8> b32;
+    coopmatAZD<float, 8, 8> c32;
+    coopmatAZD<float, 8, 8> d32;
+    coopMatMulAddAZD(d32, a32, b32, c32);
+
+    coopmatAZD<float, 3, 5> a32TailK;
+    coopmatAZD<float, 5, 8> b32TailK;
+    coopmatAZD<float, 3, 8> c32TailK;
+    coopmatAZD<float, 3, 8> d32TailK;
+    coopMatMulAddAZD(d32TailK, a32TailK, b32TailK, c32TailK);
+
+    coopvecAZD<float16_t, 16> x16;
+    coopvecAZD<float16_t, 64> y16;
+    coopvecAZD<float16_t, 64> bias16;
+    coopmatAZD<float16_t, 64, 16> w16;
+    coopVecMatMulAddAZD(y16, x16, w16, bias16);
+
+    coopvecAZD<float, 16> x32;
+    coopvecAZD<float, 64> y32;
+    coopvecAZD<float, 64> bias32;
+    coopmatAZD<float, 64, 16> w32;
+    coopVecMatMulAddAZD(y32, x32, w32, bias32);
+
+    coopvecAZD<float, 5> x32TailK;
+    coopvecAZD<float, 8> y32TailK;
+    coopmatAZD<float, 8, 5> w32TailK;
+    coopVecMatMulAZD(y32TailK, x32TailK, w32TailK);
+}

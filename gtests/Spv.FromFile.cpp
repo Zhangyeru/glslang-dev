@@ -842,6 +842,7 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     Glsl, CompileVulkanToSpirvAzdLowerToStandardTest,
     ::testing::ValuesIn(std::vector<std::string>({
+        "spv.coopAZD_lower_packed.comp",
         "spv.coopmatAZD_lower_tile.comp",
         "spv.coopvecAZD_lower_tile.comp",
     })),
