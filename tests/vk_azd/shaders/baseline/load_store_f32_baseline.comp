@@ -1,0 +1,29 @@
+#version 450 core
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA { float data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float data[]; } B;
+layout(set = 0, binding = 2) buffer InputC { float data[]; } C;
+layout(set = 0, binding = 3) buffer OutputD { float data[]; } D;
+
+vec4 loadChunk(int base)
+{
+    return vec4(A.data[base + 0], A.data[base + 1],
+                A.data[base + 2], A.data[base + 3]);
+}
+
+void storeChunk(int base, vec4 value)
+{
+    D.data[base + 0] = value.x;
+    D.data[base + 1] = value.y;
+    D.data[base + 2] = value.z;
+    D.data[base + 3] = value.w;
+}
+
+void main()
+{
+    for (int base = 0; base < 64; base += 4) {
+        storeChunk(base, loadChunk(base));
+    }
+}

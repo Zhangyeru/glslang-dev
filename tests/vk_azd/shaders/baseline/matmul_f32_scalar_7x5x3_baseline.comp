@@ -1,0 +1,83 @@
+#version 450 core
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA { float data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float data[]; } B;
+layout(set = 0, binding = 2) buffer InputC { float data[]; } C;
+layout(set = 0, binding = 3) buffer OutputD { float data[]; } D;
+
+float loadAElement(int row, int k)
+{
+    return k < 3 ? A.data[row * 3 + k] : 0.0;
+}
+
+float loadBElement(int k, int col)
+{
+    return (k < 3 && col < 5) ? B.data[k * 5 + col] : 0.0;
+}
+
+vec4 loadA(int row, int k0)
+{
+    return vec4(loadAElement(row, k0 + 0), loadAElement(row, k0 + 1),
+                loadAElement(row, k0 + 2), loadAElement(row, k0 + 3));
+}
+
+vec4 loadC(int row, int col0)
+{
+    return vec4(col0 + 0 < 5 ? C.data[row * 5 + col0 + 0] : 0.0,
+                col0 + 1 < 5 ? C.data[row * 5 + col0 + 1] : 0.0,
+                col0 + 2 < 5 ? C.data[row * 5 + col0 + 2] : 0.0,
+                col0 + 3 < 5 ? C.data[row * 5 + col0 + 3] : 0.0);
+}
+
+void storeD(int row, int col0, vec4 value)
+{
+    if (col0 + 0 < 5) D.data[row * 5 + col0 + 0] = value.x;
+    if (col0 + 1 < 5) D.data[row * 5 + col0 + 1] = value.y;
+    if (col0 + 2 < 5) D.data[row * 5 + col0 + 2] = value.z;
+    if (col0 + 3 < 5) D.data[row * 5 + col0 + 3] = value.w;
+}
+
+void tileWeight(int k0, int col0, out vec4 weight[4])
+{
+    weight[0] = vec4(loadBElement(k0 + 0, col0 + 0), loadBElement(k0 + 1, col0 + 0),
+                     loadBElement(k0 + 2, col0 + 0), loadBElement(k0 + 3, col0 + 0));
+    weight[1] = vec4(loadBElement(k0 + 0, col0 + 1), loadBElement(k0 + 1, col0 + 1),
+                     loadBElement(k0 + 2, col0 + 1), loadBElement(k0 + 3, col0 + 1));
+    weight[2] = vec4(loadBElement(k0 + 0, col0 + 2), loadBElement(k0 + 1, col0 + 2),
+                     loadBElement(k0 + 2, col0 + 2), loadBElement(k0 + 3, col0 + 2));
+    weight[3] = vec4(loadBElement(k0 + 0, col0 + 3), loadBElement(k0 + 1, col0 + 3),
+                     loadBElement(k0 + 2, col0 + 3), loadBElement(k0 + 3, col0 + 3));
+}
+
+#define MatMul_PATTERN(k4, col0) \
+    tileWeight(k4, col0, weight); \
+    rx += v * weight[0];           \
+    ry += v * weight[1];           \
+    rz += v * weight[2];           \
+    rw += v * weight[3];
+
+void main()
+{
+    for (int row = 0; row < 7; ++row) {
+        for (int col0 = 0; col0 < 5; col0 += 4) {
+            vec4 rx = vec4(0.0);
+            vec4 ry = vec4(0.0);
+            vec4 rz = vec4(0.0);
+            vec4 rw = vec4(0.0);
+            vec4 weight[4];
+            vec4 v;
+
+            v = loadA(row, 0);
+            MatMul_PATTERN(0, col0);
+
+            storeD(row, col0, loadC(row, col0) + vec4(
+                rx.x + rx.y + rx.z + rx.w,
+                ry.x + ry.y + ry.z + ry.w,
+                rz.x + rz.y + rz.z + rz.w,
+                rw.x + rw.y + rw.z + rw.w
+            ));
+        }
+    }
+}
