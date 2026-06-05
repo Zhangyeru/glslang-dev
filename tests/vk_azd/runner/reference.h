@@ -12,7 +12,7 @@
 
 namespace vk_azd {
 
-enum class CaseKind { kMatmul, kVecMatmul, kVecMatmulAdd, kLoadStore };
+enum class CaseKind { kMatmul, kVecMatmul, kVecMatmulAdd, kLoadStore, kMultiOps };
 enum class DType { kF16, kF32 };
 
 struct CaseConfig {

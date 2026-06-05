@@ -64,6 +64,8 @@ CaseKind ParseCaseKind(const std::string& value)
         return CaseKind::kVecMatmulAdd;
     if (value == "load_store")
         return CaseKind::kLoadStore;
+    if (value == "multiops")
+        return CaseKind::kMultiOps;
     throw std::runtime_error("unknown case: " + value);
 }
 
