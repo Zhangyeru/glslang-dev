@@ -12,6 +12,7 @@ import subprocess
 import sys
 
 from run_function_tests import parse_case
+from run_function_tests import select_shaders
 
 
 def run_shader(runner, shader, meta, warmup, repeat):
@@ -54,6 +55,7 @@ def write_outputs(rows, out_json):
         writer = csv.DictWriter(
             f,
             fieldnames=[
+                "shader",
                 "case",
                 "dtype",
                 "m",
@@ -74,13 +76,13 @@ def write_outputs(rows, out_json):
     lines = [
         "# AZD Lowered Shader Vulkan Performance",
         "",
-        "| Case | DType | Shape | Lowered ns | Baseline ns | Ratio | GFLOPS | Verify |",
-        "|---|---|---:|---:|---:|---:|---:|---|",
+        "| Shader | Case | DType | Shape | Lowered ns | Baseline ns | Ratio | GFLOPS | Verify |",
+        "|---|---|---|---:|---:|---:|---:|---:|---|",
     ]
     for row in rows:
         shape = f"{row['m']}x{row['n']}x{row['k']}"
         lines.append(
-            f"| {row['case']} | {row['dtype']} | {shape} | {row['lowered_ns']:.3f} | "
+            f"| {row['shader']} | {row['case']} | {row['dtype']} | {shape} | {row['lowered_ns']:.3f} | "
             f"{row['baseline_ns']:.3f} | {row['ratio']:.4f} | {row['gflops']:.4f} | {row['verify']} |"
         )
     md_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -93,10 +95,13 @@ def main():
     parser.add_argument("--repeat", type=int, default=200)
     parser.add_argument("--warmup", type=int, default=20)
     parser.add_argument("--out", default="results/perf/perf.json")
+    parser.add_argument("--include", action="append", default=[], help="fnmatch pattern for lowered SPIR-V names")
+    parser.add_argument("--exclude", action="append", default=[], help="fnmatch pattern for lowered SPIR-V names")
+    parser.add_argument("--max-work", type=int, default=0, help="skip cases with M*N*K above this value")
     args = parser.parse_args()
 
     rows = []
-    for lowered in sorted(pathlib.Path(args.spv_dir).glob("*.lowered.spv")):
+    for lowered in select_shaders(args.spv_dir, args.include, args.exclude, args.max_work):
         baseline = baseline_for(lowered)
         if not baseline.exists():
             raise RuntimeError(f"missing baseline SPIR-V for {lowered.name}: {baseline.name}")
@@ -108,6 +113,7 @@ def main():
         baseline_ns = float(baseline_result["gpu_time_ns_avg"])
         rows.append(
             {
+                "shader": lowered.name,
                 "case": lowered_result["case"],
                 "dtype": lowered_result["dtype"],
                 "m": lowered_result["m"],

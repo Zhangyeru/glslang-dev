@@ -103,6 +103,8 @@ std::string CaseName(CaseKind kind)
         return "vecmatmuladd";
     case CaseKind::kLoadStore:
         return "load_store";
+    case CaseKind::kMultiOps:
+        return "multiops";
     }
     return "unknown";
 }
@@ -116,6 +118,9 @@ uint64_t FlopCount(const CaseConfig& config)
     }
     if (config.kind == CaseKind::kVecMatmul || config.kind == CaseKind::kVecMatmulAdd) {
         return 2ull * config.k * config.n;
+    }
+    if (config.kind == CaseKind::kMultiOps) {
+        return 2ull * (2ull * config.m * config.n * config.k + 2ull * config.n * config.k);
     }
     return 0;
 }
@@ -166,6 +171,7 @@ size_t ElementCountA(const CaseConfig& config)
 {
     switch (config.kind) {
     case CaseKind::kMatmul:
+    case CaseKind::kMultiOps:
         return static_cast<size_t>(config.m) * config.k;
     case CaseKind::kVecMatmul:
     case CaseKind::kVecMatmulAdd:
@@ -180,6 +186,7 @@ size_t ElementCountB(const CaseConfig& config)
 {
     switch (config.kind) {
     case CaseKind::kMatmul:
+    case CaseKind::kMultiOps:
         return static_cast<size_t>(config.k) * config.n;
     case CaseKind::kVecMatmul:
     case CaseKind::kVecMatmulAdd:
@@ -194,6 +201,7 @@ size_t ElementCountC(const CaseConfig& config)
 {
     switch (config.kind) {
     case CaseKind::kMatmul:
+    case CaseKind::kMultiOps:
         return static_cast<size_t>(config.m) * config.n;
     case CaseKind::kVecMatmulAdd:
         return config.n;
@@ -208,6 +216,7 @@ size_t ElementCountD(const CaseConfig& config)
 {
     switch (config.kind) {
     case CaseKind::kMatmul:
+    case CaseKind::kMultiOps:
         return static_cast<size_t>(config.m) * config.n;
     case CaseKind::kVecMatmul:
     case CaseKind::kVecMatmulAdd:
@@ -239,6 +248,34 @@ std::vector<float> ReferenceOutput(const CaseConfig& config, const std::vector<f
                 }
                 out[row * config.n + col] = OutputQuantize(acc, config.dtype);
             }
+        }
+        return out;
+    }
+
+    if (config.kind == CaseKind::kMultiOps) {
+        for (uint32_t row = 0; row < config.m; ++row) {
+            for (uint32_t col = 0; col < config.n; ++col) {
+                float d0 = c[row * config.n + col];
+                for (uint32_t inner = 0; inner < config.k; ++inner) {
+                    d0 += a[row * config.k + inner] * b[inner * config.n + col];
+                }
+                d0 = OutputQuantize(d0, config.dtype);
+
+                float d1 = d0;
+                for (uint32_t inner = 0; inner < config.k; ++inner) {
+                    d1 += a[row * config.k + inner] * b[inner * config.n + col];
+                }
+                out[row * config.n + col] = OutputQuantize(d1, config.dtype);
+            }
+        }
+
+        for (uint32_t col = 0; col < config.n; ++col) {
+            float vec = 0.0f;
+            for (uint32_t inner = 0; inner < config.k; ++inner) {
+                vec += a[inner] * b[col * config.k + inner];
+            }
+            out[col] = OutputQuantize(out[col] + vec, config.dtype);
+            out[col] = OutputQuantize(out[col] + vec, config.dtype);
         }
         return out;
     }

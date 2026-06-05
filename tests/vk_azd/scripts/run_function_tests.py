@@ -5,6 +5,7 @@
 # you may not use this file except in compliance with the License.
 
 import argparse
+import fnmatch
 import json
 import pathlib
 import re
@@ -19,6 +20,11 @@ def parse_case(path):
     else:
         stem = path.stem
 
+    m = re.match(r"multiops_(f16|f32)(?:_scalar)?_(\d+)x(\d+)x(\d+)$", stem)
+    if m:
+        dtype, rows, cols, inner = m.groups()
+        return {"case": "multiops", "dtype": dtype, "m": rows, "n": cols, "k": inner}
+
     m = re.match(r"matmul_(f16|f32)(?:_scalar)?_(\d+)x(\d+)x(\d+)$", stem)
     if m:
         dtype, rows, cols, inner = m.groups()
@@ -29,7 +35,7 @@ def parse_case(path):
         case, dtype, inner, cols = m.groups()
         return {"case": case, "dtype": dtype, "m": "1", "n": cols, "k": inner}
 
-    m = re.match(r"load_store_(f16|f32)(?:_(\d+)x(\d+))?$", stem)
+    m = re.match(r"load_store_(f16|f32)(?:_scalar)?(?:_(\d+)x(\d+))?$", stem)
     if m:
         dtype, rows, cols = m.groups()
         return {"case": "load_store", "dtype": dtype, "m": rows or "8", "n": cols or "8", "k": "0"}
@@ -64,6 +70,31 @@ def run_case(runner, shader, warmup, repeat):
     return json.loads(proc.stdout)
 
 
+def case_work(meta):
+    m = int(meta["m"])
+    n = int(meta["n"])
+    k = int(meta["k"])
+    if meta["case"] == "load_store":
+        return m * n
+    return m * n * k
+
+
+def select_shaders(spv_dir, include, exclude, max_work):
+    shaders = sorted(pathlib.Path(spv_dir).glob("*.lowered.spv"))
+    selected = []
+    for shader in shaders:
+        name = shader.name
+        if include and not any(fnmatch.fnmatch(name, pattern) for pattern in include):
+            continue
+        if exclude and any(fnmatch.fnmatch(name, pattern) for pattern in exclude):
+            continue
+        meta = parse_case(shader)
+        if max_work and case_work(meta) > max_work:
+            continue
+        selected.append(shader)
+    return selected
+
+
 def write_reports(results, out_dir):
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "functional.json").write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")
@@ -90,9 +121,12 @@ def main():
     parser.add_argument("--out", default="results/functional")
     parser.add_argument("--warmup", type=int, default=1)
     parser.add_argument("--repeat", type=int, default=1)
+    parser.add_argument("--include", action="append", default=[], help="fnmatch pattern for lowered SPIR-V names")
+    parser.add_argument("--exclude", action="append", default=[], help="fnmatch pattern for lowered SPIR-V names")
+    parser.add_argument("--max-work", type=int, default=0, help="skip cases with M*N*K above this value")
     args = parser.parse_args()
 
-    shaders = sorted(pathlib.Path(args.spv_dir).glob("*.lowered.spv"))
+    shaders = select_shaders(args.spv_dir, args.include, args.exclude, args.max_work)
     if not shaders:
         raise RuntimeError(f"no lowered shaders found in {args.spv_dir}")
 
