@@ -301,8 +301,17 @@ VerifyResult CompareOutput(const CaseConfig& config, const std::vector<float>& e
     if (expected.size() != actual.size())
         result.pass = false;
     for (size_t i = 0; i < count; ++i) {
-        const double diff = std::abs(static_cast<double>(expected[i]) - actual[i]);
-        const double denom = std::max(std::abs(static_cast<double>(expected[i])), 1e-12);
+        const double expected_value = static_cast<double>(expected[i]);
+        const double actual_value = static_cast<double>(actual[i]);
+        if (!std::isfinite(expected_value) || !std::isfinite(actual_value)) {
+            result.pass = false;
+            result.max_abs_error = std::numeric_limits<double>::infinity();
+            result.max_rel_error = std::numeric_limits<double>::infinity();
+            continue;
+        }
+
+        const double diff = std::abs(expected_value - actual_value);
+        const double denom = std::max(std::abs(expected_value), 1e-12);
         const double rel = diff / denom;
         result.max_abs_error = std::max(result.max_abs_error, diff);
         result.max_rel_error = std::max(result.max_rel_error, rel);

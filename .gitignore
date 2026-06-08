@@ -21,7 +21,11 @@ third_party/
 buildtools/
 tools/
 
+# Python generated files
+__pycache__/
+*.pyc
+
 # Random OS stuff
 .DS_Store
 ._*
-build*
+build-*/
