@@ -129,6 +129,8 @@ void VulkanContext::CreateDevice()
     features2.pNext = &float16_int8;
     vkGetPhysicalDeviceFeatures2(physical_device_, &features2);
 
+    supports_storage_buffer_16bit_ = storage16.storageBuffer16BitAccess == VK_TRUE;
+    supports_shader_float16_ = float16_int8.shaderFloat16 == VK_TRUE;
     storage16.storageBuffer16BitAccess = storage16.storageBuffer16BitAccess ? VK_TRUE : VK_FALSE;
     float16_int8.shaderFloat16 = float16_int8.shaderFloat16 ? VK_TRUE : VK_FALSE;
 

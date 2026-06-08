@@ -266,6 +266,11 @@ int Run(int argc, char** argv)
     const std::vector<uint8_t> d_init(d_bytes_size, 0);
 
     VulkanContext context;
+    if (config.dtype == DType::kF16 &&
+        (!context.supports_shader_float16() || !context.supports_storage_buffer_16bit())) {
+        throw std::runtime_error("f16 case requires shaderFloat16 and storageBuffer16BitAccess Vulkan features");
+    }
+
     Buffer buffer_a(&context, a_bytes.size());
     Buffer buffer_b(&context, b_bytes.size());
     Buffer buffer_c(&context, c_bytes.size());

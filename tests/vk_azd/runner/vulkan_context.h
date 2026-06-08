@@ -28,6 +28,8 @@ public:
     VkQueue queue() const { return queue_; }
     uint32_t queue_family_index() const { return queue_family_index_; }
     float timestamp_period_ns() const { return timestamp_period_ns_; }
+    bool supports_shader_float16() const { return supports_shader_float16_; }
+    bool supports_storage_buffer_16bit() const { return supports_storage_buffer_16bit_; }
 
 private:
     void PickPhysicalDevice();
@@ -39,6 +41,8 @@ private:
     VkQueue queue_ = VK_NULL_HANDLE;
     uint32_t queue_family_index_ = UINT32_MAX;
     float timestamp_period_ns_ = 1.0f;
+    bool supports_shader_float16_ = false;
+    bool supports_storage_buffer_16bit_ = false;
 };
 
 } // namespace vk_azd

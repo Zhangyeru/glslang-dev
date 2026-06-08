@@ -96,7 +96,7 @@ option(ENABLE_SPIRV "Enables SPIRV output support" ON)
 option(ENABLE_SPVREMAPPER "Enables building of SPVRemapper" ON)
 
 option(ENABLE_GLSLANG_BINARIES "Builds glslang and spirv-remap" ON)
-option(GLSLANG_ENABLE_AZD_VK_TESTS "Build optional AZD Vulkan function/perf test runner" ON)
+option(GLSLANG_ENABLE_AZD_VK_TESTS "Build optional AZD Vulkan function/perf test runner" OFF)
 
 option(ENABLE_GLSLANG_JS "If using Emscripten, build glslang.js. Otherwise, builds a sample executable for binary-size testing.")
 CMAKE_DEPENDENT_OPTION(ENABLE_EMSCRIPTEN_SINGLE_FILE
