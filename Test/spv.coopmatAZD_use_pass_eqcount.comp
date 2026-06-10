@@ -7,9 +7,9 @@ layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) buffer Buf { float16_t data[]; } buf;
 
-// Test 5: Equal left/right count → left >= right → useA
+// Test 5: Equal left/right count is ambiguous.
 // Matrix X(16x16) used as left 2x and right 2x
-// left_count(2) >= right_count(2) → MatrixUseAAZD
+// left_count(2) == right_count(2) → ambiguous cooperative matrix A/B use
 void main()
 {
     const vec2 shape16 = vec2(16.0, 16.0);
@@ -37,5 +37,5 @@ void main()
     coopMatMulAddAZD(D2, A0, X,  C2);
     coopMatMulAddAZD(D3, A1, X,  C3);
 
-    // left_count(2) >= right_count(2) → MatrixUseAAZD
+    // left_count(2) == right_count(2) → ambiguous cooperative matrix A/B use
 }

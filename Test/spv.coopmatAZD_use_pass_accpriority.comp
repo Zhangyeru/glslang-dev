@@ -7,10 +7,10 @@ layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) buffer Buf { float16_t data[]; } buf;
 
-// Test 3: Accumulator and OperandAB roles separated by assignment boundary
-// X is used as accumulator only. Y is a different GLSL variable assigned from X
-// and then used as OperandAB, so the pass must insert a legal type conversion at
-// the store boundary.
+// Test 3: Accumulator and OperandAB cannot cross an assignment boundary
+// implicitly. X is used as accumulator, then copied into Y, which is used as
+// OperandA. This must fail instead of inserting an Accumulator <-> OperandAB
+// role conversion.
 void main()
 {
     const vec2 shape16 = vec2(16.0, 16.0);

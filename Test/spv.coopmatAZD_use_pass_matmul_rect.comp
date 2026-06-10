@@ -32,6 +32,9 @@ void main()
     coopmatAZD<uint8_t, 32, 16> matB;
     coopMatLoadAZD(matB, inMatB.x, vec2(32, 16), vec2(0, 0), 1);
 
+    coopmatAZD<uint8_t, 32, 16> matA2;
+    coopMatLoadAZD(matA2, inMatB.x, vec2(32, 16), vec2(0, 0), 1);
+
     coopmatAZD<uint32_t, 16, 16> matC;
     coopMatLoadAZD(matC, inMatC.x, vec2(16, 16), vec2(0, 0), 0);
 
@@ -41,6 +44,6 @@ void main()
     coopmatAZD<uint8_t, 16, 16> matE = coopmatAZD<uint8_t, 16, 16>(matD);
     coopmatAZD<uint32_t, 32, 16> matF;
 
-    coopMatMulAZD(matF, matB, matE);
+    coopMatMulAZD(matF, matA2, matE);
     coopMatStoreAZD(matF, outMat.x, vec2(32, 16), vec2(0, 0), 0);
 }

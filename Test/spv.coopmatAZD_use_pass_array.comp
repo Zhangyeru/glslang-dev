@@ -19,9 +19,9 @@ void main()
     coopmatAZD<float16_t, 16, 16> lhs[2];
     coopmatAZD<float16_t, 16, 16> rhs[2];
     coopmatAZD<float16_t, 16, 16> acc[2];
-    coopmatAZD<float16_t, 16, 16> converted[2];
+    coopmatAZD<float16_t, 16, 16> rhsConverted[2];
     MatBox box;
-    coopmatAZD<float16_t, 16, 16> D0, D1, D2, D3;
+    coopmatAZD<float16_t, 16, 16> D0, D1, D2, D3, D4;
 
     coopMatLoadAZD(lhs[0], buf.data, shape, zeroOffset, gl_RowMajorAZD);
     coopMatLoadAZD(lhs[1], buf.data, shape, zeroOffset, gl_RowMajorAZD);
@@ -29,13 +29,14 @@ void main()
     coopMatLoadAZD(rhs[1], buf.data, shape, zeroOffset, gl_RowMajorAZD);
     coopMatLoadAZD(acc[0], buf.data, shape, zeroOffset, gl_RowMajorAZD);
     coopMatLoadAZD(acc[1], buf.data, shape, zeroOffset, gl_RowMajorAZD);
+    coopMatLoadAZD(rhsConverted[0], buf.data, shape, zeroOffset, gl_RowMajorAZD);
+    coopMatLoadAZD(rhsConverted[1], buf.data, shape, zeroOffset, gl_RowMajorAZD);
     coopMatLoadAZD(box.value, buf.data, shape, zeroOffset, gl_RowMajorAZD);
 
     coopMatMulAddAZD(D0, lhs[0], rhs[0], acc[0]);
-    coopMatMulAddAZD(D1, rhs[1], lhs[1], acc[1]);
+    coopMatMulAddAZD(D1, lhs[1], rhs[1], acc[1]);
     coopMatMulAddAZD(D2, lhs[0], rhs[1], box.value);
 
-    converted[0] = acc[0];
-    converted[1] = box.value;
-    coopMatMulAddAZD(D3, converted[0], converted[1], acc[1]);
+    coopMatMulAddAZD(D3, lhs[0], rhsConverted[0], acc[1]);
+    coopMatMulAddAZD(D4, lhs[1], rhsConverted[1], box.value);
 }

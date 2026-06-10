@@ -2,7 +2,7 @@ spv.coopmatAZD_logicalUse.comp
 ; SPIR-V
 ; Version: 1.0
 ; Generator: Khronos Glslang Reference Front End; 11
-; Bound: 94
+; Bound: 102
 ; Schema: 0
                OpCapability Shader
                OpCapability Float16
@@ -57,7 +57,7 @@ spv.coopmatAZD_logicalUse.comp
        %half = OpTypeFloat 16
        %uint = OpTypeInt 32 0
     %uint_16 = OpConstant %uint 16
-          %9 = OpTypeCooperativeMatrixAZD %half %uint_16 %uint_16
+          %9 = OpTypeCooperativeMatrixAZD %half %uint_16 %uint_16 MatrixUseAAZD
 %_ptr_Function_9 = OpTypePointer Function %9
 %_runtimearr_half = OpTypeRuntimeArray %half
         %Buf = OpTypeStruct %_runtimearr_half
@@ -72,6 +72,10 @@ spv.coopmatAZD_logicalUse.comp
          %23 = OpConstantComposite %v2float %float_16 %float_16
     %float_0 = OpConstant %float 0
          %25 = OpConstantComposite %v2float %float_0 %float_0
+         %34 = OpTypeCooperativeMatrixAZD %half %uint_16 %uint_16 MatrixUseBAZD
+%_ptr_Function_34 = OpTypePointer Function %34
+         %41 = OpTypeCooperativeMatrixAZD %half %uint_16 %uint_16 MatrixAccumulatorAZD
+%_ptr_Function_41 = OpTypePointer Function %41
      %v3uint = OpTypeVector %uint 3
      %uint_1 = OpConstant %uint 1
 %gl_WorkGroupSize = OpConstantComposite %v3uint %uint_1 %uint_1 %uint_1
@@ -81,23 +85,23 @@ spv.coopmatAZD_logicalUse.comp
           %X = OpVariable %_ptr_Function_9 Function
   %tempArg_0 = OpVariable %_ptr_Function_9 Function
           %A = OpVariable %_ptr_Function_9 Function
-  %tempArg_1 = OpVariable %_ptr_Function_9 Function
-          %B = OpVariable %_ptr_Function_9 Function
-  %tempArg_2 = OpVariable %_ptr_Function_9 Function
-          %C = OpVariable %_ptr_Function_9 Function
-  %tempArg_3 = OpVariable %_ptr_Function_9 Function
-         %D0 = OpVariable %_ptr_Function_9 Function
-  %tempArg_4 = OpVariable %_ptr_Function_9 Function
-         %D1 = OpVariable %_ptr_Function_9 Function
-          %Y = OpVariable %_ptr_Function_9 Function
-  %tempArg_5 = OpVariable %_ptr_Function_9 Function
-         %D2 = OpVariable %_ptr_Function_9 Function
-          %Z = OpVariable %_ptr_Function_9 Function
-  %tempArg_6 = OpVariable %_ptr_Function_9 Function
-         %D3 = OpVariable %_ptr_Function_9 Function
-  %tempArg_7 = OpVariable %_ptr_Function_9 Function
+  %tempArg_1 = OpVariable %_ptr_Function_34 Function
+          %B = OpVariable %_ptr_Function_34 Function
+  %tempArg_2 = OpVariable %_ptr_Function_41 Function
+          %C = OpVariable %_ptr_Function_41 Function
+  %tempArg_3 = OpVariable %_ptr_Function_41 Function
+         %D0 = OpVariable %_ptr_Function_41 Function
+  %tempArg_4 = OpVariable %_ptr_Function_41 Function
+         %D1 = OpVariable %_ptr_Function_41 Function
+          %Y = OpVariable %_ptr_Function_41 Function
+  %tempArg_5 = OpVariable %_ptr_Function_41 Function
+         %D2 = OpVariable %_ptr_Function_41 Function
+          %Z = OpVariable %_ptr_Function_41 Function
+  %tempArg_6 = OpVariable %_ptr_Function_41 Function
+         %D3 = OpVariable %_ptr_Function_41 Function
+  %tempArg_7 = OpVariable %_ptr_Function_41 Function
           %W = OpVariable %_ptr_Function_9 Function
-  %tempArg_8 = OpVariable %_ptr_Function_9 Function
+  %tempArg_8 = OpVariable %_ptr_Function_41 Function
          %19 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %buf %int_0
          %26 = OpCooperativeMatrixLoadAZD %9 %19 %23 %25 %int_0
                OpStore %tempArg %26
@@ -108,65 +112,69 @@ spv.coopmatAZD_logicalUse.comp
                OpStore %tempArg_0 %31
          %33 = OpLoad %9 %tempArg_0
                OpStore %A %33
-         %35 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %buf %int_0
-         %36 = OpCooperativeMatrixLoadAZD %9 %35 %23 %25 %int_0
-               OpStore %tempArg_1 %36
-         %38 = OpLoad %9 %tempArg_1
-               OpStore %B %38
-         %40 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %buf %int_0
-         %41 = OpCooperativeMatrixLoadAZD %9 %40 %23 %25 %int_0
-               OpStore %tempArg_2 %41
-         %43 = OpLoad %9 %tempArg_2
-               OpStore %C %43
-         %45 = OpLoad %9 %X
-         %46 = OpLoad %9 %B
-         %47 = OpLoad %9 %C
-         %48 = OpCooperativeMatrixMulAddAZD %9 %45 %46 %47
-               OpStore %tempArg_3 %48
-         %50 = OpLoad %9 %tempArg_3
-               OpStore %D0 %50
-         %52 = OpLoad %9 %A
-         %53 = OpLoad %9 %X
-         %54 = OpLoad %9 %C
-         %55 = OpCooperativeMatrixMulAddAZD %9 %52 %53 %54
-               OpStore %tempArg_4 %55
-         %57 = OpLoad %9 %tempArg_4
-               OpStore %D1 %57
-         %59 = OpLoad %9 %X
-               OpStore %Y %59
-         %61 = OpLoad %9 %A
-         %62 = OpLoad %9 %B
-         %63 = OpLoad %9 %Y
-         %64 = OpCooperativeMatrixMulAddAZD %9 %61 %62 %63
-               OpStore %tempArg_5 %64
-         %66 = OpLoad %9 %tempArg_5
-               OpStore %D2 %66
-         %68 = OpLoad %9 %X
-               OpStore %Z %68
-         %70 = OpLoad %9 %A
-         %71 = OpLoad %9 %B
-         %72 = OpLoad %9 %Z
-         %73 = OpCooperativeMatrixMulAddAZD %9 %70 %71 %72
-               OpStore %tempArg_6 %73
-         %75 = OpLoad %9 %tempArg_6
-               OpStore %D3 %75
-         %76 = OpLoad %9 %Y
-               OpStore %X %76
-         %78 = OpLoad %9 %X
-         %79 = OpLoad %9 %B
-         %80 = OpLoad %9 %C
-         %81 = OpCooperativeMatrixMulAddAZD %9 %78 %79 %80
-               OpStore %tempArg_7 %81
-         %82 = OpLoad %9 %tempArg_7
-               OpStore %D0 %82
-         %84 = OpLoad %9 %X
-               OpStore %W %84
-         %86 = OpLoad %9 %W
-         %87 = OpLoad %9 %B
-         %88 = OpLoad %9 %C
-         %89 = OpCooperativeMatrixMulAddAZD %9 %86 %87 %88
-               OpStore %tempArg_8 %89
-         %90 = OpLoad %9 %tempArg_8
-               OpStore %D1 %90
+         %37 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %buf %int_0
+         %38 = OpCooperativeMatrixLoadAZD %34 %37 %23 %25 %int_0
+               OpStore %tempArg_1 %38
+         %40 = OpLoad %34 %tempArg_1
+               OpStore %B %40
+         %44 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %buf %int_0
+         %45 = OpCooperativeMatrixLoadAZD %41 %44 %23 %25 %int_0
+               OpStore %tempArg_2 %45
+         %47 = OpLoad %41 %tempArg_2
+               OpStore %C %47
+         %49 = OpLoad %9 %X
+         %50 = OpLoad %34 %B
+         %51 = OpLoad %41 %C
+         %52 = OpCooperativeMatrixMulAddAZD %41 %49 %50 %51
+               OpStore %tempArg_3 %52
+         %54 = OpLoad %41 %tempArg_3
+               OpStore %D0 %54
+         %56 = OpLoad %9 %A
+         %57 = OpLoad %9 %X
+         %58 = OpLoad %41 %C
+         %59 = OpBitcast %34 %57
+         %60 = OpCooperativeMatrixMulAddAZD %41 %56 %59 %58
+               OpStore %tempArg_4 %60
+         %62 = OpLoad %41 %tempArg_4
+               OpStore %D1 %62
+         %64 = OpLoad %9 %X
+         %65 = OpBitcast %41 %64
+               OpStore %Y %65
+         %67 = OpLoad %9 %A
+         %68 = OpLoad %34 %B
+         %69 = OpLoad %41 %Y
+         %70 = OpCooperativeMatrixMulAddAZD %41 %67 %68 %69
+               OpStore %tempArg_5 %70
+         %72 = OpLoad %41 %tempArg_5
+               OpStore %D2 %72
+         %74 = OpLoad %9 %X
+         %75 = OpBitcast %41 %74
+               OpStore %Z %75
+         %77 = OpLoad %9 %A
+         %78 = OpLoad %34 %B
+         %79 = OpLoad %41 %Z
+         %80 = OpCooperativeMatrixMulAddAZD %41 %77 %78 %79
+               OpStore %tempArg_6 %80
+         %82 = OpLoad %41 %tempArg_6
+               OpStore %D3 %82
+         %83 = OpLoad %41 %Y
+         %84 = OpBitcast %9 %83
+               OpStore %X %84
+         %86 = OpLoad %9 %X
+         %87 = OpLoad %34 %B
+         %88 = OpLoad %41 %C
+         %89 = OpCooperativeMatrixMulAddAZD %41 %86 %87 %88
+               OpStore %tempArg_7 %89
+         %90 = OpLoad %41 %tempArg_7
+               OpStore %D0 %90
+         %92 = OpLoad %9 %X
+               OpStore %W %92
+         %94 = OpLoad %9 %W
+         %95 = OpLoad %34 %B
+         %96 = OpLoad %41 %C
+         %97 = OpCooperativeMatrixMulAddAZD %41 %94 %95 %96
+               OpStore %tempArg_8 %97
+         %98 = OpLoad %41 %tempArg_8
+               OpStore %D1 %98
                OpReturn
                OpFunctionEnd

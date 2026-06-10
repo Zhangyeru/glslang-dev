@@ -40,7 +40,7 @@ void main()
 
     coopmatAZD<float16_t, 16, 16> X, Y;
     coopmatAZD<float16_t, 16, 16> A, B, C;
-    coopmatAZD<float16_t, 16, 16> D0, D1, D2, D3;
+    coopmatAZD<float16_t, 16, 16> D0, D1, D2, D3, D4;
 
     coopMatLoadAZD(X, buf.data, shape, zeroOffset, gl_RowMajorAZD);
     coopMatLoadAZD(Y, buf.data, shape, zeroOffset, gl_RowMajorAZD);
@@ -51,19 +51,20 @@ void main()
     if (cond) {
         coopMatMulAddAZD(D0, X, B, C);
     } else {
-        coopMatMulAddAZD(D1, A, X, C);
+        coopMatMulAddAZD(D1, X, B, C);
     }
+    coopMatMulAddAZD(D2, A, X, C);
 
     {
         coopmatAZD<float16_t, 16, 16> X;
         coopMatLoadAZD(X, buf.data, shape, zeroOffset, gl_RowMajorAZD);
-        coopMatMulAddAZD(D2, A, B, X);
+        coopMatMulAddAZD(D3, A, B, X);
     }
 
-    Y = X;
     useAsAcc(Y, A, B);
     useAsOperand(X, B, C);
 
     coopmatAZD<float16_t, 16, 16> R = makeAcc(A, B, C);
-    coopMatMulAddAZD(D3, R, B, C);
+    useAsAcc(R, A, B);
+    coopMatMulAddAZD(D4, X, B, C);
 }

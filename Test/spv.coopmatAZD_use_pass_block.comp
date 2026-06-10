@@ -36,7 +36,8 @@ void main()
     coopMatMulAddAZD(D1, A, B, Acc);
 
     {
-        coopmatAZD<float16_t, 16, 16> OpInBlock = Acc;
+        coopmatAZD<float16_t, 16, 16> OpInBlock;
+        coopMatLoadAZD(OpInBlock, buf.data, shape, zeroOffset, gl_RowMajorAZD);
         coopMatMulAddAZD(D2, OpInBlock, B, C);
     }
 }

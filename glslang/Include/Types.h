@@ -1577,6 +1577,13 @@ public:
     bool isAttachmentEXT() const { return basicType == EbtSampler && sampler.isAttachmentEXT(); }
 };
 
+enum TCoopMatUse {
+    ECoopMatUseUnknown,
+    ECoopMatUseA,
+    ECoopMatUseB,
+    ECoopMatUseAccumulator,
+};
+
 //
 // Base class for things that have a type.
 //
@@ -1587,7 +1594,7 @@ public:
     // for "empty" type (no args) or simple scalar/vector/matrix
     explicit TType(TBasicType t = EbtVoid, TStorageQualifier q = EvqTemporary, int vs = 1, int mc = 0, int mr = 0,
                    bool isVector = false) :
-                            basicType(t), vectorSize(static_cast<uint32_t>(vs) & 0b1111), matrixCols(static_cast<uint32_t>(mc) & 0b1111), matrixRows(static_cast<uint32_t>(mr) & 0b1111), vector1(isVector && vs == 1), coopmatNV(false), coopmatKHR(false), coopmatAZD(false), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(false), coopvecAZD(false),
+                            basicType(t), vectorSize(static_cast<uint32_t>(vs) & 0b1111), matrixCols(static_cast<uint32_t>(mc) & 0b1111), matrixRows(static_cast<uint32_t>(mr) & 0b1111), vector1(isVector && vs == 1), coopmatNV(false), coopmatKHR(false), coopmatAZD(false), coopmatUse(ECoopMatUseUnknown), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(false), coopvecAZD(false),
                             arraySizes(nullptr), structure(nullptr), fieldName(nullptr), typeName(nullptr), typeParameters(nullptr),
                             spirvType(nullptr)
                             {
@@ -1603,7 +1610,7 @@ public:
     // for explicit precision qualifier
     TType(TBasicType t, TStorageQualifier q, TPrecisionQualifier p, int vs = 1, int mc = 0, int mr = 0,
           bool isVector = false) :
-                            basicType(t), vectorSize(static_cast<uint32_t>(vs) & 0b1111), matrixCols(static_cast<uint32_t>(mc) & 0b1111), matrixRows(static_cast<uint32_t>(mr) & 0b1111), vector1(isVector && vs == 1), coopmatNV(false), coopmatKHR(false), coopmatAZD(false), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(false), coopvecAZD(false),
+                            basicType(t), vectorSize(static_cast<uint32_t>(vs) & 0b1111), matrixCols(static_cast<uint32_t>(mc) & 0b1111), matrixRows(static_cast<uint32_t>(mr) & 0b1111), vector1(isVector && vs == 1), coopmatNV(false), coopmatKHR(false), coopmatAZD(false), coopmatUse(ECoopMatUseUnknown), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(false), coopvecAZD(false),
                             arraySizes(nullptr), structure(nullptr), fieldName(nullptr), typeName(nullptr), typeParameters(nullptr),
                             spirvType(nullptr)
                             {
@@ -1621,7 +1628,7 @@ public:
     // for turning a TPublicType into a TType, using a shallow copy
     explicit TType(const TPublicType& p) :
                             basicType(p.basicType),
-                            vectorSize(p.vectorSize), matrixCols(p.matrixCols), matrixRows(p.matrixRows), vector1(false), coopmatNV(p.coopmatNV), coopmatKHR(p.coopmatKHR), coopmatAZD(p.coopmatAZD), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(p.coopvecNV), coopvecAZD(p.coopvecAZD),
+                            vectorSize(p.vectorSize), matrixCols(p.matrixCols), matrixRows(p.matrixRows), vector1(false), coopmatNV(p.coopmatNV), coopmatKHR(p.coopmatKHR), coopmatAZD(p.coopmatAZD), coopmatUse(ECoopMatUseUnknown), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(p.coopvecNV), coopvecAZD(p.coopvecAZD),
                             arraySizes(p.arraySizes), structure(nullptr), fieldName(nullptr), typeName(nullptr), typeParameters(p.typeParameters),
                             spirvType(p.spirvType)
                             {
@@ -1684,7 +1691,7 @@ public:
                             }
     // for construction of sampler types
     TType(const TSampler& sampler, TStorageQualifier q = EvqUniform, TArraySizes* as = nullptr) :
-        basicType(EbtSampler), vectorSize(1u), matrixCols(0u), matrixRows(0u), vector1(false), coopmatNV(false), coopmatKHR(false), coopmatAZD(false), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(false), coopvecAZD(false),
+        basicType(EbtSampler), vectorSize(1u), matrixCols(0u), matrixRows(0u), vector1(false), coopmatNV(false), coopmatKHR(false), coopmatAZD(false), coopmatUse(ECoopMatUseUnknown), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(false), coopvecAZD(false),
         arraySizes(as), structure(nullptr), fieldName(nullptr), typeName(nullptr),
         sampler(sampler), typeParameters(nullptr), spirvType(nullptr)
     {
@@ -1731,6 +1738,7 @@ public:
                                         coopmatNV = false;
                                         coopmatKHR = false;
                                         coopmatAZD = false;
+                                        coopmatUse = ECoopMatUseUnknown;
                                         coopmatKHRuse = 0;
                                         coopmatKHRUseValid = false;
                                         coopvecNV = false;
@@ -1740,6 +1748,7 @@ public:
                                         coopmatNV = false;
                                         coopmatKHR = false;
                                         coopmatAZD = false;
+                                        coopmatUse = ECoopMatUseUnknown;
                                         coopmatKHRuse = 0;
                                         coopmatKHRUseValid = false;
                                         coopvecNV = false;
@@ -1750,7 +1759,7 @@ public:
                             }
     // for making structures, ...
     TType(TTypeList* userDef, const TString& n) :
-                            basicType(EbtStruct), vectorSize(1), matrixCols(0), matrixRows(0), vector1(false), coopmatNV(false), coopmatKHR(false), coopmatAZD(false), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(false), coopvecAZD(false),
+                            basicType(EbtStruct), vectorSize(1), matrixCols(0), matrixRows(0), vector1(false), coopmatNV(false), coopmatKHR(false), coopmatAZD(false), coopmatUse(ECoopMatUseUnknown), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(false), coopvecAZD(false),
                             arraySizes(nullptr), structure(userDef), fieldName(nullptr), typeParameters(nullptr),
                             spirvType(nullptr)
                             {
@@ -1760,7 +1769,7 @@ public:
                             }
     // For interface blocks
     TType(TTypeList* userDef, const TString& n, const TQualifier& q) :
-                            basicType(EbtBlock), vectorSize(1), matrixCols(0), matrixRows(0), vector1(false), coopmatNV(false), coopmatKHR(false), coopmatAZD(false), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(false), coopvecAZD(false),
+                            basicType(EbtBlock), vectorSize(1), matrixCols(0), matrixRows(0), vector1(false), coopmatNV(false), coopmatKHR(false), coopmatAZD(false), coopmatUse(ECoopMatUseUnknown), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(false), coopvecAZD(false),
                             qualifier(q), arraySizes(nullptr), structure(userDef), fieldName(nullptr), typeParameters(nullptr),
                             spirvType(nullptr)
                             {
@@ -1769,7 +1778,7 @@ public:
                             }
     // for block reference (first parameter must be EbtReference)
     explicit TType(TBasicType t, const TType &p, const TString& n) :
-                            basicType(t), vectorSize(1), matrixCols(0), matrixRows(0), vector1(false), coopmatNV(false), coopmatKHR(false), coopmatAZD(false), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(false), coopvecAZD(false),
+                            basicType(t), vectorSize(1), matrixCols(0), matrixRows(0), vector1(false), coopmatNV(false), coopmatKHR(false), coopmatAZD(false), coopmatUse(ECoopMatUseUnknown), coopmatKHRuse(0), coopmatKHRUseValid(false), coopvecNV(false), coopvecAZD(false),
                             arraySizes(nullptr), structure(nullptr), fieldName(nullptr), typeName(nullptr), typeParameters(nullptr),
                             spirvType(nullptr)
                             {
@@ -1807,6 +1816,7 @@ public:
         coopmatNV = copyOf.isCoopMatNV();
         coopmatKHR = copyOf.isCoopMatKHR();
         coopmatAZD = copyOf.isCoopMatAZD();
+        coopmatUse = copyOf.coopmatUse;
         coopmatKHRuse = copyOf.coopmatKHRuse;
         coopmatKHRUseValid = copyOf.coopmatKHRUseValid;
         coopvecNV = copyOf.isCoopVecNV();
@@ -1955,6 +1965,19 @@ public:
     bool isAnyCoopMatOrVec() const { return isAnyCoopMat() || isAnyCoopVec(); }
     bool isReference() const { return getBasicType() == EbtReference; }
     bool isSpirvType() const { return getBasicType() == EbtSpirvType; }
+    TCoopMatUse getCoopMatUse() const { return static_cast<TCoopMatUse>(coopmatUse); }
+    void setCoopMatUse(TCoopMatUse use) { coopmatUse = static_cast<uint32_t>(use) & 0b11; }
+    bool isCoopMatUseUnknown() const { return getCoopMatUse() == ECoopMatUseUnknown; }
+    const char* getCoopMatUseString() const
+    {
+        switch (getCoopMatUse()) {
+        case ECoopMatUseUnknown:     return "coopmatUseUnknown";
+        case ECoopMatUseA:           return "coopmatUseA";
+        case ECoopMatUseB:           return "coopmatUseB";
+        case ECoopMatUseAccumulator: return "coopmatUseAccumulator";
+        default:                     return "coopmatUseInvalid";
+        }
+    }
     int getCoopMatKHRuse() const { return static_cast<int>(coopmatKHRuse); }
 
     bool isTensorLayoutNV() const { return getBasicType() == EbtTensorLayoutNV; }
@@ -2549,6 +2572,10 @@ public:
                   appendStr(", ");
               }
               appendStr(">");
+              if (isCoopMatAZD()) {
+                appendStr(" ");
+                appendStr(getCoopMatUseString());
+              }
             }
             if (getPrecision && qualifier.precision != EpqNone) {
               appendStr(" ");
@@ -3010,7 +3037,13 @@ public:
     }
 
     bool sameCoopMatUse(const TType &right) const {
-        return coopmatKHRuse == right.coopmatKHRuse;
+        if (isCoopMatAZD() || right.isCoopMatAZD())
+            return isCoopMatAZD() == right.isCoopMatAZD() && coopmatUse == right.coopmatUse;
+
+        if (isCoopMatKHR() || right.isCoopMatKHR())
+            return isCoopMatKHR() == right.isCoopMatKHR() && coopmatKHRuse == right.coopmatKHRuse;
+
+        return true;
     }
 
     bool sameCoopMatShape(const TType &right) const
@@ -3149,6 +3182,7 @@ protected:
     bool coopmatNV       : 1;
     bool coopmatKHR      : 1;
     bool coopmatAZD       : 1;
+    uint32_t coopmatUse   : 2;  // TCoopMatUse for cooperative matrix role inference.
     uint32_t coopmatKHRuse    : 3;  // Accepts one of three values: 0, 1, 2 (gl_MatrixUseA, gl_MatrixUseB, gl_MatrixUseAccumulator)
     bool coopmatKHRUseValid   : 1;  // True if coopmatKHRuse has been set
     bool coopvecNV       : 1;
