@@ -63,11 +63,13 @@ namespace spv {
 // Build-time generated includes
 #include "glslang/build_info.h"
 
+#include <cstdint>
 #include <fstream>
 #include <iomanip>
 #include <list>
 #include <map>
 #include <optional>
+#include <set>
 #include <stack>
 #include <string>
 #include <vector>
@@ -127,6 +129,644 @@ const char* getCooperativeMatrixAZDExtension()
     return spv::E_SPV_AZD_neural_matrix;
 }
 
+spv::CooperativeMatrixUseAZD translateCoopMatUseAZD(glslang::TCoopMatUse use)
+{
+    switch (use) {
+    case glslang::ECoopMatUseA:
+        return spv::CooperativeMatrixUseAZDMatrixUseAAZD;
+    case glslang::ECoopMatUseB:
+        return spv::CooperativeMatrixUseAZDMatrixUseBAZD;
+    case glslang::ECoopMatUseAccumulator:
+        return spv::CooperativeMatrixUseAZDMatrixAccumulatorAZD;
+    case glslang::ECoopMatUseUnknown:
+    default:
+        return spv::CooperativeMatrixUseAZDMax;
+    }
+}
+
+glslang::TString coopMatUseKeyInteger(long long value)
+{
+    return std::to_string(value).c_str();
+}
+
+bool isCoopMatUseIndexOp(glslang::TOperator op)
+{
+    return op == glslang::EOpIndexDirect ||
+           op == glslang::EOpIndexIndirect ||
+           op == glslang::EOpIndexDirectStruct;
+}
+
+bool getCoopMatUseKey(glslang::TIntermTyped* node, glslang::TString& key)
+{
+    if (!node)
+        return false;
+
+    if (glslang::TIntermSymbol* symbol = node->getAsSymbolNode()) {
+        key = "s";
+        key.append(coopMatUseKeyInteger(symbol->getId()));
+        return true;
+    }
+
+    glslang::TIntermBinary* binary = node->getAsBinaryNode();
+    if (!binary || !isCoopMatUseIndexOp(binary->getOp()))
+        return false;
+
+    if (!getCoopMatUseKey(binary->getLeft(), key))
+        return false;
+
+    glslang::TIntermConstantUnion* constant = binary->getRight()->getAsConstantUnion();
+    if (binary->getOp() == glslang::EOpIndexDirectStruct) {
+        key.append(".m");
+        if (constant)
+            key.append(coopMatUseKeyInteger(constant->getConstArray()[0].getIConst()));
+        else
+            key.append("*");
+        return true;
+    }
+
+    if (!constant) {
+        key.append(".i*");
+        return true;
+    }
+
+    const glslang::TConstUnionArray& indices = constant->getConstArray();
+    for (int i = 0; i < indices.size(); ++i) {
+        key.append(".i");
+        key.append(coopMatUseKeyInteger(indices[i].getIConst()));
+    }
+
+    return true;
+}
+
+bool isCoopMatAZDTyped(glslang::TIntermTyped* node)
+{
+    return node && node->getType().isCoopMatAZD();
+}
+
+struct CoopMatUseConstraints {
+    int useACount = 0;
+    int useBCount = 0;
+    bool accumulator = false;
+};
+
+bool hasCoopMatOperandUse(const CoopMatUseConstraints& constraints)
+{
+    return constraints.useACount > 0 || constraints.useBCount > 0;
+}
+
+bool hasCoopMatAccumulatorOperandConflict(const CoopMatUseConstraints& constraints)
+{
+    return constraints.accumulator && hasCoopMatOperandUse(constraints);
+}
+
+struct CoopMatUseState {
+    std::map<glslang::TString, CoopMatUseConstraints> keyConstraints;
+    std::map<glslang::TIntermTyped*, CoopMatUseConstraints> nodeConstraints;
+    std::set<std::string> seenConstraints;
+    bool hasError = false;
+};
+
+class TCoopMatUseResolver : public glslang::TIntermTraverser {
+public:
+    TCoopMatUseResolver(CoopMatUseState& state, spv::SpvBuildLogger* logger, bool collectDirect,
+                        bool defaultNeutral, bool rewrite)
+        : TIntermTraverser(true, false, true),
+          state(state),
+          logger(logger),
+          collectDirect(collectDirect),
+          defaultNeutral(defaultNeutral),
+          rewrite(rewrite)
+    {
+    }
+
+    bool visitAggregate(glslang::TVisit visit, glslang::TIntermAggregate* node) override
+    {
+        if (visit != glslang::EvPostVisit)
+            return true;
+
+        glslang::TIntermSequence& sequence = node->getSequence();
+        if (node->getOp() == glslang::EOpFunction) {
+            if (rewrite)
+                rewriteType(node);
+            return true;
+        } else if (collectDirect && node->getOp() == glslang::EOpCooperativeMatrixMulAZD && sequence.size() == 3) {
+            constrain(sequence[0]->getAsTyped(), glslang::ECoopMatUseAccumulator, true);
+            constrain(sequence[1]->getAsTyped(), glslang::ECoopMatUseA, true);
+            constrain(sequence[2]->getAsTyped(), glslang::ECoopMatUseB, true);
+        } else if (collectDirect && node->getOp() == glslang::EOpCooperativeMatrixMulAddAZD && sequence.size() == 4) {
+            constrain(sequence[0]->getAsTyped(), glslang::ECoopMatUseAccumulator, true);
+            constrain(sequence[1]->getAsTyped(), glslang::ECoopMatUseA, true);
+            constrain(sequence[2]->getAsTyped(), glslang::ECoopMatUseB, true);
+            constrain(sequence[3]->getAsTyped(), glslang::ECoopMatUseAccumulator, true);
+        } else if (collectDirect && node->getOp() == glslang::EOpCooperativeVectorMatMulAZD &&
+                   sequence.size() == 3) {
+            constrain(sequence[2]->getAsTyped(), glslang::ECoopMatUseA, true);
+        } else if (collectDirect && node->getOp() == glslang::EOpCooperativeVectorMatMulAddAZD &&
+                   sequence.size() == 4) {
+            constrain(sequence[2]->getAsTyped(), glslang::ECoopMatUseA, true);
+        } else if (node->getOp() == glslang::EOpCooperativeMatrixReduceAZD && sequence.size() >= 1) {
+            propagateSameUse(node, node, sequence[0]->getAsTyped());
+        } else if (node->getOp() == glslang::EOpConstructCooperativeMatrixAZD && sequence.size() == 1 &&
+                   isCoopMatAZDTyped(sequence[0]->getAsTyped())) {
+            propagateSameUse(node, node, sequence[0]->getAsTyped());
+            if (defaultNeutral)
+                defaultUsePreservingExpression(node, sequence[0]->getAsTyped());
+        }
+
+        if (rewrite) {
+            rewriteType(node);
+        }
+
+        return true;
+    }
+
+    bool visitBranch(glslang::TVisit visit, glslang::TIntermBranch* node) override
+    {
+        if (visit != glslang::EvPostVisit || node->getFlowOp() != glslang::EOpReturn ||
+            !isCoopMatAZDTyped(node->getExpression()))
+            return true;
+
+        if (rewrite)
+            rewriteType(node->getExpression());
+
+        return true;
+    }
+
+    bool visitBinary(glslang::TVisit visit, glslang::TIntermBinary* node) override
+    {
+        if (visit != glslang::EvPostVisit)
+            return true;
+
+        glslang::TIntermTyped* left = node->getLeft();
+        glslang::TIntermTyped* right = node->getRight();
+        switch (node->getOp()) {
+        case glslang::EOpAssign:
+            propagateGeneratedOutputTempUse(left, right);
+            break;
+        case glslang::EOpAddAssign:
+        case glslang::EOpSubAssign:
+        case glslang::EOpMulAssign:
+        case glslang::EOpDivAssign:
+            propagateSameUse(node, left, right);
+            break;
+        case glslang::EOpAdd:
+        case glslang::EOpSub:
+            if (isCoopMatAZDTyped(node))
+                propagateSameUse(node, left, right);
+            break;
+        case glslang::EOpMul:
+            if (isCoopMatAZDTyped(left) && isCoopMatAZDTyped(right))
+                propagateSameUse(node, left, right);
+            else
+                propagateScalarMultiply(node, left, right);
+            break;
+        case glslang::EOpDiv:
+            if (isCoopMatAZDTyped(left) && isCoopMatAZDTyped(right))
+                propagateSameUse(node, left, right);
+            break;
+        default:
+            break;
+        }
+
+        if (rewrite)
+            rewriteType(node);
+
+        return true;
+    }
+
+    bool visitUnary(glslang::TVisit visit, glslang::TIntermUnary* node) override
+    {
+        if (visit != glslang::EvPostVisit)
+            return true;
+
+        if (isCoopMatAZDTyped(node)) {
+            if (node->getOp() == glslang::EOpNegative) {
+                propagateSameUse(node, node, node->getOperand());
+            } else if (isCoopMatUsePreservingUnary(node->getOp())) {
+                propagateSameUse(node, node, node->getOperand());
+                if (defaultNeutral)
+                    defaultUsePreservingExpression(node, node->getOperand());
+            }
+        }
+
+        if (rewrite)
+            rewriteType(node);
+        return true;
+    }
+
+    void visitSymbol(glslang::TIntermSymbol* node) override
+    {
+        if (rewrite)
+            rewriteType(node);
+    }
+
+    void visitConstantUnion(glslang::TIntermConstantUnion* node) override
+    {
+        if (rewrite)
+            rewriteType(node);
+    }
+
+    bool visitSelection(glslang::TVisit visit, glslang::TIntermSelection* node) override
+    {
+        if (visit != glslang::EvPostVisit)
+            return true;
+
+        if (!isCoopMatAZDTyped(node))
+            return true;
+
+        if (rewrite)
+            rewriteType(node);
+
+        return true;
+    }
+
+    bool changed() const { return changedConstraints; }
+
+private:
+    bool addUseConstraint(CoopMatUseConstraints& constraints, glslang::TCoopMatUse use)
+    {
+        switch (use) {
+        case glslang::ECoopMatUseA:
+            ++constraints.useACount;
+            break;
+        case glslang::ECoopMatUseB:
+            ++constraints.useBCount;
+            break;
+        case glslang::ECoopMatUseAccumulator:
+            constraints.accumulator = true;
+            break;
+        default:
+            return false;
+        }
+        changedConstraints = true;
+        return true;
+    }
+
+    bool addUniqueUseConstraint(CoopMatUseConstraints& constraints, const std::string& unique,
+                                glslang::TCoopMatUse use)
+    {
+        if (use == glslang::ECoopMatUseUnknown || !state.seenConstraints.insert(unique).second)
+            return false;
+        return addUseConstraint(constraints, use);
+    }
+
+    bool isOperandABUse(glslang::TCoopMatUse use) const
+    {
+        return use == glslang::ECoopMatUseA || use == glslang::ECoopMatUseB;
+    }
+
+    bool isAccumulatorOperandMismatch(glslang::TCoopMatUse leftUse, glslang::TCoopMatUse rightUse) const
+    {
+        return (leftUse == glslang::ECoopMatUseAccumulator && isOperandABUse(rightUse)) ||
+               (rightUse == glslang::ECoopMatUseAccumulator && isOperandABUse(leftUse));
+    }
+
+    bool isCoopMatBitcastUnary(glslang::TOperator op) const
+    {
+        switch (op) {
+        case glslang::EOpFloatBitsToInt:
+        case glslang::EOpFloatBitsToUint:
+        case glslang::EOpIntBitsToFloat:
+        case glslang::EOpUintBitsToFloat:
+        case glslang::EOpDoubleBitsToInt64:
+        case glslang::EOpDoubleBitsToUint64:
+        case glslang::EOpInt64BitsToDouble:
+        case glslang::EOpUint64BitsToDouble:
+        case glslang::EOpFloat16BitsToInt16:
+        case glslang::EOpFloat16BitsToUint16:
+        case glslang::EOpInt16BitsToFloat16:
+        case glslang::EOpUint16BitsToFloat16:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    bool isCoopMatUsePreservingUnary(glslang::TOperator op) const
+    {
+        return op == glslang::EOpConvNumeric || isCoopMatBitcastUnary(op);
+    }
+
+    void defaultUsePreservingExpression(glslang::TIntermTyped* node, glslang::TIntermTyped* operand)
+    {
+        if (!isCoopMatAZDTyped(node) || !isCoopMatAZDTyped(operand))
+            return;
+        if (roleOf(node) != glslang::ECoopMatUseUnknown ||
+            roleOf(operand) != glslang::ECoopMatUseUnknown)
+            return;
+        constrain(node, glslang::ECoopMatUseA, false);
+        constrain(operand, glslang::ECoopMatUseA, false);
+    }
+
+    void recordAccumulatorOperandBoundaryError(glslang::TIntermTyped* node)
+    {
+        std::string unique = "acc-boundary:" + std::to_string(reinterpret_cast<std::uintptr_t>(node));
+        if (!state.seenConstraints.insert(unique).second)
+            return;
+
+        if (logger)
+            logger->error("AZD cooperative matrix assignment cannot implicitly convert between OperandAB and Accumulator");
+        state.hasError = true;
+    }
+
+    bool addConstraint(const glslang::TString& key, glslang::TCoopMatUse use, bool direct, glslang::TIntermTyped* node)
+    {
+        std::string unique = std::string(key.c_str()) + ":" + std::to_string(static_cast<int>(use)) +
+                             (direct ? ":d:" : ":p:");
+        if (direct)
+            unique += std::to_string(reinterpret_cast<std::uintptr_t>(node));
+        if (!state.seenConstraints.insert(unique).second)
+            return false;
+
+        CoopMatUseConstraints& constraints = state.keyConstraints[key];
+        return addUseConstraint(constraints, use);
+    }
+
+    bool constrain(glslang::TIntermTyped* node, glslang::TCoopMatUse use, bool direct)
+    {
+        if (!isCoopMatAZDTyped(node) || use == glslang::ECoopMatUseUnknown)
+            return false;
+
+        glslang::TString key;
+        if (getCoopMatUseKey(node, key)) {
+            bool changed = addConstraint(key, use, direct, node);
+            std::string keyString = key.c_str();
+            size_t firstMember = keyString.find('.');
+            if (firstMember != std::string::npos) {
+                glslang::TString storageKey = keyString.substr(0, firstMember).c_str();
+                changed = addConstraint(storageKey, use, false, node) || changed;
+            }
+            return changed;
+        }
+
+        std::string unique = "n:" + std::to_string(reinterpret_cast<std::uintptr_t>(node)) + ":" +
+                             std::to_string(static_cast<int>(use));
+        if (direct)
+            unique += ":d";
+        return addUniqueUseConstraint(state.nodeConstraints[node], unique, use);
+    }
+
+    glslang::TCoopMatUse resolve(const CoopMatUseConstraints& constraints) const
+    {
+        if (hasCoopMatAccumulatorOperandConflict(constraints))
+            return glslang::ECoopMatUseUnknown;
+        if (constraints.accumulator)
+            return glslang::ECoopMatUseAccumulator;
+        if (constraints.useACount >= constraints.useBCount && constraints.useACount > 0)
+            return glslang::ECoopMatUseA;
+        if (constraints.useBCount > constraints.useACount)
+            return glslang::ECoopMatUseB;
+        return glslang::ECoopMatUseA;
+    }
+
+    glslang::TCoopMatUse roleOf(glslang::TIntermTyped* node) const
+    {
+        if (!isCoopMatAZDTyped(node))
+            return glslang::ECoopMatUseUnknown;
+
+        glslang::TString key;
+        if (getCoopMatUseKey(node, key)) {
+            const auto iter = state.keyConstraints.find(key);
+            if (iter != state.keyConstraints.end())
+                return resolve(iter->second);
+        }
+
+        const auto iter = state.nodeConstraints.find(node);
+        if (iter != state.nodeConstraints.end())
+            return resolve(iter->second);
+
+        glslang::TCoopMatUse typeUse = node->getType().getCoopMatUse();
+        return typeUse;
+    }
+
+    bool isGeneratedOutputTempArg(glslang::TIntermTyped* node) const
+    {
+        glslang::TIntermSymbol* symbol = node ? node->getAsSymbolNode() : nullptr;
+        return symbol && symbol->getName() == "tempArg";
+    }
+
+    void propagateGeneratedOutputTempUse(glslang::TIntermTyped* left, glslang::TIntermTyped* right)
+    {
+        if (!isCoopMatAZDTyped(left) || !isCoopMatAZDTyped(right) ||
+            !left->getType().sameCoopMatAZDBaseType(right->getType()) ||
+            !isGeneratedOutputTempArg(right))
+            return;
+
+        glslang::TCoopMatUse leftUse = roleOf(left);
+        glslang::TCoopMatUse rightUse = roleOf(right);
+        if (leftUse != glslang::ECoopMatUseUnknown && rightUse == glslang::ECoopMatUseUnknown)
+            constrain(right, leftUse, false);
+    }
+
+    void propagateSameUse(glslang::TIntermTyped* node, glslang::TIntermTyped* left, glslang::TIntermTyped* right)
+    {
+        if (!isCoopMatAZDTyped(left) || !isCoopMatAZDTyped(right))
+            return;
+
+        glslang::TCoopMatUse nodeUse = roleOf(node);
+        glslang::TCoopMatUse leftUse = roleOf(left);
+        glslang::TCoopMatUse rightUse = roleOf(right);
+        if (leftUse != glslang::ECoopMatUseUnknown && rightUse != glslang::ECoopMatUseUnknown &&
+            leftUse != rightUse && isAccumulatorOperandMismatch(leftUse, rightUse)) {
+            recordAccumulatorOperandBoundaryError(node);
+            return;
+        }
+
+        if (nodeUse != glslang::ECoopMatUseUnknown) {
+            if (leftUse == glslang::ECoopMatUseUnknown)
+                constrain(left, nodeUse, false);
+            if (rightUse == glslang::ECoopMatUseUnknown)
+                constrain(right, nodeUse, false);
+        }
+        if (nodeUse == glslang::ECoopMatUseUnknown && leftUse != glslang::ECoopMatUseUnknown)
+            constrain(node, leftUse, false);
+        else if (nodeUse == glslang::ECoopMatUseUnknown && rightUse != glslang::ECoopMatUseUnknown)
+            constrain(node, rightUse, false);
+
+        if (leftUse != glslang::ECoopMatUseUnknown && rightUse == glslang::ECoopMatUseUnknown)
+            constrain(right, leftUse, false);
+        if (rightUse != glslang::ECoopMatUseUnknown && leftUse == glslang::ECoopMatUseUnknown)
+            constrain(left, rightUse, false);
+    }
+
+    void propagateScalarMultiply(glslang::TIntermTyped* node, glslang::TIntermTyped* left,
+                                 glslang::TIntermTyped* right)
+    {
+        const bool leftCoop = isCoopMatAZDTyped(left);
+        const bool rightCoop = isCoopMatAZDTyped(right);
+        if (leftCoop == rightCoop)
+            return;
+
+        glslang::TIntermTyped* coopOperand = leftCoop ? left : right;
+        glslang::TCoopMatUse operandUse = roleOf(coopOperand);
+        glslang::TCoopMatUse resultUse = roleOf(node);
+        if (operandUse != glslang::ECoopMatUseUnknown)
+            constrain(node, operandUse, false);
+        if (resultUse != glslang::ECoopMatUseUnknown)
+            constrain(coopOperand, resultUse, false);
+    }
+
+    void rewriteType(glslang::TIntermTyped* node)
+    {
+        glslang::TCoopMatUse use = roleOf(node);
+        if (use == glslang::ECoopMatUseUnknown)
+            use = glslang::ECoopMatUseA;
+
+        if (isCoopMatAZDTyped(node)) {
+            node->getWritableType().setCoopMatUse(use);
+            rewriteStructMemberType(node, use);
+        }
+    }
+
+    void rewriteStructMemberType(glslang::TIntermTyped* node, glslang::TCoopMatUse use)
+    {
+        glslang::TIntermBinary* binary = node->getAsBinaryNode();
+        if (!binary || binary->getOp() != glslang::EOpIndexDirectStruct)
+            return;
+
+        glslang::TIntermTyped* base = binary->getLeft();
+        glslang::TIntermConstantUnion* memberIndex = binary->getRight()->getAsConstantUnion();
+        if (!base || !base->getType().isStruct() || !memberIndex)
+            return;
+
+        int index = memberIndex->getConstArray()[0].getIConst();
+        glslang::TTypeList* members = base->getWritableType().getWritableStruct();
+        if (!members || index < 0 || index >= static_cast<int>(members->size()))
+            return;
+
+        glslang::TType* memberType = (*members)[index].type;
+        if (memberType && memberType->isCoopMatAZD())
+            memberType->setCoopMatUse(use);
+    }
+
+    CoopMatUseState& state;
+    spv::SpvBuildLogger* logger;
+    bool collectDirect;
+    bool defaultNeutral;
+    bool rewrite;
+    bool changedConstraints = false;
+};
+
+bool validateCoopMatUseConstraints(const CoopMatUseState& state, spv::SpvBuildLogger* logger)
+{
+    bool valid = true;
+    auto validate = [&](const CoopMatUseConstraints& constraints, const char* accumulatorConflict) {
+        if (hasCoopMatAccumulatorOperandConflict(constraints)) {
+            if (logger)
+                logger->error(accumulatorConflict);
+            valid = false;
+        }
+    };
+
+    for (const auto& entry : state.keyConstraints) {
+        validate(entry.second,
+                 "same AZD cooperative matrix logical value cannot be used as both OperandAB and Accumulator");
+    }
+
+    for (const auto& entry : state.nodeConstraints) {
+        validate(entry.second,
+                 "AZD cooperative matrix expression cannot be used as both OperandAB and Accumulator");
+    }
+
+    if (state.hasError) {
+        if (logger)
+            logger->error("AZD cooperative matrix use validation failed");
+        valid = false;
+    }
+
+    return valid;
+}
+
+class TCoopMatUseValidator : public glslang::TIntermTraverser {
+public:
+    explicit TCoopMatUseValidator(spv::SpvBuildLogger* logger)
+        : TIntermTraverser(true, false, false), logger(logger)
+    {
+    }
+
+    void visitSymbol(glslang::TIntermSymbol* node) override { validate(node); }
+    void visitConstantUnion(glslang::TIntermConstantUnion* node) override { validate(node); }
+
+    bool visitBinary(glslang::TVisit, glslang::TIntermBinary* node) override
+    {
+        validate(node);
+        return true;
+    }
+
+    bool visitUnary(glslang::TVisit, glslang::TIntermUnary* node) override
+    {
+        validate(node);
+        return true;
+    }
+
+    bool visitSelection(glslang::TVisit, glslang::TIntermSelection* node) override
+    {
+        validate(node);
+        return true;
+    }
+
+    bool visitAggregate(glslang::TVisit, glslang::TIntermAggregate* node) override
+    {
+        validate(node);
+        return true;
+    }
+
+    bool valid() const { return !hasUnresolvedUse; }
+
+private:
+    void validate(glslang::TIntermTyped* node)
+    {
+        if (!node || node->getType().isStruct() ||
+            !node->getType().isCoopMatAZD() || !node->getType().isCoopMatUseUnknown())
+            return;
+
+        if (!hasUnresolvedUse && logger)
+            logger->error("unresolved AZD cooperative matrix use");
+        hasUnresolvedUse = true;
+    }
+
+    spv::SpvBuildLogger* logger;
+    bool hasUnresolvedUse = false;
+};
+
+bool ResolveCoopMatUse(TIntermNode* root, spv::SpvBuildLogger* logger)
+{
+    CoopMatUseState state;
+    TCoopMatUseResolver resolver(state, logger, true, false, false);
+    root->traverse(&resolver);
+
+    for (int i = 0; i < 8; ++i) {
+        TCoopMatUseResolver propagate(state, logger, false, false, false);
+        root->traverse(&propagate);
+        if (!propagate.changed())
+            break;
+    }
+
+    TCoopMatUseResolver defaultNeutral(state, logger, false, true, false);
+    root->traverse(&defaultNeutral);
+
+    for (int i = 0; i < 8; ++i) {
+        TCoopMatUseResolver propagate(state, logger, false, false, false);
+        root->traverse(&propagate);
+        if (!propagate.changed())
+            break;
+    }
+
+    if (!validateCoopMatUseConstraints(state, logger))
+        return false;
+
+    {
+        TCoopMatUseResolver rewriteResolver(state, logger, false, false, true);
+        root->traverse(&rewriteResolver);
+
+        TCoopMatUseValidator validator(nullptr);
+        root->traverse(&validator);
+        if (!validator.valid())
+            logger->error("unresolved AZD cooperative matrix use after rewrite");
+        return validator.valid();
+    }
+}
+
 const char* getCooperativeVectorAZDExtension()
 {
     return spv::E_SPV_AZD_cooperative_vector;
@@ -166,11 +806,42 @@ void createCooperativeVectorAZDStore(spv::Builder& builder, const std::vector<sp
     builder.createNoResultOp(spv::OpCooperativeVectorStoreAZD, idImmOps);
 }
 
+spv::Id createCooperativeMatrixAZDUseCast(spv::Builder& builder, spv::Id object, spv::CooperativeMatrixUseAZD use)
+{
+    spv::Id typeId = builder.getTypeId(object);
+    if (!builder.isCooperativeMatrixAZDType(typeId))
+        return object;
+
+    spv::Id useTypeId = builder.makeCooperativeMatrixTypeAZD(builder.getIdOperand(typeId, 0),
+                                                             builder.getIdOperand(typeId, 1),
+                                                             builder.getIdOperand(typeId, 2),
+                                                             use);
+    if (typeId == useTypeId)
+        return object;
+
+    return builder.createUnaryOp(spv::OpBitcast, useTypeId, object);
+}
+
+spv::Id createCooperativeMatrixAZDTypeCast(spv::Builder& builder, spv::Id object, spv::Id targetTypeId)
+{
+    spv::Id objectTypeId = builder.getTypeId(object);
+    if (objectTypeId == targetTypeId ||
+        !builder.isCooperativeMatrixAZDType(objectTypeId) ||
+        !builder.isCooperativeMatrixAZDType(targetTypeId))
+        return object;
+
+    return builder.createUnaryOp(spv::OpBitcast, targetTypeId, object);
+}
+
 spv::Id createCooperativeMatrixAZDMul(spv::Builder& builder, spv::Id typeId, const std::vector<spv::Id>& operands)
 {
     std::vector<spv::IdImmediate> idImmOps;
-    idImmOps.push_back(spv::IdImmediate(true, operands[1])); // A
-    idImmOps.push_back(spv::IdImmediate(true, operands[2])); // B
+    spv::Id operandA = createCooperativeMatrixAZDUseCast(builder, operands[1],
+        spv::CooperativeMatrixUseAZDMatrixUseAAZD);
+    spv::Id operandB = createCooperativeMatrixAZDUseCast(builder, operands[2],
+        spv::CooperativeMatrixUseAZDMatrixUseBAZD);
+    idImmOps.push_back(spv::IdImmediate(true, operandA)); // A
+    idImmOps.push_back(spv::IdImmediate(true, operandB)); // B
     idImmOps.push_back(spv::IdImmediate(true, builder.makeNullConstant(typeId))); // C
 
     return builder.createOp(spv::OpCooperativeMatrixMulAddAZD, typeId, idImmOps);
@@ -179,9 +850,15 @@ spv::Id createCooperativeMatrixAZDMul(spv::Builder& builder, spv::Id typeId, con
 spv::Id createCooperativeMatrixAZDMulAdd(spv::Builder& builder, spv::Id typeId, const std::vector<spv::Id>& operands)
 {
     std::vector<spv::IdImmediate> idImmOps;
-    idImmOps.push_back(spv::IdImmediate(true, operands[1])); // A
-    idImmOps.push_back(spv::IdImmediate(true, operands[2])); // B
-    idImmOps.push_back(spv::IdImmediate(true, operands[3])); // C
+    spv::Id operandA = createCooperativeMatrixAZDUseCast(builder, operands[1],
+        spv::CooperativeMatrixUseAZDMatrixUseAAZD);
+    spv::Id operandB = createCooperativeMatrixAZDUseCast(builder, operands[2],
+        spv::CooperativeMatrixUseAZDMatrixUseBAZD);
+    spv::Id operandC = createCooperativeMatrixAZDUseCast(builder, operands[3],
+        spv::CooperativeMatrixUseAZDMatrixAccumulatorAZD);
+    idImmOps.push_back(spv::IdImmediate(true, operandA)); // A
+    idImmOps.push_back(spv::IdImmediate(true, operandB)); // B
+    idImmOps.push_back(spv::IdImmediate(true, operandC)); // C
 
     return builder.createOp(spv::OpCooperativeMatrixMulAddAZD, typeId, idImmOps);
 }
@@ -4669,6 +5346,8 @@ bool TGlslangToSpvTraverser::visitSelection(glslang::TVisit /* visit */, glslang
     const auto isOpSelectable = [&]() {
         if (node->getBasicType() == glslang::EbtVoid)
             return false;
+        if (node->getType().isCoopMatAZD())
+            return false;
         // OpSelect can do all other types starting with SPV 1.4
         if (glslangIntermediate->getSpv().spv < glslang::EShTargetSpv_1_4) {
             // pre-1.4, only scalars and vectors can be handled
@@ -4699,8 +5378,12 @@ bool TGlslangToSpvTraverser::visitSelection(glslang::TVisit /* visit */, glslang
         if (!isOpSelectable())
             return false;
 
-        assert(node->getType() == node->getTrueBlock() ->getAsTyped()->getType() &&
-               node->getType() == node->getFalseBlock()->getAsTyped()->getType());
+        const glslang::TType& trueType = node->getTrueBlock()->getAsTyped()->getType();
+        const glslang::TType& falseType = node->getFalseBlock()->getAsTyped()->getType();
+        assert((node->getType() == trueType && node->getType() == falseType) ||
+               (node->getType().isCoopMatAZD() && trueType.isCoopMatAZD() && falseType.isCoopMatAZD() &&
+                node->getType().sameCoopMatAZDBaseType(trueType) &&
+                node->getType().sameCoopMatAZDBaseType(falseType)));
 
         // return true if a single operand to ? : is okay for OpSelect
         const auto operandOkay = [](glslang::TIntermTyped* node) {
@@ -4749,10 +5432,14 @@ bool TGlslangToSpvTraverser::visitSelection(glslang::TVisit /* visit */, glslang
             // Since isOpSelectable only lets us get here for SPIR-V >= 1.4, we can use OpCopyObject
             // to get matching types.
             if (builder.getTypeId(trueValue) != resultType) {
-                trueValue = builder.createUnaryOp(spv::OpCopyLogical, resultType, trueValue);
+                spv::Id castValue = createCooperativeMatrixAZDTypeCast(builder, trueValue, resultType);
+                trueValue = castValue != trueValue ? castValue :
+                    builder.createUnaryOp(spv::OpCopyLogical, resultType, trueValue);
             }
             if (builder.getTypeId(falseValue) != resultType) {
-                falseValue = builder.createUnaryOp(spv::OpCopyLogical, resultType, falseValue);
+                spv::Id castValue = createCooperativeMatrixAZDTypeCast(builder, falseValue, resultType);
+                falseValue = castValue != falseValue ? castValue :
+                    builder.createUnaryOp(spv::OpCopyLogical, resultType, falseValue);
             }
 
             // OpSelect
@@ -5023,7 +5710,11 @@ bool TGlslangToSpvTraverser::visitBranch(glslang::TVisit /* visit */, glslang::T
         if (node->getExpression() != nullptr) {
             const glslang::TType& glslangReturnType = node->getExpression()->getType();
             spv::Id returnId = accessChainLoad(glslangReturnType);
-            if (builder.getTypeId(returnId) != currentFunction->getReturnType() ||
+            spv::Id castReturnId =
+                createCooperativeMatrixAZDTypeCast(builder, returnId, currentFunction->getReturnType());
+            if (castReturnId != returnId) {
+                returnId = castReturnId;
+            } else if (builder.getTypeId(returnId) != currentFunction->getReturnType() ||
                 TranslatePrecisionDecoration(glslangReturnType) != currentFunction->getReturnPrecision()) {
                 builder.clearAccessChain();
                 spv::Id copyId = builder.createVariable(currentFunction->getReturnPrecision(),
@@ -5524,8 +6215,13 @@ spv::Id TGlslangToSpvTraverser::convertGlslangToSpvType(const glslang::TType& ty
 
         spv::Id rows = makeArraySizeId(*type.getTypeParameters()->arraySizes, 0, false, false, true);
         spv::Id cols = makeArraySizeId(*type.getTypeParameters()->arraySizes, 1, false, false, true);
+        spv::CooperativeMatrixUseAZD use = translateCoopMatUseAZD(type.getCoopMatUse());
+        if (use == spv::CooperativeMatrixUseAZDMax) {
+            logger->missingFunctionality("unresolved AZD cooperative matrix use");
+            return spv::NoType;
+        }
 
-        spvType = builder.makeCooperativeMatrixTypeAZD(spvType, rows, cols);
+        spvType = builder.makeCooperativeMatrixTypeAZD(spvType, rows, cols, use);
     }
 
     if (type.isCoopMatKHR()) {
@@ -6057,6 +6753,15 @@ void TGlslangToSpvTraverser::accessChainStore(const glslang::TType& type, spv::I
                 rvalue = builder.createBinOp(spv::OpINotEqual, bvecType, rvalue,
                                              makeSmearedConstant(builder.makeUintConstant(0), vecSize));
         }
+    }
+
+    spv::Id nominalTypeId = builder.accessChainGetInferredType();
+    spv::Id rvalueTypeId = builder.getTypeId(rvalue);
+    if (type.isCoopMatAZD() &&
+        builder.isCooperativeMatrixAZDType(nominalTypeId) &&
+        builder.isCooperativeMatrixAZDType(rvalueTypeId) &&
+        nominalTypeId != rvalueTypeId) {
+        rvalue = createCooperativeMatrixAZDTypeCast(builder, rvalue, nominalTypeId);
     }
 
     spv::Builder::AccessChain::CoherentFlags coherentFlags = builder.getAccessChain().coherentFlags;
@@ -7355,16 +8060,21 @@ spv::Id TGlslangToSpvTraverser::handleUserFunctionCall(const glslang::TIntermAgg
             ++lValueCount;
         } else {
             // process r-value, which involves a copy for a type mismatch
-            if (function->getParamType(a) != builder.getTypeId(rValues[rValueCount]) ||
+            spv::Id rValue = rValues[rValueCount];
+            spv::Id paramType = function->getParamType(a);
+            spv::Id castValue = createCooperativeMatrixAZDTypeCast(builder, rValue, paramType);
+            if (castValue != rValue) {
+                arg = castValue;
+            } else if (paramType != builder.getTypeId(rValue) ||
                 TranslatePrecisionDecoration(*argTypes[a]) != function->getParamPrecision(a))
             {
-                spv::Id argCopy = builder.createVariable(function->getParamPrecision(a), spv::StorageClassFunction, function->getParamType(a), "arg");
+                spv::Id argCopy = builder.createVariable(function->getParamPrecision(a), spv::StorageClassFunction, paramType, "arg");
                 builder.clearAccessChain();
                 builder.setAccessChainLValue(argCopy);
-                multiTypeStore(*argTypes[a], rValues[rValueCount]);
+                multiTypeStore(*argTypes[a], rValue);
                 arg = builder.createLoad(argCopy, function->getParamPrecision(a));
             } else
-                arg = rValues[rValueCount];
+                arg = rValue;
             ++rValueCount;
         }
         spvArgs.push_back(arg);
@@ -11253,6 +11963,11 @@ void GlslangToSpv(const TIntermediate& intermediate, std::vector<unsigned int>& 
         options = &defaultOptions;
 
     GetThreadPoolAllocator().push();
+
+    if (!ResolveCoopMatUse(root, logger)) {
+        GetThreadPoolAllocator().pop();
+        return;
+    }
 
     TGlslangToSpvTraverser it(intermediate.getSpv().spv, &intermediate, logger, *options);
     root->traverse(&it);

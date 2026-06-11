@@ -1,7 +1,0 @@
-spv.coopmatAZD_roleFunctionError.comp
-ERROR: 0:41: 'produce' : same AZD cooperative matrix logical value cannot be used directly as both OperandAB and Accumulator 
-ERROR: 0:38: 'useAsAcc' : same AZD cooperative matrix logical value cannot be used directly as both OperandAB and Accumulator 
-ERROR: 2 compilation errors.  No code generated.
-
-
-SPIR-V is not generated for failed compile or link

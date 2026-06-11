@@ -46,7 +46,7 @@ spv.coopmatAZD_use_pass_nomul.comp
        %half = OpTypeFloat 16
        %uint = OpTypeInt 32 0
     %uint_16 = OpConstant %uint 16
-          %9 = OpTypeCooperativeMatrixAZD %half %uint_16 %uint_16
+          %9 = OpTypeCooperativeMatrixAZD %half %uint_16 %uint_16 MatrixUseAAZD
 %_ptr_Function_9 = OpTypePointer Function %9
 %_runtimearr_half = OpTypeRuntimeArray %half
       %InBuf = OpTypeStruct %_runtimearr_half

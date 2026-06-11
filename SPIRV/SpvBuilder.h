@@ -217,7 +217,7 @@ public:
     Id makeSampledImageType(Id imageType);
     Id makeCooperativeMatrixTypeKHR(Id component, Id scope, Id rows, Id cols, Id use);
     Id makeCooperativeMatrixTypeNV(Id component, Id scope, Id rows, Id cols);
-    Id makeCooperativeMatrixTypeAZD(Id component, Id rows, Id cols);
+    Id makeCooperativeMatrixTypeAZD(Id component, Id rows, Id cols, CooperativeMatrixUseAZD use);
     Id makeCooperativeMatrixTypeWithSameShape(Id component, Id otherType);
     Id makeCooperativeVectorTypeNV(Id componentType, Id components);
     Id makeCooperativeVectorTypeAZD(Id componentType, Id components);
@@ -319,6 +319,13 @@ public:
                getTypeClass(typeId) == OpTypeCooperativeMatrixAZD;
     }
     bool isCooperativeMatrixAZDType(Id typeId)const { return getTypeClass(typeId) == OpTypeCooperativeMatrixAZD; }
+    CooperativeMatrixUseAZD getCooperativeMatrixAZDUse(Id typeId) const
+    {
+        const Instruction* instr = module.getInstruction(typeId);
+        return instr->getNumOperands() > 3 ?
+            static_cast<CooperativeMatrixUseAZD>(instr->getImmediateOperand(3)) :
+            CooperativeMatrixUseAZDMatrixUseAAZD;
+    }
     bool isTensorViewType(Id typeId)   const { return getTypeClass(typeId) == OpTypeTensorViewNV; }
     bool isCooperativeVectorType(Id typeId)const
     {

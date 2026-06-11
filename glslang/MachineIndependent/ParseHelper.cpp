@@ -2623,66 +2623,14 @@ void TParseContext::applyCoopMatAZDFunctionCallRoles(const TSourceLoc& loc, cons
                                                      TIntermNode* arguments, bool deferUnknownSummary)
 {
     coopMatAZDFunctionDisplayNames[function.getMangledName()] = function.getName();
-
-    if (!arguments || function.getParamCount() == 0)
-        return;
-
-    TIntermAggregate* aggregate = arguments->getAsAggregate();
-    TVector<TIntermTyped*> argumentNodes;
-    bool hasCoopMatAZDArgument = false;
-    for (int i = 0; i < function.getParamCount(); ++i) {
-        TIntermNode* argument = function.getParamCount() == 1 ? arguments :
-            (aggregate ? aggregate->getSequence()[i] : arguments);
-        TIntermTyped* typedArgument = argument ? argument->getAsTyped() : nullptr;
-        argumentNodes.push_back(typedArgument);
-        hasCoopMatAZDArgument = hasCoopMatAZDArgument ||
-            (typedArgument && typedArgument->getType().isCoopMatAZD());
-    }
-
-    if (!hasCoopMatAZDArgument)
-        return;
-
-    const TString& functionName = function.getMangledName();
-    const auto rolesIter = coopMatAZDFunctionParameterRoles.find(functionName);
-    if (rolesIter != coopMatAZDFunctionParameterRoles.end()) {
-        const TVector<int>& parameterRoles = rolesIter->second;
-        for (int i = 0; i < function.getParamCount() && i < static_cast<int>(parameterRoles.size()); ++i) {
-            if ((parameterRoles[i] & CoopMatAZDRoleOperandAB) != 0)
-                recordCoopMatAZDLogicalValueUse(loc, argumentNodes[i], false, function.getName().c_str());
-            if ((parameterRoles[i] & CoopMatAZDRoleAccumulator) != 0)
-                recordCoopMatAZDLogicalValueUse(loc, argumentNodes[i], true, function.getName().c_str());
-        }
-    }
-
-    if (deferUnknownSummary && !function.isDefined()) {
-        CoopMatAZDFunctionCallRecord callRecord;
-        callRecord.loc = loc;
-        callRecord.calleeName = function.getName();
-        callRecord.arguments = argumentNodes;
-        coopMatAZDPendingFunctionCalls[functionName].push_back(callRecord);
-    }
+    (void)loc;
+    (void)arguments;
+    (void)deferUnknownSummary;
 }
 
 void TParseContext::applyPendingCoopMatAZDFunctionCalls(const TString& functionName)
 {
-    const auto rolesIter = coopMatAZDFunctionParameterRoles.find(functionName);
-    const auto callsIter = coopMatAZDPendingFunctionCalls.find(functionName);
-    if (rolesIter == coopMatAZDFunctionParameterRoles.end() ||
-        callsIter == coopMatAZDPendingFunctionCalls.end())
-        return;
-
-    const TVector<int>& parameterRoles = rolesIter->second;
-    for (const CoopMatAZDFunctionCallRecord& callRecord : callsIter->second) {
-        for (int i = 0; i < static_cast<int>(callRecord.arguments.size()) &&
-                        i < static_cast<int>(parameterRoles.size()); ++i) {
-            if ((parameterRoles[i] & CoopMatAZDRoleOperandAB) != 0)
-                recordCoopMatAZDLogicalValueUse(callRecord.loc, callRecord.arguments[i], false,
-                                                callRecord.calleeName.c_str());
-            if ((parameterRoles[i] & CoopMatAZDRoleAccumulator) != 0)
-                recordCoopMatAZDLogicalValueUse(callRecord.loc, callRecord.arguments[i], true,
-                                                callRecord.calleeName.c_str());
-        }
-    }
+    (void)functionName;
 }
 
 bool TParseContext::getCoopMatAZDLogicalValueKey(TIntermTyped* node, TString& key) const
@@ -2748,95 +2696,32 @@ int TParseContext::getCoopMatAZDExpressionRole(TIntermTyped* node) const
         return roleIter == coopMatAZDLogicalValueRoles.end() ? 0 : roleIter->second;
     }
 
-    TString functionName;
-    if (getCoopMatAZDFunctionCallName(node, functionName)) {
-        const auto roleIter = coopMatAZDFunctionReturnRoles.find(functionName);
-        return roleIter == coopMatAZDFunctionReturnRoles.end() ? 0 : roleIter->second;
-    }
-
     return 0;
 }
 
 void TParseContext::recordCoopMatAZDFunctionReturnRole(const TSourceLoc& loc, TIntermTyped* node)
 {
-    if (!currentFunctionType || !currentFunctionType->isCoopMatAZD() ||
-        !node || !node->getType().isCoopMatAZD())
-        return;
-
-    const int role = getCoopMatAZDExpressionRole(node);
-    if (role == 0) {
-        TString calleeFunctionName;
-        if (getCoopMatAZDFunctionCallName(node, calleeFunctionName)) {
-            CoopMatAZDFunctionReturnDependencyRecord dependencyRecord;
-            dependencyRecord.loc = loc;
-            dependencyRecord.dependentFunctionName = currentCaller;
-            const auto displayNameIter = coopMatAZDFunctionDisplayNames.find(calleeFunctionName);
-            dependencyRecord.calleeName = displayNameIter == coopMatAZDFunctionDisplayNames.end() ?
-                calleeFunctionName : displayNameIter->second;
-            coopMatAZDPendingFunctionReturnDependencies[calleeFunctionName].push_back(dependencyRecord);
-        }
-        return;
-    }
-
-    mergeCoopMatAZDFunctionReturnRole(loc, currentCaller, role, "return");
+    (void)loc;
+    (void)node;
 }
 
 void TParseContext::mergeCoopMatAZDFunctionReturnRole(const TSourceLoc& loc, const TString& functionName,
                                                       int role, const char* token)
 {
-    if (role == 0)
-        return;
-
-    int& returnRole = coopMatAZDFunctionReturnRoles[functionName];
-    if (returnRole != 0 && returnRole != role) {
-        error(loc, "AZD cooperative matrix function return value cannot be used as both OperandAB and Accumulator",
-              token, "");
-    }
-
-    const int oldReturnRole = returnRole;
-    returnRole |= role;
-    if (returnRole != oldReturnRole) {
-        applyPendingCoopMatAZDFunctionReturnUses(functionName);
-        applyPendingCoopMatAZDFunctionReturnDependencies(functionName);
-    }
+    (void)loc;
+    (void)functionName;
+    (void)role;
+    (void)token;
 }
 
 void TParseContext::applyPendingCoopMatAZDFunctionReturnUses(const TString& functionName)
 {
-    const auto roleIter = coopMatAZDFunctionReturnRoles.find(functionName);
-    const auto usesIter = coopMatAZDPendingFunctionReturnUses.find(functionName);
-    if (roleIter == coopMatAZDFunctionReturnRoles.end() ||
-        usesIter == coopMatAZDPendingFunctionReturnUses.end())
-        return;
-
-    const int returnRole = roleIter->second;
-    if (returnRole == 0)
-        return;
-
-    for (const CoopMatAZDFunctionReturnUseRecord& useRecord : usesIter->second) {
-        if (returnRole != useRecord.role) {
-            error(useRecord.loc, "AZD cooperative matrix function return value cannot be used as both OperandAB and Accumulator",
-                  useRecord.calleeName.c_str(), "");
-        }
-    }
+    (void)functionName;
 }
 
 void TParseContext::applyPendingCoopMatAZDFunctionReturnDependencies(const TString& functionName)
 {
-    const auto roleIter = coopMatAZDFunctionReturnRoles.find(functionName);
-    const auto dependenciesIter = coopMatAZDPendingFunctionReturnDependencies.find(functionName);
-    if (roleIter == coopMatAZDFunctionReturnRoles.end() ||
-        dependenciesIter == coopMatAZDPendingFunctionReturnDependencies.end())
-        return;
-
-    const int returnRole = roleIter->second;
-    if (returnRole == 0)
-        return;
-
-    for (const CoopMatAZDFunctionReturnDependencyRecord& dependencyRecord : dependenciesIter->second) {
-        mergeCoopMatAZDFunctionReturnRole(dependencyRecord.loc, dependencyRecord.dependentFunctionName,
-                                          returnRole, dependencyRecord.calleeName.c_str());
-    }
+    (void)functionName;
 }
 
 void TParseContext::recordCoopMatAZDLogicalValueUse(const TSourceLoc& loc, TIntermTyped* node,
@@ -2849,27 +2734,6 @@ void TParseContext::recordCoopMatAZDLogicalValueUse(const TSourceLoc& loc, TInte
 
     TString logicalValueKey;
     if (!getCoopMatAZDLogicalValueKey(node, logicalValueKey)) {
-        TString functionName;
-        if (!getCoopMatAZDFunctionCallName(node, functionName))
-            return;
-
-        const auto returnRoleIter = coopMatAZDFunctionReturnRoles.find(functionName);
-        if (returnRoleIter != coopMatAZDFunctionReturnRoles.end() &&
-            returnRoleIter->second != 0) {
-            if (returnRoleIter->second != role) {
-                error(loc, "AZD cooperative matrix function return value cannot be used as both OperandAB and Accumulator",
-                      token, "");
-            }
-            return;
-        }
-
-        CoopMatAZDFunctionReturnUseRecord useRecord;
-        useRecord.loc = loc;
-        const auto displayNameIter = coopMatAZDFunctionDisplayNames.find(functionName);
-        useRecord.calleeName = displayNameIter == coopMatAZDFunctionDisplayNames.end() ?
-            TString(token) : displayNameIter->second;
-        useRecord.role = role;
-        coopMatAZDPendingFunctionReturnUses[functionName].push_back(useRecord);
         return;
     }
 

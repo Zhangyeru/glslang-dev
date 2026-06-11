@@ -504,21 +504,28 @@ Id Builder::makeCooperativeMatrixTypeNV(Id component, Id scope, Id rows, Id cols
     return type->getResultId();
 }
 
-Id Builder::makeCooperativeMatrixTypeAZD(Id component, Id rows, Id cols)
+Id Builder::makeCooperativeMatrixTypeAZD(Id component, Id rows, Id cols, CooperativeMatrixUseAZD use)
 {
     Instruction* type;
     for (int t = 0; t < (int)groupedTypes[OpTypeCooperativeMatrixAZD].size(); ++t) {
         type = groupedTypes[OpTypeCooperativeMatrixAZD][t];
-        if (type->getIdOperand(0) == component && type->getIdOperand(1) == rows &&
-            type->getIdOperand(2) == cols)
-            return type->getResultId();
+        if (type->getIdOperand(0) == component &&
+            type->getIdOperand(1) == rows &&
+            type->getIdOperand(2) == cols) {
+            if (type->getNumOperands() == 3 && use == CooperativeMatrixUseAZDMatrixUseAAZD)
+                return type->getResultId();
+            if (type->getNumOperands() == 4 &&
+                type->getImmediateOperand(3) == static_cast<unsigned>(use))
+                return type->getResultId();
+        }
     }
 
     type = new Instruction(getUniqueId(), NoType, OpTypeCooperativeMatrixAZD);
-    type->reserveOperands(3);
+    type->reserveOperands(4);
     type->addIdOperand(component);
     type->addIdOperand(rows);
     type->addIdOperand(cols);
+    type->addImmediateOperand(static_cast<unsigned>(use));
     groupedTypes[OpTypeCooperativeMatrixAZD].push_back(type);
     constantsTypesGlobals.push_back(std::unique_ptr<Instruction>(type));
     module.mapInstruction(type);
@@ -532,7 +539,10 @@ Id Builder::makeCooperativeMatrixTypeWithSameShape(Id component, Id otherType)
     if (instr->getOpCode() == OpTypeCooperativeMatrixNV) {
         return makeCooperativeMatrixTypeNV(component, instr->getIdOperand(1), instr->getIdOperand(2), instr->getIdOperand(3));
     } else if (instr->getOpCode() == OpTypeCooperativeMatrixAZD) {
-        return makeCooperativeMatrixTypeAZD(component, instr->getIdOperand(1), instr->getIdOperand(2));
+        CooperativeMatrixUseAZD use = instr->getNumOperands() > 3 ?
+            static_cast<CooperativeMatrixUseAZD>(instr->getImmediateOperand(3)) :
+            CooperativeMatrixUseAZDMatrixUseAAZD;
+        return makeCooperativeMatrixTypeAZD(component, instr->getIdOperand(1), instr->getIdOperand(2), use);
     } else {
         assert(instr->getOpCode() == OpTypeCooperativeMatrixKHR);
         return makeCooperativeMatrixTypeKHR(component, instr->getIdOperand(1), instr->getIdOperand(2), instr->getIdOperand(3), instr->getIdOperand(4));

@@ -3330,6 +3330,7 @@ void Parameterize()
         InstructionDesc[OpTypeCooperativeMatrixAZD].operands.push(OperandId, "'Component Type'");
         InstructionDesc[OpTypeCooperativeMatrixAZD].operands.push(OperandId, "'Rows'");
         InstructionDesc[OpTypeCooperativeMatrixAZD].operands.push(OperandId, "'Columns'");
+        InstructionDesc[OpTypeCooperativeMatrixAZD].operands.push(OperandLiteralNumber, "'Use'", true);
 
         InstructionDesc[OpCooperativeMatrixLoadNV].operands.push(OperandId, "'Pointer'");
         InstructionDesc[OpCooperativeMatrixLoadNV].operands.push(OperandId, "'Stride'");

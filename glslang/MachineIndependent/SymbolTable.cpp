@@ -188,6 +188,16 @@ void TType::buildMangledName(TString& mangledName) const
         }
     }
 
+    if (isCoopMatAZD()) {
+        switch (getCoopMatUse()) {
+        case ECoopMatUseUnknown:     mangledName += "<use?>"; break;
+        case ECoopMatUseA:           mangledName += "<useA>"; break;
+        case ECoopMatUseB:           mangledName += "<useB>"; break;
+        case ECoopMatUseAccumulator: mangledName += "<useAcc>"; break;
+        default:                     mangledName += "<useInvalid>"; break;
+        }
+    }
+
     if (arraySizes) {
         const int maxSize = 11;
         char buf[maxSize];

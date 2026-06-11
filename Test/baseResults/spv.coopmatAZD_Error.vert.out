@@ -1,6 +1,6 @@
 spv.coopmatAZD_Error.vert
-ERROR: 0:12: 'assign' :  cannot convert from ' temp<16, 3, 16, 8> float16_t' to ' temp coopmatAZD<16, 8> float16_t'
-ERROR: 0:13: ' temp coopmatAZD<16, 8> float16_t' : cannot construct with these arguments 
+ERROR: 0:12: 'assign' :  cannot convert from ' temp<16, 3, 16, 8> float16_t' to ' temp coopmatAZD<16, 8> coopmatUseUnknown float16_t'
+ERROR: 0:13: ' temp coopmatAZD<16, 8> coopmatUseUnknown float16_t' : cannot construct with these arguments 
 ERROR: 0:15: '' : coopmatAZD incorrect number of type parameters 
 ERROR: 0:15: 'bad1' : expected three type parameters 
 ERROR: 0:16: 'bad2' : expected positive matrix dimensions 

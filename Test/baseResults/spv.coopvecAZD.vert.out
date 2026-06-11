@@ -116,14 +116,14 @@ spv.coopvecAZD.vert
     %uint_20 = OpConstant %uint 20
         %100 = OpTypeCooperativeVectorAZD %half %uint_20
 %_ptr_Function_100 = OpTypePointer Function %100
-        %104 = OpTypeCooperativeMatrixAZD %half %uint_100 %uint_20
+        %104 = OpTypeCooperativeMatrixAZD %half %uint_100 %uint_20 MatrixUseAAZD
 %_ptr_Function_104 = OpTypePointer Function %104
         %111 = OpTypeCooperativeVectorAZD %int %uint_100
 %_ptr_Function_111 = OpTypePointer Function %111
        %char = OpTypeInt 8 1
         %115 = OpTypeCooperativeVectorAZD %char %uint_20
 %_ptr_Function_115 = OpTypePointer Function %115
-        %119 = OpTypeCooperativeMatrixAZD %char %uint_100 %uint_20
+        %119 = OpTypeCooperativeMatrixAZD %char %uint_100 %uint_20 MatrixUseAAZD
 %_ptr_Function_119 = OpTypePointer Function %119
         %127 = OpTypeCooperativeVectorAZD %float %uint_20
 %_ptr_Function_half = OpTypePointer Function %half

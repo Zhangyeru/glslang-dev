@@ -1407,6 +1407,13 @@ enum CooperativeMatrixUse {
     CooperativeMatrixUseMax = 0x7fffffff,
 };
 
+enum CooperativeMatrixUseAZD {
+    CooperativeMatrixUseAZDMatrixUseAAZD = 0,
+    CooperativeMatrixUseAZDMatrixUseBAZD = 1,
+    CooperativeMatrixUseAZDMatrixAccumulatorAZD = 2,
+    CooperativeMatrixUseAZDMax = 0x7fffffff,
+};
+
 enum CooperativeMatrixReduceShift {
     CooperativeMatrixReduceRowShift = 0,
     CooperativeMatrixReduceColumnShift = 1,
@@ -4166,6 +4173,15 @@ inline const char* CooperativeMatrixUseToString(CooperativeMatrixUse value) {
     case CooperativeMatrixUseMatrixAKHR: return "MatrixAKHR";
     case CooperativeMatrixUseMatrixBKHR: return "MatrixBKHR";
     case CooperativeMatrixUseMatrixAccumulatorKHR: return "MatrixAccumulatorKHR";
+    default: return "Unknown";
+    }
+}
+
+inline const char* CooperativeMatrixUseAZDToString(CooperativeMatrixUseAZD value) {
+    switch (value) {
+    case CooperativeMatrixUseAZDMatrixUseAAZD: return "MatrixUseAAZD";
+    case CooperativeMatrixUseAZDMatrixUseBAZD: return "MatrixUseBAZD";
+    case CooperativeMatrixUseAZDMatrixAccumulatorAZD: return "MatrixAccumulatorAZD";
     default: return "Unknown";
     }
 }
