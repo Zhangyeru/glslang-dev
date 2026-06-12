@@ -11,9 +11,9 @@ layout(set = 0, binding = 0) buffer Buf {
 
 void main()
 {
-    const vec2 srcMatrixShape = vec2(32.0, 64.0);
-    const vec2 srcMatrixOffset = vec2(1.0, 2.0);
-    const vec2 dstMatrixOffset = vec2(3.0, 4.0);
+    const ivec2 srcMatrixShape = ivec2(32, 64);
+    const ivec2 srcMatrixOffset = ivec2(1, 2);
+    const ivec2 dstMatrixOffset = ivec2(3, 4);
 
     coopmatHW<float16_t, 16, 8> A = coopmatHW<float16_t, 16, 8>(0.0);
     coopmatHW<float16_t, 8, 8> B = coopmatHW<float16_t, 8, 8>(1.0);

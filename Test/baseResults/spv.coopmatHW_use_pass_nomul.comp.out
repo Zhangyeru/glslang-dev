@@ -2,7 +2,7 @@ spv.coopmatHW_use_pass_nomul.comp
 ; SPIR-V
 ; Version: 1.0
 ; Generator: Khronos Glslang Reference Front End; 11
-; Bound: 40
+; Bound: 38
 ; Schema: 0
                OpCapability Shader
                OpCapability Float16
@@ -55,12 +55,10 @@ spv.coopmatHW_use_pass_nomul.comp
         %int = OpTypeInt 32 1
       %int_0 = OpConstant %int 0
 %_ptr_StorageBuffer__runtimearr_half = OpTypePointer StorageBuffer %_runtimearr_half
-      %float = OpTypeFloat 32
-    %v2float = OpTypeVector %float 2
-   %float_16 = OpConstant %float 16
-         %23 = OpConstantComposite %v2float %float_16 %float_16
-    %float_0 = OpConstant %float 0
-         %25 = OpConstantComposite %v2float %float_0 %float_0
+      %v2int = OpTypeVector %int 2
+     %int_16 = OpConstant %int 16
+         %22 = OpConstantComposite %v2int %int_16 %int_16
+         %23 = OpConstantComposite %v2int %int_0 %int_0
 %_runtimearr_half_0 = OpTypeRuntimeArray %half
      %OutBuf = OpTypeStruct %_runtimearr_half_0
 %_ptr_StorageBuffer_OutBuf = OpTypePointer StorageBuffer %OutBuf
@@ -75,12 +73,12 @@ spv.coopmatHW_use_pass_nomul.comp
     %tempArg = OpVariable %_ptr_Function_9 Function
       %value = OpVariable %_ptr_Function_9 Function
          %19 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %inBuf %int_0
-         %26 = OpCooperativeMatrixLoadHW %9 %19 %23 %25 %int_0
-               OpStore %tempArg %26
-         %28 = OpLoad %9 %tempArg
-               OpStore %value %28
-         %29 = OpLoad %9 %value
-         %35 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half_0 %outBuf %int_0
-               OpCooperativeMatrixStoreHW %35 %29 %23 %25 %int_1
+         %24 = OpCooperativeMatrixLoadHW %9 %19 %22 %23 %int_0
+               OpStore %tempArg %24
+         %26 = OpLoad %9 %tempArg
+               OpStore %value %26
+         %27 = OpLoad %9 %value
+         %33 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half_0 %outBuf %int_0
+               OpCooperativeMatrixStoreHW %33 %27 %22 %23 %int_1
                OpReturn
                OpFunctionEnd

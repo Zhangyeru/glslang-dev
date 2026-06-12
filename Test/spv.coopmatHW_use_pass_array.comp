@@ -13,8 +13,8 @@ struct MatBox {
 
 void main()
 {
-    const vec2 shape = vec2(16.0, 16.0);
-    const vec2 zeroOffset = vec2(0.0, 0.0);
+    const ivec2 shape = ivec2(16, 16);
+    const ivec2 zeroOffset = ivec2(0, 0);
 
     coopmatHW<float16_t, 16, 16> lhs[2];
     coopmatHW<float16_t, 16, 16> rhs[2];

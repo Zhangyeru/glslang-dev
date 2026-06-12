@@ -2,7 +2,7 @@ spv.coopmatHW_use_pass_matmul_rect.comp
 ; SPIR-V
 ; Version: 1.0
 ; Generator: Khronos Glslang Reference Front End; 11
-; Bound: 93
+; Bound: 91
 ; Schema: 0
                OpCapability Shader
                OpCapability Int8
@@ -83,37 +83,35 @@ spv.coopmatHW_use_pass_matmul_rect.comp
         %int = OpTypeInt 32 1
       %int_0 = OpConstant %int 0
 %_ptr_StorageBuffer__runtimearr_uchar = OpTypePointer StorageBuffer %_runtimearr_uchar
-      %float = OpTypeFloat 32
-    %v2float = OpTypeVector %float 2
-   %float_16 = OpConstant %float 16
-   %float_32 = OpConstant %float 32
-         %25 = OpConstantComposite %v2float %float_16 %float_32
-    %float_0 = OpConstant %float 0
-         %27 = OpConstantComposite %v2float %float_0 %float_0
-         %31 = OpTypeCooperativeMatrixHW %uchar %uint_32 %uint_16 MatrixUseAHW
-%_ptr_Function_31 = OpTypePointer Function %31
+      %v2int = OpTypeVector %int 2
+     %int_16 = OpConstant %int 16
+     %int_32 = OpConstant %int 32
+         %24 = OpConstantComposite %v2int %int_16 %int_32
+         %25 = OpConstantComposite %v2int %int_0 %int_0
+         %29 = OpTypeCooperativeMatrixHW %uchar %uint_32 %uint_16 MatrixUseAHW
+%_ptr_Function_29 = OpTypePointer Function %29
 %_runtimearr_uchar_0 = OpTypeRuntimeArray %uchar
 %InMatBBlock = OpTypeStruct %_runtimearr_uchar_0
 %_ptr_StorageBuffer_InMatBBlock = OpTypePointer StorageBuffer %InMatBBlock
      %inMatB = OpVariable %_ptr_StorageBuffer_InMatBBlock StorageBuffer
 %_ptr_StorageBuffer__runtimearr_uchar_0 = OpTypePointer StorageBuffer %_runtimearr_uchar_0
-         %40 = OpConstantComposite %v2float %float_32 %float_16
+         %38 = OpConstantComposite %v2int %int_32 %int_16
       %int_1 = OpConstant %int 1
-         %45 = OpTypeCooperativeMatrixHW %uint %uint_16 %uint_16 MatrixAccumulatorHW
-%_ptr_Function_45 = OpTypePointer Function %45
+         %43 = OpTypeCooperativeMatrixHW %uint %uint_16 %uint_16 MatrixAccumulatorHW
+%_ptr_Function_43 = OpTypePointer Function %43
 %_runtimearr_uint = OpTypeRuntimeArray %uint
 %InMatCBlock = OpTypeStruct %_runtimearr_uint
 %_ptr_StorageBuffer_InMatCBlock = OpTypePointer StorageBuffer %InMatCBlock
      %inMatC = OpVariable %_ptr_StorageBuffer_InMatCBlock StorageBuffer
 %_ptr_StorageBuffer__runtimearr_uint = OpTypePointer StorageBuffer %_runtimearr_uint
-         %54 = OpConstantComposite %v2float %float_16 %float_16
-         %62 = OpTypeCooperativeMatrixHW %uchar %uint_32 %uint_16 MatrixUseBHW
-         %67 = OpTypeCooperativeMatrixHW %uchar %uint_16 %uint_16 MatrixUseBHW
-%_ptr_Function_67 = OpTypePointer Function %67
-         %71 = OpTypeCooperativeMatrixHW %uchar %uint_16 %uint_16 MatrixAccumulatorHW
-         %74 = OpTypeCooperativeMatrixHW %uint %uint_32 %uint_16 MatrixAccumulatorHW
-%_ptr_Function_74 = OpTypePointer Function %74
-         %79 = OpConstantNull %74
+         %52 = OpConstantComposite %v2int %int_16 %int_16
+         %60 = OpTypeCooperativeMatrixHW %uchar %uint_32 %uint_16 MatrixUseBHW
+         %65 = OpTypeCooperativeMatrixHW %uchar %uint_16 %uint_16 MatrixUseBHW
+%_ptr_Function_65 = OpTypePointer Function %65
+         %69 = OpTypeCooperativeMatrixHW %uchar %uint_16 %uint_16 MatrixAccumulatorHW
+         %72 = OpTypeCooperativeMatrixHW %uint %uint_32 %uint_16 MatrixAccumulatorHW
+%_ptr_Function_72 = OpTypePointer Function %72
+         %77 = OpConstantNull %72
 %_runtimearr_uint_0 = OpTypeRuntimeArray %uint
 %OutMatBlock = OpTypeStruct %_runtimearr_uint_0
 %_ptr_StorageBuffer_OutMatBlock = OpTypePointer StorageBuffer %OutMatBlock
@@ -126,50 +124,50 @@ spv.coopmatHW_use_pass_matmul_rect.comp
           %5 = OpLabel
     %tempArg = OpVariable %_ptr_Function_10 Function
        %matA = OpVariable %_ptr_Function_10 Function
-  %tempArg_0 = OpVariable %_ptr_Function_31 Function
-       %matB = OpVariable %_ptr_Function_31 Function
-  %tempArg_1 = OpVariable %_ptr_Function_45 Function
-       %matC = OpVariable %_ptr_Function_45 Function
-  %tempArg_2 = OpVariable %_ptr_Function_45 Function
-       %matD = OpVariable %_ptr_Function_45 Function
-       %matE = OpVariable %_ptr_Function_67 Function
-  %tempArg_3 = OpVariable %_ptr_Function_74 Function
-       %matF = OpVariable %_ptr_Function_74 Function
+  %tempArg_0 = OpVariable %_ptr_Function_29 Function
+       %matB = OpVariable %_ptr_Function_29 Function
+  %tempArg_1 = OpVariable %_ptr_Function_43 Function
+       %matC = OpVariable %_ptr_Function_43 Function
+  %tempArg_2 = OpVariable %_ptr_Function_43 Function
+       %matD = OpVariable %_ptr_Function_43 Function
+       %matE = OpVariable %_ptr_Function_65 Function
+  %tempArg_3 = OpVariable %_ptr_Function_72 Function
+       %matF = OpVariable %_ptr_Function_72 Function
          %20 = OpAccessChain %_ptr_StorageBuffer__runtimearr_uchar %inMatA %int_0
-         %28 = OpCooperativeMatrixLoadHW %10 %20 %25 %27 %int_0
-               OpStore %tempArg %28
-         %30 = OpLoad %10 %tempArg
-               OpStore %matA %30
-         %39 = OpAccessChain %_ptr_StorageBuffer__runtimearr_uchar_0 %inMatB %int_0
-         %42 = OpCooperativeMatrixLoadHW %31 %39 %40 %27 %int_1
-               OpStore %tempArg_0 %42
-         %44 = OpLoad %31 %tempArg_0
-               OpStore %matB %44
-         %53 = OpAccessChain %_ptr_StorageBuffer__runtimearr_uint %inMatC %int_0
-         %55 = OpCooperativeMatrixLoadHW %45 %53 %54 %27 %int_0
-               OpStore %tempArg_1 %55
-         %57 = OpLoad %45 %tempArg_1
-               OpStore %matC %57
-         %59 = OpLoad %10 %matA
-         %60 = OpLoad %31 %matB
-         %61 = OpLoad %45 %matC
-         %63 = OpBitcast %62 %60
-         %64 = OpCooperativeMatrixMulAddHW %45 %59 %63 %61
-               OpStore %tempArg_2 %64
-         %66 = OpLoad %45 %tempArg_2
-               OpStore %matD %66
-         %70 = OpLoad %45 %matD
-         %72 = OpUConvert %71 %70
-         %73 = OpBitcast %67 %72
-               OpStore %matE %73
-         %77 = OpLoad %31 %matB
-         %78 = OpLoad %67 %matE
-         %80 = OpCooperativeMatrixMulAddHW %74 %77 %78 %79
-               OpStore %tempArg_3 %80
-         %82 = OpLoad %74 %tempArg_3
-               OpStore %matF %82
-         %83 = OpLoad %74 %matF
-         %89 = OpAccessChain %_ptr_StorageBuffer__runtimearr_uint_0 %outMat %int_0
-               OpCooperativeMatrixStoreHW %89 %83 %40 %27 %int_0
+         %26 = OpCooperativeMatrixLoadHW %10 %20 %24 %25 %int_0
+               OpStore %tempArg %26
+         %28 = OpLoad %10 %tempArg
+               OpStore %matA %28
+         %37 = OpAccessChain %_ptr_StorageBuffer__runtimearr_uchar_0 %inMatB %int_0
+         %40 = OpCooperativeMatrixLoadHW %29 %37 %38 %25 %int_1
+               OpStore %tempArg_0 %40
+         %42 = OpLoad %29 %tempArg_0
+               OpStore %matB %42
+         %51 = OpAccessChain %_ptr_StorageBuffer__runtimearr_uint %inMatC %int_0
+         %53 = OpCooperativeMatrixLoadHW %43 %51 %52 %25 %int_0
+               OpStore %tempArg_1 %53
+         %55 = OpLoad %43 %tempArg_1
+               OpStore %matC %55
+         %57 = OpLoad %10 %matA
+         %58 = OpLoad %29 %matB
+         %59 = OpLoad %43 %matC
+         %61 = OpBitcast %60 %58
+         %62 = OpCooperativeMatrixMulAddHW %43 %57 %61 %59
+               OpStore %tempArg_2 %62
+         %64 = OpLoad %43 %tempArg_2
+               OpStore %matD %64
+         %68 = OpLoad %43 %matD
+         %70 = OpUConvert %69 %68
+         %71 = OpBitcast %65 %70
+               OpStore %matE %71
+         %75 = OpLoad %29 %matB
+         %76 = OpLoad %65 %matE
+         %78 = OpCooperativeMatrixMulAddHW %72 %75 %76 %77
+               OpStore %tempArg_3 %78
+         %80 = OpLoad %72 %tempArg_3
+               OpStore %matF %80
+         %81 = OpLoad %72 %matF
+         %87 = OpAccessChain %_ptr_StorageBuffer__runtimearr_uint_0 %outMat %int_0
+               OpCooperativeMatrixStoreHW %87 %81 %38 %25 %int_0
                OpReturn
                OpFunctionEnd

@@ -14,10 +14,10 @@ layout(set = 0, binding = 3) buffer BufD { float16_t d_data[]; } bufD;
 // A(16x8) -> MatrixUseAHW, B(8x16) -> MatrixUseBHW, C(16x16)/D -> MatrixAccumulatorHW
 void main()
 {
-    const vec2 shapeA = vec2(16.0, 8.0);
-    const vec2 shapeB = vec2(8.0, 16.0);
-    const vec2 shapeC = vec2(16.0, 16.0);
-    const vec2 zeroOffset = vec2(0.0, 0.0);
+    const ivec2 shapeA = ivec2(16, 8);
+    const ivec2 shapeB = ivec2(8, 16);
+    const ivec2 shapeC = ivec2(16, 16);
+    const ivec2 zeroOffset = ivec2(0, 0);
 
     coopmatHW<float16_t, 16, 8>  A;
     coopmatHW<float16_t, 8, 16>  B;

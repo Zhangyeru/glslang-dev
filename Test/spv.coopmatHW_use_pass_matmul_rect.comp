@@ -27,13 +27,13 @@ layout(scalar, set = 0, binding = 3) buffer OutMatBlock {
 void main()
 {
     coopmatHW<uint8_t, 16, 32> matA;
-    coopMatLoadHW(matA, inMatA.x, vec2(16, 32), vec2(0, 0), 0);
+    coopMatLoadHW(matA, inMatA.x, ivec2(16, 32), ivec2(0, 0), 0);
 
     coopmatHW<uint8_t, 32, 16> matB;
-    coopMatLoadHW(matB, inMatB.x, vec2(32, 16), vec2(0, 0), 1);
+    coopMatLoadHW(matB, inMatB.x, ivec2(32, 16), ivec2(0, 0), 1);
 
     coopmatHW<uint32_t, 16, 16> matC;
-    coopMatLoadHW(matC, inMatC.x, vec2(16, 16), vec2(0, 0), 0);
+    coopMatLoadHW(matC, inMatC.x, ivec2(16, 16), ivec2(0, 0), 0);
 
     coopmatHW<uint32_t, 16, 16> matD;
     coopMatMulAddHW(matD, matA, matB, matC);
@@ -42,5 +42,5 @@ void main()
     coopmatHW<uint32_t, 32, 16> matF;
 
     coopMatMulHW(matF, matB, matE);
-    coopMatStoreHW(matF, outMat.x, vec2(32, 16), vec2(0, 0), 0);
+    coopMatStoreHW(matF, outMat.x, ivec2(32, 16), ivec2(0, 0), 0);
 }

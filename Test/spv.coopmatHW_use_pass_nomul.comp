@@ -12,8 +12,8 @@ layout(set = 0, binding = 1) buffer OutBuf { float16_t data[]; } outBuf;
 // No matmul use. The opt pass should default this matrix type to MatrixUseAHW.
 void main()
 {
-    const vec2 shape = vec2(16.0, 16.0);
-    const vec2 offset = vec2(0.0, 0.0);
+    const ivec2 shape = ivec2(16, 16);
+    const ivec2 offset = ivec2(0, 0);
 
     coopmatHW<float16_t, 16, 16> value;
 

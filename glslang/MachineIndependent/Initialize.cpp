@@ -4633,8 +4633,8 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
 
             std::stringstream cooperativeMatrixADFuncs;
             for (auto t : allTypes) {
-                cooperativeMatrixADFuncs << "void coopMatLoadHW(out coopmatHW m, volatile coherent nontemporal " << t << "[] buf, vec2 srcMatrixShape, vec2 srcMatrixOffset, int matrixLayout);\n";
-                cooperativeMatrixADFuncs << "void coopMatStoreHW(coopmatHW m, volatile coherent nontemporal " << t << "[] buf, vec2 dstMatrixShape, vec2 dstMatrixOffset, int matrixLayout);\n";
+                cooperativeMatrixADFuncs << "void coopMatLoadHW(out coopmatHW m, volatile coherent nontemporal " << t << "[] buf, ivec2 srcMatrixShape, ivec2 srcMatrixOffset, int matrixLayout);\n";
+                cooperativeMatrixADFuncs << "void coopMatStoreHW(coopmatHW m, volatile coherent nontemporal " << t << "[] buf, ivec2 dstMatrixShape, ivec2 dstMatrixOffset, int matrixLayout);\n";
             }
             cooperativeMatrixADFuncs << "void coopMatMulHW(out coopmatHW result, coopmatHW A, coopmatHW B);\n";
             cooperativeMatrixADFuncs << "void coopMatMulAddHW(out coopmatHW result, coopmatHW A, coopmatHW B, coopmatHW C);\n";

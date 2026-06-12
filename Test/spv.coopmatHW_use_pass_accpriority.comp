@@ -13,8 +13,8 @@ layout(set = 0, binding = 0) buffer Buf { float16_t data[]; } buf;
 // the store boundary.
 void main()
 {
-    const vec2 shape16 = vec2(16.0, 16.0);
-    const vec2 zeroOffset = vec2(0.0, 0.0);
+    const ivec2 shape16 = ivec2(16, 16);
+    const ivec2 zeroOffset = ivec2(0, 0);
 
     coopmatHW<float16_t, 16, 16> X, Y;
     coopmatHW<float16_t, 16, 16> A, B, C1;
