@@ -1806,7 +1806,7 @@ int TScanContext::tokenizeIdentifier()
         afterType = true;
         parserToken->sType.lex.i = 1;
         if (parseContext.symbolTable.atBuiltInLevel() ||
-            parseContext.extensionTurnedOn(E_GL_HW_neural_matrix))
+            parseContext.extensionTurnedOn(E_GL_HW_neural_shader))
             return keyword;
         return identifierOrType();
 
@@ -1821,7 +1821,7 @@ int TScanContext::tokenizeIdentifier()
         afterType = true;
         parserToken->sType.lex.i = 1;
         if (parseContext.symbolTable.atBuiltInLevel() ||
-            parseContext.extensionTurnedOn(E_GL_HW_cooperative_vector))
+            parseContext.extensionTurnedOn(E_GL_HW_neural_shader))
             return keyword;
         return identifierOrType();
 

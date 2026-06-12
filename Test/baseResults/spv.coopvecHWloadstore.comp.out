@@ -11,7 +11,7 @@ spv.coopvecHWloadstore.comp
                OpCapability VulkanMemoryModel
                OpCapability PhysicalStorageBufferAddresses
                OpCapability CooperativeVectorHW
-               OpExtension "SPV_HW_cooperative_vector"
+               OpExtension "SPV_HW_neural_shader"
                OpExtension "SPV_KHR_16bit_storage"
                OpExtension "SPV_KHR_physical_storage_buffer"
                OpExtension "SPV_KHR_storage_buffer_storage_class"
@@ -24,7 +24,7 @@ spv.coopvecHWloadstore.comp
                OpSourceExtension "GL_EXT_buffer_reference"
                OpSourceExtension "GL_EXT_nonuniform_qualifier"
                OpSourceExtension "GL_EXT_shader_explicit_arithmetic_types"
-               OpSourceExtension "GL_HW_cooperative_vector"
+               OpSourceExtension "GL_HW_neural_shader"
                OpSourceExtension "GL_KHR_memory_scope_semantics"
                OpName %main "main"
                OpName %tempArg "tempArg"

@@ -1,6 +1,6 @@
 spv.coopvecHWMatMul_Error.vert
-ERROR: 0:13: 'coopVecMatMulHW' : result vector component count must match matrix row count 
-ERROR: 0:13: 'coopVecMatMulHW' : input vector component count must match matrix column count 
+ERROR: 0:12: 'coopVecMatMulHW' : result vector component count must match matrix row count 
+ERROR: 0:12: 'coopVecMatMulHW' : input vector component count must match matrix column count 
 ERROR: 2 compilation errors.  No code generated.
 
 

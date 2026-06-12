@@ -1,5 +1,5 @@
 #version 450 core
-#extension GL_HW_cooperative_vector : enable
+#extension GL_HW_neural_shader : enable
 #extension GL_EXT_shader_explicit_arithmetic_types : enable
 
 layout(location = 0) out vec4 outColor;

@@ -9,7 +9,7 @@ spv.coopmatHW_logicalUse.comp
                OpCapability StorageBuffer16BitAccess
                OpCapability VulkanMemoryModel
                OpCapability CooperativeMatrixHW
-               OpExtension "SPV_HW_neural_matrix"
+               OpExtension "SPV_HW_neural_shader"
                OpExtension "SPV_KHR_16bit_storage"
                OpExtension "SPV_KHR_storage_buffer_storage_class"
                OpExtension "SPV_KHR_vulkan_memory_model"
@@ -19,7 +19,7 @@ spv.coopmatHW_logicalUse.comp
                OpExecutionMode %main LocalSize 1 1 1
                OpSource GLSL 450
                OpSourceExtension "GL_EXT_shader_explicit_arithmetic_types"
-               OpSourceExtension "GL_HW_neural_matrix"
+               OpSourceExtension "GL_HW_neural_shader"
                OpSourceExtension "GL_KHR_memory_scope_semantics"
                OpName %main "main"
                OpName %tempArg "tempArg"

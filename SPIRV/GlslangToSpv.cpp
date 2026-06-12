@@ -126,7 +126,7 @@ spv::Capability getCooperativeMatrixHWCapability()
 
 const char* getCooperativeMatrixHWExtension()
 {
-    return spv::E_SPV_HW_neural_matrix;
+    return spv::E_SPV_HW_neural_shader;
 }
 
 spv::CooperativeMatrixUseHW translateCoopMatUseHW(glslang::TCoopMatUse use)
@@ -807,7 +807,7 @@ bool ResolveCoopMatUse(TIntermNode* root, spv::SpvBuildLogger* logger)
 
 const char* getCooperativeVectorHWExtension()
 {
-    return spv::E_SPV_HW_cooperative_vector;
+    return spv::E_SPV_HW_neural_shader;
 }
 
 spv::Id createCooperativeVectorHWMatMul(spv::Builder& builder, spv::Id typeId, const std::vector<spv::Id>& operands)
@@ -6249,7 +6249,7 @@ spv::Id TGlslangToSpvTraverser::convertGlslangToSpvType(const glslang::TType& ty
 
     if (type.isCoopMatHW()) {
         builder.addCapability(spv::CapabilityCooperativeMatrixHW);
-        builder.addExtension(spv::E_SPV_HW_neural_matrix);
+        builder.addExtension(spv::E_SPV_HW_neural_shader);
 
         if (type.getBasicType() == glslang::EbtFloat16)
             builder.addCapability(spv::CapabilityFloat16);

@@ -9533,11 +9533,11 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
         }
 
         {
-            symbolTable.setFunctionExtensions("coopMatLoadHW",   1, &E_GL_HW_neural_matrix);
-            symbolTable.setFunctionExtensions("coopMatStoreHW",  1, &E_GL_HW_neural_matrix);
-            symbolTable.setFunctionExtensions("coopMatMulHW",    1, &E_GL_HW_neural_matrix);
-            symbolTable.setFunctionExtensions("coopMatMulAddHW", 1, &E_GL_HW_neural_matrix);
-            symbolTable.setFunctionExtensions("coopMatReduceHW", 1, &E_GL_HW_neural_matrix);
+            symbolTable.setFunctionExtensions("coopMatLoadHW",   1, &E_GL_HW_neural_shader);
+            symbolTable.setFunctionExtensions("coopMatStoreHW",  1, &E_GL_HW_neural_shader);
+            symbolTable.setFunctionExtensions("coopMatMulHW",    1, &E_GL_HW_neural_shader);
+            symbolTable.setFunctionExtensions("coopMatMulAddHW", 1, &E_GL_HW_neural_shader);
+            symbolTable.setFunctionExtensions("coopMatReduceHW", 1, &E_GL_HW_neural_shader);
         }
 
         {
@@ -9568,8 +9568,8 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
             symbolTable.setFunctionExtensions("coopVecOuterProductAccumulateNV",    1, &E_GL_NV_cooperative_vector);
             symbolTable.setFunctionExtensions("coopVecReduceSumAccumulateNV",       1, &E_GL_NV_cooperative_vector);
 
-            symbolTable.setFunctionExtensions("coopVecMatMulHW",                    1, &E_GL_HW_cooperative_vector);
-            symbolTable.setFunctionExtensions("coopVecMatMulAddHW",                 1, &E_GL_HW_cooperative_vector);
+            symbolTable.setFunctionExtensions("coopVecMatMulHW",                    1, &E_GL_HW_neural_shader);
+            symbolTable.setFunctionExtensions("coopVecMatMulAddHW",                 1, &E_GL_HW_neural_shader);
         }
 
         if ((profile != EEsProfile && version >= 450) || (profile == EEsProfile && version >= 320)) {

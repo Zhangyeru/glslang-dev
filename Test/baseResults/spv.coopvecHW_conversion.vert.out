@@ -9,14 +9,14 @@ spv.coopvecHW_conversion.vert
                OpCapability Int16
                OpCapability VulkanMemoryModel
                OpCapability CooperativeVectorHW
-               OpExtension "SPV_HW_cooperative_vector"
+               OpExtension "SPV_HW_neural_shader"
                OpExtension "SPV_KHR_vulkan_memory_model"
           %1 = OpExtInstImport "GLSL.std.450"
                OpMemoryModel Logical Vulkan
                OpEntryPoint Vertex %main "main" %_
                OpSource GLSL 450
                OpSourceExtension "GL_EXT_shader_explicit_arithmetic_types"
-               OpSourceExtension "GL_HW_cooperative_vector"
+               OpSourceExtension "GL_HW_neural_shader"
                OpName %main "main"
                OpName %gl_PerVertex "gl_PerVertex"
                OpMemberName %gl_PerVertex 0 "gl_Position"

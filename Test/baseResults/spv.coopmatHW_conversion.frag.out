@@ -9,7 +9,7 @@ spv.coopmatHW_conversion.frag
                OpCapability Int16
                OpCapability VulkanMemoryModel
                OpCapability CooperativeMatrixHW
-               OpExtension "SPV_HW_neural_matrix"
+               OpExtension "SPV_HW_neural_shader"
                OpExtension "SPV_KHR_vulkan_memory_model"
           %1 = OpExtInstImport "GLSL.std.450"
                OpMemoryModel Logical Vulkan
@@ -17,7 +17,7 @@ spv.coopmatHW_conversion.frag
                OpExecutionMode %main OriginUpperLeft
                OpSource GLSL 450
                OpSourceExtension "GL_EXT_shader_explicit_arithmetic_types"
-               OpSourceExtension "GL_HW_neural_matrix"
+               OpSourceExtension "GL_HW_neural_shader"
                OpSourceExtension "GL_KHR_memory_scope_semantics"
                OpName %main "main"
                OpName %outColor "outColor"

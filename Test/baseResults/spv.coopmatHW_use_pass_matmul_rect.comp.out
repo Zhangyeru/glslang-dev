@@ -9,7 +9,7 @@ spv.coopmatHW_use_pass_matmul_rect.comp
                OpCapability StorageBuffer8BitAccess
                OpCapability VulkanMemoryModel
                OpCapability CooperativeMatrixHW
-               OpExtension "SPV_HW_neural_matrix"
+               OpExtension "SPV_HW_neural_shader"
                OpExtension "SPV_KHR_8bit_storage"
                OpExtension "SPV_KHR_storage_buffer_storage_class"
                OpExtension "SPV_KHR_vulkan_memory_model"
@@ -22,7 +22,7 @@ spv.coopmatHW_use_pass_matmul_rect.comp
                OpSourceExtension "GL_EXT_shader_8bit_storage"
                OpSourceExtension "GL_EXT_shader_explicit_arithmetic_types_int32"
                OpSourceExtension "GL_EXT_shader_explicit_arithmetic_types_int8"
-               OpSourceExtension "GL_HW_neural_matrix"
+               OpSourceExtension "GL_HW_neural_shader"
                OpName %main "main"
                OpName %tempArg "tempArg"
                OpName %InMatABlock "InMatABlock"

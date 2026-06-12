@@ -1,6 +1,6 @@
 #version 450 core
 #extension GL_KHR_memory_scope_semantics : enable
-#extension GL_HW_neural_matrix : enable
+#extension GL_HW_neural_shader : enable
 #extension GL_EXT_shader_explicit_arithmetic_types : enable
 
 void main()

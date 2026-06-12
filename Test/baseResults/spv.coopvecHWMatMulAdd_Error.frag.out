@@ -1,6 +1,6 @@
 spv.coopvecHWMatMulAdd_Error.frag
-ERROR: 0:14: 'coopVecMatMulAddHW' : result and bias component types must match 
-ERROR: 0:14: 'coopVecMatMulAddHW' : result and bias component counts must match 
+ERROR: 0:13: 'coopVecMatMulAddHW' : result and bias component types must match 
+ERROR: 0:13: 'coopVecMatMulAddHW' : result and bias component counts must match 
 ERROR: 2 compilation errors.  No code generated.
 
 

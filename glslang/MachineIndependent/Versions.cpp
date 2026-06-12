@@ -269,9 +269,8 @@ void TParseVersions::initializeExtensionBehavior()
     extensionBehavior[E_GL_EXT_spec_constant_composites]                = EBhDisable;
 
     extensionBehavior[E_GL_KHR_cooperative_matrix]                      = EBhDisable;
-    extensionBehavior[E_GL_HW_neural_matrix]                           = EBhDisable;
+    extensionBehavior[E_GL_HW_neural_shader]                           = EBhDisable;
     extensionBehavior[E_GL_NV_cooperative_vector]                       = EBhDisable;
-    extensionBehavior[E_GL_HW_cooperative_vector]                       = EBhDisable;
 
     // #line and #include
     extensionBehavior[E_GL_GOOGLE_cpp_style_line_directive]          = EBhDisable;
@@ -1421,7 +1420,7 @@ void TParseVersions::coopvecCheck(const TSourceLoc& loc, const char* op, bool bu
 void TParseVersions::coopvecHWCheck(const TSourceLoc& loc, const char* op, bool builtIn)
 {
     if (!builtIn) {
-        const char* const extensions[] = {E_GL_HW_cooperative_vector};
+        const char* const extensions[] = {E_GL_HW_neural_shader};
         requireExtensions(loc, sizeof(extensions)/sizeof(extensions[0]), extensions, op);
     }
 }
@@ -1429,7 +1428,7 @@ void TParseVersions::coopvecHWCheck(const TSourceLoc& loc, const char* op, bool 
 void TParseVersions::coopmatHWCheck(const TSourceLoc& loc, const char* op, bool builtIn)
 {
     if (!builtIn) {
-        const char* const extensions[] = {E_GL_HW_neural_matrix};
+        const char* const extensions[] = {E_GL_HW_neural_shader};
         requireExtensions(loc, sizeof(extensions)/sizeof(extensions[0]), extensions, op);
     }
 }
