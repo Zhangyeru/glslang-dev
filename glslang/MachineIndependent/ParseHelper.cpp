@@ -313,8 +313,8 @@ bool handleCoopVecHWMatMulBuiltin(TParseContext& parseContext, const TSourceLoc&
                 parseContext.error(loc, "input vector and matrix component types must match", "coopVecMatMulHW", "");
             if (getCoopVecHWComponents(resultType) != getCoopMatHWRows(matrixType))
                 parseContext.error(loc, "result vector component count must match matrix row count", "coopVecMatMulHW", "");
-            if (getCoopVecHWComponents(inputType) != getCoopMatHWColumns(matrixType))
-                parseContext.error(loc, "input vector component count must match matrix column count", "coopVecMatMulHW", "");
+            if (getCoopVecHWComponents(inputType) != getCoopMatHWRows(matrixType))
+                parseContext.error(loc, "input vector component count must match matrix row count", "coopVecMatMulHW", "");
         }
 
         return true;
@@ -338,8 +338,8 @@ bool handleCoopVecHWMatMulBuiltin(TParseContext& parseContext, const TSourceLoc&
                 parseContext.error(loc, "input vector and matrix component types must match", "coopVecMatMulAddHW", "");
             if (getCoopVecHWComponents(resultType) != getCoopMatHWRows(matrixType))
                 parseContext.error(loc, "result vector component count must match matrix row count", "coopVecMatMulAddHW", "");
-            if (getCoopVecHWComponents(inputType) != getCoopMatHWColumns(matrixType))
-                parseContext.error(loc, "input vector component count must match matrix column count", "coopVecMatMulAddHW", "");
+            if (getCoopVecHWComponents(inputType) != getCoopMatHWRows(matrixType))
+                parseContext.error(loc, "input vector component count must match matrix row count", "coopVecMatMulAddHW", "");
         }
 
         return true;
