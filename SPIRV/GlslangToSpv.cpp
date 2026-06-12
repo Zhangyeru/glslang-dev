@@ -472,6 +472,13 @@ private:
         constrain(operand, glslang::ECoopMatUseA, false);
     }
 
+    // Dedup key helpers. The resolver runs multiple fixed-point passes over the AST, visiting
+    // the same nodes repeatedly. To prevent re-adding the same constraint (and falsely reporting
+    // changedConstraints = true on every pass), each constraint is keyed by a unique string that
+    // incorporates the AST node's stable address (the AST is not mutated between passes, so
+    // pointer identity is a valid per-node discriminator). reinterpret_cast<uintptr_t> is used
+    // purely as an integer stand-in for pointer identity — the numeric value is never dereferenced.
+
     void recordAccumulatorOperandBoundaryError(glslang::TIntermTyped* node)
     {
         std::string unique = "acc-boundary:" + std::to_string(reinterpret_cast<std::uintptr_t>(node));
@@ -622,13 +629,22 @@ private:
             constrain(coopOperand, resultUse, false);
     }
 
+    // Rewrite the AZD cooperative matrix use on a node's type for SPIR-V emission.
+    //
+    // Function parameter symbols are always rewritten as UseA regardless of the inferred
+    // role. This is intentional: SPIR-V function parameter types must be uniform across all
+    // callers, and UseA is the canonical default. When a caller passes an argument whose
+    // actual use is UseB or Accumulator, createCooperativeMatrixAZDUseCast inserts an
+    // OpBitcast at the call site to the correct use-typed SPIR-V type, so the callee still
+    // receives the right value. This two-layer design (uniform parameter type + per-call-site
+    // cast) avoids needing a different function signature for every combination of argument uses.
     void rewriteType(glslang::TIntermTyped* node)
     {
         glslang::TCoopMatUse use = roleOf(node);
         if (use == glslang::ECoopMatUseUnknown)
             use = glslang::ECoopMatUseA;
         else if (isFunctionParameterSymbol(node))
-            use = glslang::ECoopMatUseA;
+            use = glslang::ECoopMatUseA;  // see comment above: uniform parameter type, cast at call site
 
         if (isCoopMatAZDTyped(node)) {
             node->getWritableType().setCoopMatUse(use);
@@ -747,13 +763,17 @@ private:
     bool hasUnresolvedUse = false;
 };
 
+// Fixed-point iteration limit for use-constraint propagation. Each pass walks the full AST once,
+// so 8 iterations is sufficient for constraint chains up to depth 8 (covering all practical shaders).
+constexpr int kMaxUsePropagationIterations = 8;
+
 bool ResolveCoopMatUse(TIntermNode* root, spv::SpvBuildLogger* logger)
 {
     CoopMatUseState state;
     TCoopMatUseResolver resolver(state, logger, true, false, false);
     root->traverse(&resolver);
 
-    for (int i = 0; i < 8; ++i) {
+    for (int i = 0; i < kMaxUsePropagationIterations; ++i) {
         TCoopMatUseResolver propagate(state, logger, false, false, false);
         root->traverse(&propagate);
         if (!propagate.changed())
@@ -763,7 +783,7 @@ bool ResolveCoopMatUse(TIntermNode* root, spv::SpvBuildLogger* logger)
     TCoopMatUseResolver defaultNeutral(state, logger, false, true, false);
     root->traverse(&defaultNeutral);
 
-    for (int i = 0; i < 8; ++i) {
+    for (int i = 0; i < kMaxUsePropagationIterations; ++i) {
         TCoopMatUseResolver propagate(state, logger, false, false, false);
         root->traverse(&propagate);
         if (!propagate.changed())
@@ -5364,6 +5384,11 @@ bool TGlslangToSpvTraverser::visitSelection(glslang::TVisit /* visit */, glslang
     const auto isOpSelectable = [&]() {
         if (node->getBasicType() == glslang::EbtVoid)
             return false;
+        // AZD cooperative matrix types carry a Use operand (A/B/Accumulator) that distinguishes
+        // otherwise structurally identical types. OpSelect requires all operand types to match
+        // the result type exactly, but the two branches of a ternary may resolve to different
+        // uses. The resolver therefore lowers AZD ternaries to if/else with OpBitcast at the
+        // branch boundaries instead of emitting OpSelect.
         if (node->getType().isCoopMatAZD())
             return false;
         // OpSelect can do all other types starting with SPV 1.4
