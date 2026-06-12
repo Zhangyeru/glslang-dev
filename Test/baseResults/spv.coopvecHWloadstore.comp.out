@@ -2,7 +2,7 @@ spv.coopvecHWloadstore.comp
 ; SPIR-V
 ; Version: 1.0
 ; Generator: Khronos Glslang Reference Front End; 11
-; Bound: 77
+; Bound: 76
 ; Schema: 0
                OpCapability Shader
                OpCapability Float16
@@ -103,7 +103,6 @@ spv.coopvecHWloadstore.comp
 %_arr_uint_uint_100 = OpTypeArray %uint %uint_100
 %_ptr_Workgroup__arr_uint_uint_100 = OpTypePointer Workgroup %_arr_uint_uint_100
 %matrixShmem = OpVariable %_ptr_Workgroup__arr_uint_uint_100 Workgroup
-     %uint_2 = OpConstant %uint 2
      %v3uint = OpTypeVector %uint 3
     %uint_64 = OpConstant %uint 64
      %uint_1 = OpConstant %uint 1
@@ -134,28 +133,28 @@ spv.coopvecHWloadstore.comp
          %38 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %matrixBuf2 %int_0
                OpCooperativeVectorStoreHW %38 %37
          %45 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %matrixBuf3 %int_0
-         %46 = OpCooperativeVectorLoadHW %9 %45
+         %46 = OpCooperativeVectorLoadHW %9 %45 Volatile
                OpStore %tempArg_1 %46
          %47 = OpLoad %9 %tempArg_1
                OpStore %v %47
          %48 = OpLoad %9 %v
          %49 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %matrixBuf3 %int_0
-               OpCooperativeVectorStoreHW %49 %48
+               OpCooperativeVectorStoreHW %49 %48 Volatile
          %56 = OpLoad %_ptr_PhysicalStorageBuffer_MatrixBuf4 %matrixBuf4
          %58 = OpAccessChain %_ptr_PhysicalStorageBuffer__runtimearr_half_0 %56 %int_0
-         %59 = OpCooperativeVectorLoadHW %9 %58
+         %59 = OpCooperativeVectorLoadHW %9 %58 Aligned 16
                OpStore %tempArg_2 %59
          %60 = OpLoad %9 %tempArg_2
                OpStore %v %60
          %61 = OpLoad %9 %v
          %62 = OpLoad %_ptr_PhysicalStorageBuffer_MatrixBuf4 %matrixBuf4
          %63 = OpAccessChain %_ptr_PhysicalStorageBuffer__runtimearr_half_0 %62 %int_0
-               OpCooperativeVectorStoreHW %63 %61
-         %70 = OpCooperativeVectorLoadHW %9 %matrixShmem
-               OpStore %tempArg_3 %70
-         %71 = OpLoad %9 %tempArg_3
-               OpStore %v %71
-         %72 = OpLoad %9 %v
-               OpCooperativeVectorStoreHW %matrixShmem %72
+               OpCooperativeVectorStoreHW %63 %61 Aligned 16
+         %69 = OpCooperativeVectorLoadHW %9 %matrixShmem
+               OpStore %tempArg_3 %69
+         %70 = OpLoad %9 %tempArg_3
+               OpStore %v %70
+         %71 = OpLoad %9 %v
+               OpCooperativeVectorStoreHW %matrixShmem %71
                OpReturn
                OpFunctionEnd

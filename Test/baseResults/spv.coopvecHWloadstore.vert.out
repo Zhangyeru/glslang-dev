@@ -142,22 +142,22 @@ spv.coopvecHWloadstore.vert
          %48 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %matrixBuf2 %int_0
                OpCooperativeVectorStoreHW %48 %47
          %55 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %matrixBuf3 %int_0
-         %56 = OpCooperativeVectorLoadHW %21 %55
+         %56 = OpCooperativeVectorLoadHW %21 %55 Volatile
                OpStore %tempArg_1 %56
          %57 = OpLoad %21 %tempArg_1
                OpStore %v %57
          %58 = OpLoad %21 %v
          %59 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %matrixBuf3 %int_0
-               OpCooperativeVectorStoreHW %59 %58
+               OpCooperativeVectorStoreHW %59 %58 Volatile
          %66 = OpLoad %_ptr_PhysicalStorageBuffer_MatrixBuf4 %matrixBuf4
          %68 = OpAccessChain %_ptr_PhysicalStorageBuffer__runtimearr_half_0 %66 %int_0
-         %69 = OpCooperativeVectorLoadHW %21 %68
+         %69 = OpCooperativeVectorLoadHW %21 %68 Aligned 16
                OpStore %tempArg_2 %69
          %70 = OpLoad %21 %tempArg_2
                OpStore %v %70
          %71 = OpLoad %21 %v
          %72 = OpLoad %_ptr_PhysicalStorageBuffer_MatrixBuf4 %matrixBuf4
          %73 = OpAccessChain %_ptr_PhysicalStorageBuffer__runtimearr_half_0 %72 %int_0
-               OpCooperativeVectorStoreHW %73 %71
+               OpCooperativeVectorStoreHW %73 %71 Aligned 16
                OpReturn
                OpFunctionEnd
