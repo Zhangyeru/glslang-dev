@@ -222,6 +222,7 @@ bool hasCoopMatAccumulatorOperandConflict(const CoopMatUseConstraints& constrain
 struct CoopMatUseState {
     std::map<glslang::TString, CoopMatUseConstraints> keyConstraints;
     std::map<glslang::TIntermTyped*, CoopMatUseConstraints> nodeConstraints;
+    std::set<long long> functionParameterIds;
     std::set<std::string> seenConstraints;
     bool hasError = false;
 };
@@ -246,6 +247,13 @@ public:
 
         glslang::TIntermSequence& sequence = node->getSequence();
         if (node->getOp() == glslang::EOpFunction) {
+            glslang::TIntermAggregate* parameters = sequence.size() > 0 ? sequence[0]->getAsAggregate() : nullptr;
+            if (parameters && parameters->getOp() == glslang::EOpParameters) {
+                for (auto* parameter : parameters->getSequence()) {
+                    if (glslang::TIntermSymbol* symbol = parameter->getAsSymbolNode())
+                        state.functionParameterIds.insert(symbol->getId());
+                }
+            }
             if (rewrite)
                 rewriteType(node);
             return true;
@@ -383,6 +391,12 @@ public:
     bool changed() const { return changedConstraints; }
 
 private:
+    bool isFunctionParameterSymbol(glslang::TIntermTyped* node) const
+    {
+        glslang::TIntermSymbol* symbol = node ? node->getAsSymbolNode() : nullptr;
+        return symbol && state.functionParameterIds.find(symbol->getId()) != state.functionParameterIds.end();
+    }
+
     bool addUseConstraint(CoopMatUseConstraints& constraints, glslang::TCoopMatUse use)
     {
         switch (use) {
@@ -556,6 +570,8 @@ private:
         glslang::TCoopMatUse rightUse = roleOf(right);
         if (leftUse != glslang::ECoopMatUseUnknown && rightUse == glslang::ECoopMatUseUnknown)
             constrain(right, leftUse, false);
+        if (leftUse == glslang::ECoopMatUseUnknown && rightUse != glslang::ECoopMatUseUnknown)
+            constrain(left, rightUse, false);
     }
 
     void propagateSameUse(glslang::TIntermTyped* node, glslang::TIntermTyped* left, glslang::TIntermTyped* right)
@@ -610,6 +626,8 @@ private:
     {
         glslang::TCoopMatUse use = roleOf(node);
         if (use == glslang::ECoopMatUseUnknown)
+            use = glslang::ECoopMatUseA;
+        else if (isFunctionParameterSymbol(node))
             use = glslang::ECoopMatUseA;
 
         if (isCoopMatAZDTyped(node)) {

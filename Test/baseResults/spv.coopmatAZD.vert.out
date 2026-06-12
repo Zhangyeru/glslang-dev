@@ -2,7 +2,7 @@ spv.coopmatAZD.vert
 ; SPIR-V
 ; Version: 1.0
 ; Generator: Khronos Glslang Reference Front End; 11
-; Bound: 109
+; Bound: 106
 ; Schema: 0
                OpCapability Shader
                OpCapability Float16
@@ -99,13 +99,11 @@ spv.coopmatAZD.vert
          %58 = OpTypeCooperativeMatrixAZD %float %uint_8 %uint_8 MatrixAccumulatorAZD
 %_ptr_Function_58 = OpTypePointer Function %58
          %63 = OpConstantNull %58
-         %65 = OpTypeCooperativeMatrixAZD %float %uint_8 %uint_8 MatrixUseAAZD
-%_ptr_Function_65 = OpTypePointer Function %65
       %int_1 = OpConstant %int 1
       %int_2 = OpConstant %int 2
     %float_3 = OpConstant %float 3
     %float_4 = OpConstant %float 4
-         %90 = OpConstantComposite %v2float %float_3 %float_4
+         %87 = OpConstantComposite %v2float %float_3 %float_4
 %_ptr_Function_int = OpTypePointer Function %int
        %bool = OpTypeBool
        %main = OpFunction %void None %3
@@ -116,7 +114,7 @@ spv.coopmatAZD.vert
     %tempArg = OpVariable %_ptr_Function_39 Function
           %C = OpVariable %_ptr_Function_39 Function
   %tempArg_0 = OpVariable %_ptr_Function_58 Function
-          %M = OpVariable %_ptr_Function_65 Function
+          %M = OpVariable %_ptr_Function_58 Function
   %tempArg_1 = OpVariable %_ptr_Function_39 Function
          %R0 = OpVariable %_ptr_Function_23 Function
          %R1 = OpVariable %_ptr_Function_23 Function
@@ -137,47 +135,46 @@ spv.coopmatAZD.vert
          %62 = OpLoad %28 %B
          %64 = OpCooperativeMatrixMulAddAZD %58 %61 %62 %63
                OpStore %tempArg_0 %64
-         %68 = OpLoad %58 %tempArg_0
-         %69 = OpBitcast %65 %68
-               OpStore %M %69
-         %71 = OpLoad %23 %A
-         %72 = OpLoad %28 %B
-         %73 = OpLoad %39 %C
-         %74 = OpCooperativeMatrixMulAddAZD %39 %71 %72 %73
-               OpStore %tempArg_1 %74
-         %75 = OpLoad %39 %tempArg_1
-               OpStore %C %75
-         %77 = OpLoad %39 %C
-         %78 = OpCooperativeMatrixReduceAZD %39 %77 %int_0 %int_0
-         %79 = OpBitcast %23 %78
-               OpStore %R0 %79
-         %81 = OpLoad %39 %C
-         %84 = OpCooperativeMatrixReduceAZD %39 %81 %int_1 %int_2
-         %85 = OpBitcast %23 %84
-               OpStore %R1 %85
-         %86 = OpLoad %39 %C
-         %87 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %buf %int_0
-               OpCooperativeMatrixStoreAZD %87 %86 %51 %90 %int_1
-         %93 = OpCooperativeMatrixLengthAZD %uint %39
-         %94 = OpBitcast %int %93
-         %95 = OpCooperativeMatrixLengthAZD %uint %65
-         %96 = OpBitcast %int %95
-         %97 = OpIAdd %int %94 %96
-               OpStore %len %97
-         %99 = OpLoad %39 %C
-        %100 = OpBitcast %23 %99
-               OpStore %D %100
-        %101 = OpLoad %23 %D
-        %102 = OpBitcast %39 %101
-               OpStore %C %102
-        %103 = OpLoad %int %len
-        %105 = OpIEqual %bool %103 %int_0
-               OpSelectionMerge %107 None
-               OpBranchConditional %105 %106 %107
-        %106 = OpLabel
-        %108 = OpBitcast %39 %27
-               OpStore %C %108
-               OpBranch %107
-        %107 = OpLabel
+         %66 = OpLoad %58 %tempArg_0
+               OpStore %M %66
+         %68 = OpLoad %23 %A
+         %69 = OpLoad %28 %B
+         %70 = OpLoad %39 %C
+         %71 = OpCooperativeMatrixMulAddAZD %39 %68 %69 %70
+               OpStore %tempArg_1 %71
+         %72 = OpLoad %39 %tempArg_1
+               OpStore %C %72
+         %74 = OpLoad %39 %C
+         %75 = OpCooperativeMatrixReduceAZD %39 %74 %int_0 %int_0
+         %76 = OpBitcast %23 %75
+               OpStore %R0 %76
+         %78 = OpLoad %39 %C
+         %81 = OpCooperativeMatrixReduceAZD %39 %78 %int_1 %int_2
+         %82 = OpBitcast %23 %81
+               OpStore %R1 %82
+         %83 = OpLoad %39 %C
+         %84 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %buf %int_0
+               OpCooperativeMatrixStoreAZD %84 %83 %51 %87 %int_1
+         %90 = OpCooperativeMatrixLengthAZD %uint %39
+         %91 = OpBitcast %int %90
+         %92 = OpCooperativeMatrixLengthAZD %uint %58
+         %93 = OpBitcast %int %92
+         %94 = OpIAdd %int %91 %93
+               OpStore %len %94
+         %96 = OpLoad %39 %C
+         %97 = OpBitcast %23 %96
+               OpStore %D %97
+         %98 = OpLoad %23 %D
+         %99 = OpBitcast %39 %98
+               OpStore %C %99
+        %100 = OpLoad %int %len
+        %102 = OpIEqual %bool %100 %int_0
+               OpSelectionMerge %104 None
+               OpBranchConditional %102 %103 %104
+        %103 = OpLabel
+        %105 = OpBitcast %39 %27
+               OpStore %C %105
+               OpBranch %104
+        %104 = OpLabel
                OpReturn
                OpFunctionEnd

@@ -2,7 +2,7 @@ spv.coopmatAZD_use_pass_accpriority.comp
 ; SPIR-V
 ; Version: 1.0
 ; Generator: Khronos Glslang Reference Front End; 11
-; Bound: 70
+; Bound: 68
 ; Schema: 0
                OpCapability Shader
                OpCapability Float16
@@ -82,10 +82,10 @@ spv.coopmatAZD_use_pass_accpriority.comp
   %tempArg_2 = OpVariable %_ptr_Function_9 Function
          %C1 = OpVariable %_ptr_Function_9 Function
   %tempArg_3 = OpVariable %_ptr_Function_9 Function
-         %D0 = OpVariable %_ptr_Function_29 Function
+         %D0 = OpVariable %_ptr_Function_9 Function
           %Y = OpVariable %_ptr_Function_29 Function
   %tempArg_4 = OpVariable %_ptr_Function_9 Function
-         %D1 = OpVariable %_ptr_Function_29 Function
+         %D1 = OpVariable %_ptr_Function_9 Function
          %19 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %buf %int_0
          %26 = OpCooperativeMatrixLoadAZD %9 %19 %23 %25 %int_0
                OpStore %tempArg %26
@@ -112,18 +112,16 @@ spv.coopmatAZD_use_pass_accpriority.comp
          %52 = OpCooperativeMatrixMulAddAZD %9 %49 %50 %51
                OpStore %tempArg_3 %52
          %54 = OpLoad %9 %tempArg_3
-         %55 = OpBitcast %29 %54
-               OpStore %D0 %55
-         %57 = OpLoad %9 %X
-         %58 = OpBitcast %29 %57
-               OpStore %Y %58
-         %60 = OpLoad %29 %Y
-         %61 = OpLoad %36 %B
-         %62 = OpLoad %9 %C1
-         %63 = OpCooperativeMatrixMulAddAZD %9 %60 %61 %62
-               OpStore %tempArg_4 %63
-         %65 = OpLoad %9 %tempArg_4
-         %66 = OpBitcast %29 %65
-               OpStore %D1 %66
+               OpStore %D0 %54
+         %56 = OpLoad %9 %X
+         %57 = OpBitcast %29 %56
+               OpStore %Y %57
+         %59 = OpLoad %29 %Y
+         %60 = OpLoad %36 %B
+         %61 = OpLoad %9 %C1
+         %62 = OpCooperativeMatrixMulAddAZD %9 %59 %60 %61
+               OpStore %tempArg_4 %62
+         %64 = OpLoad %9 %tempArg_4
+               OpStore %D1 %64
                OpReturn
                OpFunctionEnd

@@ -69,7 +69,7 @@ spv.coopmatAZD_use_pass.comp
        %uint = OpTypeInt 32 0
     %uint_16 = OpConstant %uint 16
      %uint_8 = OpConstant %uint 8
-         %10 = OpTypeCooperativeMatrixAZD %half %uint_16 %uint_8
+         %10 = OpTypeCooperativeMatrixAZD %half %uint_16 %uint_8 MatrixUseAAZD
 %_ptr_Function_10 = OpTypePointer Function %10
 %_runtimearr_half = OpTypeRuntimeArray %half
        %BufA = OpTypeStruct %_runtimearr_half
@@ -85,7 +85,7 @@ spv.coopmatAZD_use_pass.comp
          %25 = OpConstantComposite %v2float %float_16 %float_8
     %float_0 = OpConstant %float 0
          %27 = OpConstantComposite %v2float %float_0 %float_0
-         %31 = OpTypeCooperativeMatrixAZD %half %uint_8 %uint_16
+         %31 = OpTypeCooperativeMatrixAZD %half %uint_8 %uint_16 MatrixUseBAZD
 %_ptr_Function_31 = OpTypePointer Function %31
 %_runtimearr_half_0 = OpTypeRuntimeArray %half
        %BufB = OpTypeStruct %_runtimearr_half_0
@@ -93,7 +93,7 @@ spv.coopmatAZD_use_pass.comp
        %bufB = OpVariable %_ptr_StorageBuffer_BufB StorageBuffer
 %_ptr_StorageBuffer__runtimearr_half_0 = OpTypePointer StorageBuffer %_runtimearr_half_0
          %40 = OpConstantComposite %v2float %float_8 %float_16
-         %44 = OpTypeCooperativeMatrixAZD %half %uint_16 %uint_16
+         %44 = OpTypeCooperativeMatrixAZD %half %uint_16 %uint_16 MatrixAccumulatorAZD
 %_ptr_Function_44 = OpTypePointer Function %44
 %_runtimearr_half_1 = OpTypeRuntimeArray %half
        %BufC = OpTypeStruct %_runtimearr_half_1

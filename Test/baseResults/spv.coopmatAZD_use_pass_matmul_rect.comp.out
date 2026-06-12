@@ -2,7 +2,7 @@ spv.coopmatAZD_use_pass_matmul_rect.comp
 ; SPIR-V
 ; Version: 1.0
 ; Generator: Khronos Glslang Reference Front End; 11
-; Bound: 99
+; Bound: 93
 ; Schema: 0
                OpCapability Shader
                OpCapability Int8
@@ -108,16 +108,12 @@ spv.coopmatAZD_use_pass_matmul_rect.comp
 %_ptr_StorageBuffer__runtimearr_uint = OpTypePointer StorageBuffer %_runtimearr_uint
          %54 = OpConstantComposite %v2float %float_16 %float_16
          %62 = OpTypeCooperativeMatrixAZD %uchar %uint_32 %uint_16 MatrixUseBAZD
-         %65 = OpTypeCooperativeMatrixAZD %uint %uint_16 %uint_16 MatrixUseAAZD
-%_ptr_Function_65 = OpTypePointer Function %65
-         %70 = OpTypeCooperativeMatrixAZD %uchar %uint_16 %uint_16 MatrixUseBAZD
-%_ptr_Function_70 = OpTypePointer Function %70
-         %74 = OpTypeCooperativeMatrixAZD %uchar %uint_16 %uint_16 MatrixUseAAZD
-         %77 = OpTypeCooperativeMatrixAZD %uint %uint_32 %uint_16 MatrixAccumulatorAZD
-%_ptr_Function_77 = OpTypePointer Function %77
-         %82 = OpConstantNull %77
-         %84 = OpTypeCooperativeMatrixAZD %uint %uint_32 %uint_16 MatrixUseAAZD
-%_ptr_Function_84 = OpTypePointer Function %84
+         %67 = OpTypeCooperativeMatrixAZD %uchar %uint_16 %uint_16 MatrixUseBAZD
+%_ptr_Function_67 = OpTypePointer Function %67
+         %71 = OpTypeCooperativeMatrixAZD %uchar %uint_16 %uint_16 MatrixAccumulatorAZD
+         %74 = OpTypeCooperativeMatrixAZD %uint %uint_32 %uint_16 MatrixAccumulatorAZD
+%_ptr_Function_74 = OpTypePointer Function %74
+         %79 = OpConstantNull %74
 %_runtimearr_uint_0 = OpTypeRuntimeArray %uint
 %OutMatBlock = OpTypeStruct %_runtimearr_uint_0
 %_ptr_StorageBuffer_OutMatBlock = OpTypePointer StorageBuffer %OutMatBlock
@@ -135,10 +131,10 @@ spv.coopmatAZD_use_pass_matmul_rect.comp
   %tempArg_1 = OpVariable %_ptr_Function_45 Function
        %matC = OpVariable %_ptr_Function_45 Function
   %tempArg_2 = OpVariable %_ptr_Function_45 Function
-       %matD = OpVariable %_ptr_Function_65 Function
-       %matE = OpVariable %_ptr_Function_70 Function
-  %tempArg_3 = OpVariable %_ptr_Function_77 Function
-       %matF = OpVariable %_ptr_Function_84 Function
+       %matD = OpVariable %_ptr_Function_45 Function
+       %matE = OpVariable %_ptr_Function_67 Function
+  %tempArg_3 = OpVariable %_ptr_Function_74 Function
+       %matF = OpVariable %_ptr_Function_74 Function
          %20 = OpAccessChain %_ptr_StorageBuffer__runtimearr_uchar %inMatA %int_0
          %28 = OpCooperativeMatrixLoadAZD %10 %20 %25 %27 %int_0
                OpStore %tempArg %28
@@ -160,22 +156,20 @@ spv.coopmatAZD_use_pass_matmul_rect.comp
          %63 = OpBitcast %62 %60
          %64 = OpCooperativeMatrixMulAddAZD %45 %59 %63 %61
                OpStore %tempArg_2 %64
-         %68 = OpLoad %45 %tempArg_2
-         %69 = OpBitcast %65 %68
-               OpStore %matD %69
-         %73 = OpLoad %65 %matD
-         %75 = OpUConvert %74 %73
-         %76 = OpBitcast %70 %75
-               OpStore %matE %76
-         %80 = OpLoad %31 %matB
-         %81 = OpLoad %70 %matE
-         %83 = OpCooperativeMatrixMulAddAZD %77 %80 %81 %82
-               OpStore %tempArg_3 %83
-         %87 = OpLoad %77 %tempArg_3
-         %88 = OpBitcast %84 %87
-               OpStore %matF %88
-         %89 = OpLoad %84 %matF
-         %95 = OpAccessChain %_ptr_StorageBuffer__runtimearr_uint_0 %outMat %int_0
-               OpCooperativeMatrixStoreAZD %95 %89 %40 %27 %int_0
+         %66 = OpLoad %45 %tempArg_2
+               OpStore %matD %66
+         %70 = OpLoad %45 %matD
+         %72 = OpUConvert %71 %70
+         %73 = OpBitcast %67 %72
+               OpStore %matE %73
+         %77 = OpLoad %31 %matB
+         %78 = OpLoad %67 %matE
+         %80 = OpCooperativeMatrixMulAddAZD %74 %77 %78 %79
+               OpStore %tempArg_3 %80
+         %82 = OpLoad %74 %tempArg_3
+               OpStore %matF %82
+         %83 = OpLoad %74 %matF
+         %89 = OpAccessChain %_ptr_StorageBuffer__runtimearr_uint_0 %outMat %int_0
+               OpCooperativeMatrixStoreAZD %89 %83 %40 %27 %int_0
                OpReturn
                OpFunctionEnd
