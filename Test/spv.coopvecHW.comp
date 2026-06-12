@@ -31,14 +31,14 @@ void main()
     v4[0] = f;
     v4[4] = 5.0;
 
-    coopvecHW<float, 20> v7;
+    coopvecHW<float, 100> v7;
     coopvecHW<float, 100> v8;
-    coopvecHW<float16_t, 20> v7h;
+    coopvecHW<float16_t, 100> v7h;
     coopvecHW<float, 100> v8bias;
     coopmatHW<float16_t, 100, 20> m8;
     coopVecMatMulHW(v8, v7h, m8);
 
-    coopvecHW<int8_t, 20> v9;
+    coopvecHW<int8_t, 100> v9;
     coopvecHW<int32_t, 100> v10;
     coopvecHW<int32_t, 100> v10bias;
     coopmatHW<int8_t, 100, 20> m10;

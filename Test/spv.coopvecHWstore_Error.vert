@@ -10,5 +10,5 @@ layout(set = 0, binding = 0) buffer MatrixBuf {
 void main()
 {
     coopvecHW<float, 5> v;
-    coopVecStoreHW(v, matrixBuf.matrixData, 128);
+    coopVecStoreHW(v, matrixBuf.matrixData, uvec2(128u));
 }

@@ -4954,9 +4954,9 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
         std::stringstream cooperativeVectorADLoadStoreFuncs;
         for (uint32_t i = 0; i < sizeof(scalarAndVectorTypes)/sizeof(scalarAndVectorTypes[0]); ++i) {
             cooperativeVectorADLoadStoreFuncs << "void coopVecLoadHW(out coopvecHW v, volatile coherent "
-                                              << scalarAndVectorTypes[i] << "[] buf);\n";
+                                              << scalarAndVectorTypes[i] << "[] buf, uint offset);\n";
             cooperativeVectorADLoadStoreFuncs << "void coopVecStoreHW(coopvecHW v, volatile coherent "
-                                              << scalarAndVectorTypes[i] << "[] buf);\n";
+                                              << scalarAndVectorTypes[i] << "[] buf, uint offset);\n";
         }
         commonBuiltins.append(cooperativeVectorADLoadStoreFuncs.str().c_str());
 

@@ -2,7 +2,7 @@ spv.coopvecHWloadstore.vert
 ; SPIR-V
 ; Version: 1.0
 ; Generator: Khronos Glslang Reference Front End; 11
-; Bound: 74
+; Bound: 77
 ; Schema: 0
                OpCapability Shader
                OpCapability Float16
@@ -98,6 +98,7 @@ spv.coopvecHWloadstore.vert
 %_ptr_StorageBuffer_MatrixBuf = OpTypePointer StorageBuffer %MatrixBuf
   %matrixBuf = OpVariable %_ptr_StorageBuffer_MatrixBuf StorageBuffer
 %_ptr_StorageBuffer__runtimearr_v3ulong = OpTypePointer StorageBuffer %_runtimearr_v3ulong
+     %uint_0 = OpConstant %uint 0
        %half = OpTypeFloat 16
 %_runtimearr_half = OpTypeRuntimeArray %half
  %MatrixBuf2 = OpTypeStruct %_runtimearr_half
@@ -109,12 +110,14 @@ spv.coopvecHWloadstore.vert
 %_ptr_StorageBuffer_MatrixBuf3 = OpTypePointer StorageBuffer %MatrixBuf3
  %matrixBuf3 = OpVariable %_ptr_StorageBuffer_MatrixBuf3 StorageBuffer
 %_ptr_StorageBuffer__runtimearr_float = OpTypePointer StorageBuffer %_runtimearr_float
+     %uint_2 = OpConstant %uint 2
                OpTypeForwardPointer %_ptr_PhysicalStorageBuffer_MatrixBuf4 PhysicalStorageBuffer
 %_runtimearr_half_0 = OpTypeRuntimeArray %half
  %MatrixBuf4 = OpTypeStruct %_runtimearr_half_0
 %_ptr_PhysicalStorageBuffer_MatrixBuf4 = OpTypePointer PhysicalStorageBuffer %MatrixBuf4
 %_ptr_Function__ptr_PhysicalStorageBuffer_MatrixBuf4 = OpTypePointer Function %_ptr_PhysicalStorageBuffer_MatrixBuf4
 %_ptr_PhysicalStorageBuffer__runtimearr_half_0 = OpTypePointer PhysicalStorageBuffer %_runtimearr_half_0
+     %uint_3 = OpConstant %uint 3
        %main = OpFunction %void None %3
           %5 = OpLabel
     %tempArg = OpVariable %_ptr_Function_21 Function
@@ -126,38 +129,38 @@ spv.coopvecHWloadstore.vert
          %19 = OpAccessChain %_ptr_Output_v4float %_ %int_0
                OpStore %19 %17
          %31 = OpAccessChain %_ptr_StorageBuffer__runtimearr_v3ulong %matrixBuf %int_0
-         %32 = OpCooperativeVectorLoadHW %21 %31
-               OpStore %tempArg %32
-         %34 = OpLoad %21 %tempArg
-               OpStore %v %34
-         %35 = OpLoad %21 %v
-         %36 = OpAccessChain %_ptr_StorageBuffer__runtimearr_v3ulong %matrixBuf %int_0
-               OpCooperativeVectorStoreHW %36 %35
-         %44 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %matrixBuf2 %int_0
-         %45 = OpCooperativeVectorLoadHW %21 %44
-               OpStore %tempArg_0 %45
-         %46 = OpLoad %21 %tempArg_0
-               OpStore %v %46
-         %47 = OpLoad %21 %v
-         %48 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %matrixBuf2 %int_0
-               OpCooperativeVectorStoreHW %48 %47
-         %55 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %matrixBuf3 %int_0
-         %56 = OpCooperativeVectorLoadHW %21 %55 Volatile
-               OpStore %tempArg_1 %56
-         %57 = OpLoad %21 %tempArg_1
-               OpStore %v %57
-         %58 = OpLoad %21 %v
-         %59 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %matrixBuf3 %int_0
-               OpCooperativeVectorStoreHW %59 %58 Volatile
-         %66 = OpLoad %_ptr_PhysicalStorageBuffer_MatrixBuf4 %matrixBuf4
-         %68 = OpAccessChain %_ptr_PhysicalStorageBuffer__runtimearr_half_0 %66 %int_0
-         %69 = OpCooperativeVectorLoadHW %21 %68 Aligned 16
-               OpStore %tempArg_2 %69
-         %70 = OpLoad %21 %tempArg_2
-               OpStore %v %70
-         %71 = OpLoad %21 %v
-         %72 = OpLoad %_ptr_PhysicalStorageBuffer_MatrixBuf4 %matrixBuf4
-         %73 = OpAccessChain %_ptr_PhysicalStorageBuffer__runtimearr_half_0 %72 %int_0
-               OpCooperativeVectorStoreHW %73 %71 Aligned 16
+         %33 = OpCooperativeVectorLoadHW %21 %31 %uint_0
+               OpStore %tempArg %33
+         %35 = OpLoad %21 %tempArg
+               OpStore %v %35
+         %36 = OpLoad %21 %v
+         %37 = OpAccessChain %_ptr_StorageBuffer__runtimearr_v3ulong %matrixBuf %int_0
+               OpCooperativeVectorStoreHW %37 %uint_0 %36
+         %45 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %matrixBuf2 %int_0
+         %46 = OpCooperativeVectorLoadHW %21 %45 %uint_1
+               OpStore %tempArg_0 %46
+         %47 = OpLoad %21 %tempArg_0
+               OpStore %v %47
+         %48 = OpLoad %21 %v
+         %49 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %matrixBuf2 %int_0
+               OpCooperativeVectorStoreHW %49 %uint_1 %48
+         %56 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %matrixBuf3 %int_0
+         %58 = OpCooperativeVectorLoadHW %21 %56 %uint_2 Volatile
+               OpStore %tempArg_1 %58
+         %59 = OpLoad %21 %tempArg_1
+               OpStore %v %59
+         %60 = OpLoad %21 %v
+         %61 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %matrixBuf3 %int_0
+               OpCooperativeVectorStoreHW %61 %uint_2 %60 Volatile
+         %68 = OpLoad %_ptr_PhysicalStorageBuffer_MatrixBuf4 %matrixBuf4
+         %70 = OpAccessChain %_ptr_PhysicalStorageBuffer__runtimearr_half_0 %68 %int_0
+         %72 = OpCooperativeVectorLoadHW %21 %70 %uint_3 Aligned 16
+               OpStore %tempArg_2 %72
+         %73 = OpLoad %21 %tempArg_2
+               OpStore %v %73
+         %74 = OpLoad %21 %v
+         %75 = OpLoad %_ptr_PhysicalStorageBuffer_MatrixBuf4 %matrixBuf4
+         %76 = OpAccessChain %_ptr_PhysicalStorageBuffer__runtimearr_half_0 %75 %int_0
+               OpCooperativeVectorStoreHW %76 %uint_3 %74 Aligned 16
                OpReturn
                OpFunctionEnd

@@ -29,19 +29,19 @@ void main()
 {
     coopvecHW<float, 5> v;
 
-    coopVecLoadHW(v, matrixBuf.matrixData);
-    coopVecStoreHW(v, matrixBuf.matrixData);
+    coopVecLoadHW(v, matrixBuf.matrixData, 0u);
+    coopVecStoreHW(v, matrixBuf.matrixData, 0u);
 
-    coopVecLoadHW(v, matrixBuf2.matrixData);
-    coopVecStoreHW(v, matrixBuf2.matrixData);
+    coopVecLoadHW(v, matrixBuf2.matrixData, 1u);
+    coopVecStoreHW(v, matrixBuf2.matrixData, 1u);
 
-    coopVecLoadHW(v, matrixBuf3.matrixData);
-    coopVecStoreHW(v, matrixBuf3.matrixData);
+    coopVecLoadHW(v, matrixBuf3.matrixData, 2u);
+    coopVecStoreHW(v, matrixBuf3.matrixData, 2u);
 
     MatrixBuf4 matrixBuf4;
-    coopVecLoadHW(v, matrixBuf4.matrixData);
-    coopVecStoreHW(v, matrixBuf4.matrixData);
+    coopVecLoadHW(v, matrixBuf4.matrixData, 3u);
+    coopVecStoreHW(v, matrixBuf4.matrixData, 3u);
 
-    coopVecLoadHW(v, matrixShmem);
-    coopVecStoreHW(v, matrixShmem);
+    coopVecLoadHW(v, matrixShmem, 4u);
+    coopVecStoreHW(v, matrixShmem, 4u);
 }

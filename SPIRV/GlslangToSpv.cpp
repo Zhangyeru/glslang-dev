@@ -834,6 +834,7 @@ spv::Id createCooperativeVectorHWLoad(spv::Builder& builder, spv::Id typeId, con
 {
     std::vector<spv::IdImmediate> idImmOps;
     idImmOps.push_back(spv::IdImmediate(true, operands[1])); // buf
+    idImmOps.push_back(spv::IdImmediate(true, operands[2])); // offset
     idImmOps.insert(idImmOps.end(), memoryAccessOperands.begin(), memoryAccessOperands.end());
     return builder.createOp(spv::OpCooperativeVectorLoadHW, typeId, idImmOps);
 }
@@ -843,6 +844,7 @@ void createCooperativeVectorHWStore(spv::Builder& builder, const std::vector<spv
 {
     std::vector<spv::IdImmediate> idImmOps;
     idImmOps.push_back(spv::IdImmediate(true, operands[1])); // buf
+    idImmOps.push_back(spv::IdImmediate(true, operands[2])); // offset
     idImmOps.push_back(spv::IdImmediate(true, operands[0])); // object
     idImmOps.insert(idImmOps.end(), memoryAccessOperands.begin(), memoryAccessOperands.end());
     builder.createNoResultOp(spv::OpCooperativeVectorStoreHW, idImmOps);
