@@ -1,0 +1,13 @@
+#version 450 core
+#extension GL_KHR_memory_scope_semantics : enable
+#extension GL_HW_cooperative_vector : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+coopvecHW<float> bad1;
+coopvecHW<float, 0> bad2;
+coopvecHW<float, -1> bad3;
+coopvecHW<float, float> bad4;
+
+void main()
+{
+}

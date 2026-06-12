@@ -357,8 +357,8 @@ public:
     void addInputArgumentConversions(const TFunction&, TIntermNode*&) const;
     TIntermTyped* addOutputArgumentConversions(const TFunction&, TIntermAggregate&) const;
     TIntermTyped* addAssign(const TSourceLoc&, TOperator op, TIntermTyped* left, TIntermTyped* right);
-    void recordCoopMatAZDLogicalValueUse(const TSourceLoc&, TIntermTyped*, bool accumulator, const char* token);
-    bool getCoopMatAZDLogicalValueKey(TIntermTyped*, TString&) const;
+    void recordCoopMatHWLogicalValueUse(const TSourceLoc&, TIntermTyped*, bool accumulator, const char* token);
+    bool getCoopMatHWLogicalValueKey(TIntermTyped*, TString&) const;
     void builtInOpCheck(const TSourceLoc&, const TFunction&, TIntermOperator&);
     void nonOpBuiltInCheck(const TSourceLoc&, const TFunction&, TIntermAggregate&);
     void userFunctionCallCheck(const TSourceLoc&, TIntermAggregate&);
@@ -555,7 +555,7 @@ protected:
     TVector<TIntermTyped*> needsIndexLimitationChecking;
     TStructRecord matrixFixRecord;
     TStructRecord packingFixRecord;
-    std::map<TString, int> coopMatAZDLogicalValueRoles;
+    std::map<TString, int> coopMatHWLogicalValueRoles;
 
     //
     // Geometry shader input arrays:

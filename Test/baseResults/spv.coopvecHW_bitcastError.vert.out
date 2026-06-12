@@ -1,0 +1,9 @@
+spv.coopvecHW_bitcastError.vert
+ERROR: 0:12: 'floatBitsToInt' : requires coopvecHW<float|float16_t, ...> 
+ERROR: 0:13: 'uintBitsToFloat' : requires coopvecHW<uint|uint16_t, ...> 
+ERROR: 0:14: 'float16BitsToInt16' : requires coopvecHW<float16_t, ...> 
+ERROR: 0:15: 'int16BitsToFloat16' : requires coopvecHW<int16_t, ...> 
+ERROR: 4 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

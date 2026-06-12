@@ -67,12 +67,12 @@ enum TBasicType {
     EbtRayQuery,
     EbtHitObjectNV,
     EbtCoopmat,
-    EbtCoopmatAZD,
+    EbtCoopmatHW,
     EbtFunction,
     EbtTensorLayoutNV,
     EbtTensorViewNV,
     EbtCoopvecNV,
-    EbtCoopvecAZD,
+    EbtCoopvecHW,
     // SPIR-V type defined by spirv_type
     EbtSpirvType,
 

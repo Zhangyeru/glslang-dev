@@ -1,0 +1,12 @@
+spv.coopvecHW_Params_Error.comp
+ERROR: 0:6: 'bad1' : expected two type parameters 
+ERROR: 0:7: 'bad2' : expected positive number of components 
+ERROR: 0:8: '' : type parameter must be a non-negative integer
+ERROR: 0:8: 'bad3' : expected positive number of components 
+ERROR: 0:9: '' :  syntax error, unexpected RIGHT_ANGLE, expecting LEFT_PAREN
+ERROR: 5 compilation errors.  No code generated.
+
+
+ERROR: Linking compute stage: Missing entry point: Each stage requires one entry point
+
+SPIR-V is not generated for failed compile or link

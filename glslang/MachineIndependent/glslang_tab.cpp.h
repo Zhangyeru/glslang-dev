@@ -218,9 +218,9 @@ extern int yydebug;
     ICOOPMATNV = 419,              /* ICOOPMATNV  */
     UCOOPMATNV = 420,              /* UCOOPMATNV  */
     COOPMAT = 421,                 /* COOPMAT  */
-    COOPMATAZD = 422,              /* COOPMATAZD  */
+    COOPMATHW = 422,               /* COOPMATHW  */
     COOPVECNV = 423,               /* COOPVECNV  */
-    COOPVECAZD = 424,              /* COOPVECAZD  */
+    COOPVECHW = 424,               /* COOPVECHW  */
     HITOBJECTNV = 425,             /* HITOBJECTNV  */
     HITOBJECTATTRNV = 426,         /* HITOBJECTATTRNV  */
     TENSORLAYOUTNV = 427,          /* TENSORLAYOUTNV  */

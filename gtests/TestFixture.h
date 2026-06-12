@@ -124,9 +124,9 @@ public:
         return shaderName == "spv.tensorMap.comp" ||
                shaderName == "spv.cpAsyncTensor.comp" ||
                shaderName == "spv.cpAsyncGroupBarrier.comp" ||
-               ((shaderName.rfind("spv.coopmatAZD", 0) == 0) &&
+               ((shaderName.rfind("spv.coopmatHW", 0) == 0) &&
                 shaderName.find("Error") == std::string::npos) ||
-               ((shaderName.rfind("spv.coopvecAZD", 0) == 0) &&
+               ((shaderName.rfind("spv.coopvecHW", 0) == 0) &&
                 shaderName.find("Error") == std::string::npos);
     }
 

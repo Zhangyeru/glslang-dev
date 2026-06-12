@@ -754,7 +754,7 @@ const std::unordered_map<const char*, int, str_hash, str_eq> KeywordMap {
     {"ucoopmatNV",UCOOPMATNV},
 
     {"coopmat",COOPMAT},
-    {"coopmatAZD",COOPMATAZD},
+    {"coopmatHW",COOPMATHW},
 
     {"hitObjectNV",HITOBJECTNV},
     {"hitObjectAttributeNV",HITOBJECTATTRNV},
@@ -764,7 +764,7 @@ const std::unordered_map<const char*, int, str_hash, str_eq> KeywordMap {
     {"tensorViewNV",TENSORVIEWNV},
 
     {"coopvecNV",COOPVECNV},
-    {"coopvecAZD",COOPVECAZD},
+    {"coopvecHW",COOPVECHW},
 };
 const std::unordered_set<const char*, str_hash, str_eq> ReservedSet {
     "common",
@@ -1802,11 +1802,11 @@ int TScanContext::tokenizeIdentifier()
             return keyword;
         return identifierOrType();
 
-    case COOPMATAZD:
+    case COOPMATHW:
         afterType = true;
         parserToken->sType.lex.i = 1;
         if (parseContext.symbolTable.atBuiltInLevel() ||
-            parseContext.extensionTurnedOn(E_GL_AZD_neural_matrix))
+            parseContext.extensionTurnedOn(E_GL_HW_neural_matrix))
             return keyword;
         return identifierOrType();
 
@@ -1817,11 +1817,11 @@ int TScanContext::tokenizeIdentifier()
             return keyword;
         return identifierOrType();
 
-    case COOPVECAZD:
+    case COOPVECHW:
         afterType = true;
         parserToken->sType.lex.i = 1;
         if (parseContext.symbolTable.atBuiltInLevel() ||
-            parseContext.extensionTurnedOn(E_GL_AZD_cooperative_vector))
+            parseContext.extensionTurnedOn(E_GL_HW_cooperative_vector))
             return keyword;
         return identifierOrType();
 

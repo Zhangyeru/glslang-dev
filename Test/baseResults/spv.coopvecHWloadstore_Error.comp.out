@@ -1,0 +1,6 @@
+spv.coopvecHWloadstore_Error.comp
+ERROR: 0:15: 'coopVecLoadHW' : no matching overloaded function found 
+ERROR: 1 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

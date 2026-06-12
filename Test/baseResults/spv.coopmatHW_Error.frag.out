@@ -1,0 +1,12 @@
+spv.coopmatHW_Error.frag
+ERROR: 0:12: 'assign' :  cannot convert from ' temp<16, 3, 16, 8> float16_t' to ' temp coopmatHW<16, 8> coopmatUseUnknown float16_t'
+ERROR: 0:13: ' temp coopmatHW<16, 8> coopmatUseUnknown float16_t' : cannot construct with these arguments 
+ERROR: 0:15: '' : coopmatHW incorrect number of type parameters 
+ERROR: 0:15: 'bad1' : expected three type parameters 
+ERROR: 0:16: 'bad2' : expected positive matrix dimensions 
+ERROR: 0:17: 'bool' : coopmatHW invalid basic type 
+ERROR: 0:17: 'bad3' : expected signed or unsigned integer or float type 
+ERROR: 7 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

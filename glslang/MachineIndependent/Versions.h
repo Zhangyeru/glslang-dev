@@ -279,7 +279,7 @@ const char* const E_GL_NV_compute_shader_derivatives            = "GL_NV_compute
 const char* const E_GL_NV_shader_texture_footprint              = "GL_NV_shader_texture_footprint";
 const char* const E_GL_NV_mesh_shader                           = "GL_NV_mesh_shader";
 const char* const E_GL_NV_cooperative_matrix                    = "GL_NV_cooperative_matrix";
-const char* const E_GL_AZD_neural_matrix                        = "GL_AZD_neural_matrix";
+const char* const E_GL_HW_neural_matrix                        = "GL_HW_neural_matrix";
 const char* const E_GL_NV_shader_sm_builtins                    = "GL_NV_shader_sm_builtins";
 const char* const E_GL_NV_integer_cooperative_matrix            = "GL_NV_integer_cooperative_matrix";
 const char* const E_GL_NV_shader_invocation_reorder             = "GL_NV_shader_invocation_reorder";
@@ -288,7 +288,7 @@ const char* const E_GL_NV_displacement_micromap                 = "GL_NV_displac
 const char* const E_GL_NV_shader_atomic_fp16_vector             = "GL_NV_shader_atomic_fp16_vector";
 const char* const E_GL_NV_cooperative_matrix2                   = "GL_NV_cooperative_matrix2";
 const char* const E_GL_NV_cooperative_vector                    = "GL_NV_cooperative_vector";
-const char* const E_GL_AZD_cooperative_vector                    = "GL_AZD_cooperative_vector";
+const char* const E_GL_HW_cooperative_vector                    = "GL_HW_cooperative_vector";
 const char* const E_GL_NV_cluster_acceleration_structure        = "GL_NV_cluster_acceleration_structure";
 const char* const E_GL_NV_linear_swept_spheres                  = "GL_NV_linear_swept_spheres";
 

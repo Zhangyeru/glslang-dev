@@ -178,9 +178,9 @@ extern int yylex(YYSTYPE*, TParseContext&);
 %token <lex> RAYQUERYEXT
 %token <lex> FCOOPMATNV ICOOPMATNV UCOOPMATNV
 %token <lex> COOPMAT
-%token <lex> COOPMATAZD
+%token <lex> COOPMATHW
 %token <lex> COOPVECNV
-%token <lex> COOPVECAZD
+%token <lex> COOPVECHW
 %token <lex> HITOBJECTNV HITOBJECTATTRNV
 %token <lex> TENSORLAYOUTNV TENSORVIEWNV
 
@@ -3565,13 +3565,13 @@ type_specifier_nonarray
         $$.coopmatNV = false;
         $$.coopmatKHR = true;
     }
-    | COOPMATAZD {
-        parseContext.coopmatAZDCheck($1.loc, "coopmatAZD", parseContext.symbolTable.atBuiltInLevel());
+    | COOPMATHW {
+        parseContext.coopmatHWCheck($1.loc, "coopmatHW", parseContext.symbolTable.atBuiltInLevel());
         $$.init($1.loc, parseContext.symbolTable.atGlobalLevel());
-        $$.basicType = EbtCoopmatAZD;
+        $$.basicType = EbtCoopmatHW;
         $$.coopmatNV = false;
         $$.coopmatKHR = false;
-        $$.coopmatAZD = true;
+        $$.coopmatHW = true;
     }
     | TENSORLAYOUTNV {
         parseContext.tensorLayoutViewCheck($1.loc, "tensorLayoutNV", parseContext.symbolTable.atBuiltInLevel());
@@ -3593,11 +3593,11 @@ type_specifier_nonarray
         $$.basicType = EbtCoopvecNV;
         $$.coopvecNV = true;
     }
-    | COOPVECAZD {
-        parseContext.coopvecAZDCheck($1.loc, "coopvecAZD", parseContext.symbolTable.atBuiltInLevel());
+    | COOPVECHW {
+        parseContext.coopvecHWCheck($1.loc, "coopvecHW", parseContext.symbolTable.atBuiltInLevel());
         $$.init($1.loc, parseContext.symbolTable.atGlobalLevel());
-        $$.basicType = EbtCoopvecAZD;
-        $$.coopvecAZD = true;
+        $$.basicType = EbtCoopvecHW;
+        $$.coopvecHW = true;
     }
     | spirv_type_specifier {
         parseContext.requireExtensions($1.loc, 1, &E_GL_EXT_spirv_intrinsics, "SPIR-V type specifier");

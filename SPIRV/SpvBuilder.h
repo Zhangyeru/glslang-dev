@@ -217,10 +217,10 @@ public:
     Id makeSampledImageType(Id imageType);
     Id makeCooperativeMatrixTypeKHR(Id component, Id scope, Id rows, Id cols, Id use);
     Id makeCooperativeMatrixTypeNV(Id component, Id scope, Id rows, Id cols);
-    Id makeCooperativeMatrixTypeAZD(Id component, Id rows, Id cols, CooperativeMatrixUseAZD use);
+    Id makeCooperativeMatrixTypeHW(Id component, Id rows, Id cols, CooperativeMatrixUseHW use);
     Id makeCooperativeMatrixTypeWithSameShape(Id component, Id otherType);
     Id makeCooperativeVectorTypeNV(Id componentType, Id components);
-    Id makeCooperativeVectorTypeAZD(Id componentType, Id components);
+    Id makeCooperativeVectorTypeHW(Id componentType, Id components);
     Id makeGenericType(spv::Op opcode, std::vector<spv::IdImmediate>& operands);
 
     // SPIR-V NonSemantic Shader DebugInfo Instructions
@@ -316,22 +316,22 @@ public:
     {
         return getTypeClass(typeId) == OpTypeCooperativeMatrixKHR ||
                getTypeClass(typeId) == OpTypeCooperativeMatrixNV ||
-               getTypeClass(typeId) == OpTypeCooperativeMatrixAZD;
+               getTypeClass(typeId) == OpTypeCooperativeMatrixHW;
     }
-    bool isCooperativeMatrixAZDType(Id typeId)const { return getTypeClass(typeId) == OpTypeCooperativeMatrixAZD; }
-    CooperativeMatrixUseAZD getCooperativeMatrixAZDUse(Id typeId) const
+    bool isCooperativeMatrixHWType(Id typeId)const { return getTypeClass(typeId) == OpTypeCooperativeMatrixHW; }
+    CooperativeMatrixUseHW getCooperativeMatrixHWUse(Id typeId) const
     {
         const Instruction* instr = module.getInstruction(typeId);
         return instr->getNumOperands() > 3 ?
-            static_cast<CooperativeMatrixUseAZD>(instr->getImmediateOperand(3)) :
-            CooperativeMatrixUseAZDMatrixUseAAZD;
+            static_cast<CooperativeMatrixUseHW>(instr->getImmediateOperand(3)) :
+            CooperativeMatrixUseHWMatrixUseAHW;
     }
     bool isTensorViewType(Id typeId)   const { return getTypeClass(typeId) == OpTypeTensorViewNV; }
     bool isCooperativeVectorType(Id typeId)const
     {
-        return getTypeClass(typeId) == OpTypeCooperativeVectorNV || getTypeClass(typeId) == OpTypeCooperativeVectorAZD;
+        return getTypeClass(typeId) == OpTypeCooperativeVectorNV || getTypeClass(typeId) == OpTypeCooperativeVectorHW;
     }
-    bool isCooperativeVectorAZDType(Id typeId)const { return getTypeClass(typeId) == OpTypeCooperativeVectorAZD; }
+    bool isCooperativeVectorHWType(Id typeId)const { return getTypeClass(typeId) == OpTypeCooperativeVectorHW; }
     bool isAggregateType(Id typeId)    const
         { return isArrayType(typeId) || isStructType(typeId) || isCooperativeMatrixType(typeId); }
     bool isImageType(Id typeId)        const { return getTypeClass(typeId) == OpTypeImage; }
@@ -522,8 +522,8 @@ public:
     Id createCooperativeMatrixLengthKHR(Id type);
     // Create an OpCooperativeMatrixLengthNV instruction
     Id createCooperativeMatrixLengthNV(Id type);
-    // Create an OpCooperativeMatrixLengthAZD instruction
-    Id createCooperativeMatrixLengthAZD(Id type);
+    // Create an OpCooperativeMatrixLengthHW instruction
+    Id createCooperativeMatrixLengthHW(Id type);
 
     // Create an OpCompositeExtract instruction
     Id createCompositeExtract(Id composite, Id typeId, unsigned index);

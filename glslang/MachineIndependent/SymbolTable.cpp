@@ -62,8 +62,8 @@ void TType::buildMangledName(TString& mangledName) const
 
     if (isCoopVecNV())
         mangledName += "coopvec";
-    else if (isCoopVecAZD())
-        mangledName += "coopvecAZD";
+    else if (isCoopVecHW())
+        mangledName += "coopvecHW";
 
     switch (basicType) {
     case EbtFloat:              mangledName += 'f';      break;
@@ -188,7 +188,7 @@ void TType::buildMangledName(TString& mangledName) const
         }
     }
 
-    if (isCoopMatAZD()) {
+    if (isCoopMatHW()) {
         switch (getCoopMatUse()) {
         case ECoopMatUseUnknown:     mangledName += "<use?>"; break;
         case ECoopMatUseA:           mangledName += "<useA>"; break;

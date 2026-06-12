@@ -1,0 +1,7 @@
+spv.coopmatHW_roleLValueError.comp
+ERROR: 0:31: 'coopMatMulAddHW' : same HW cooperative matrix logical value cannot be used directly as both OperandAB and Accumulator 
+ERROR: 0:34: 'coopMatMulAddHW' : same HW cooperative matrix logical value cannot be used directly as both OperandAB and Accumulator 
+ERROR: 2 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

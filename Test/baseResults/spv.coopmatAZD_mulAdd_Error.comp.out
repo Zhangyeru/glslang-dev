@@ -1,8 +1,0 @@
-spv.coopmatAZD_mulAdd_Error.comp
-ERROR: 0:15: 'coopMatMulAddAZD' : A, C, and result row counts must match 
-ERROR: 0:15: 'coopMatMulAddAZD' : B, C, and result column counts must match 
-ERROR: 0:15: 'coopMatMulAddAZD' : A column count must match B row count 
-ERROR: 3 compilation errors.  No code generated.
-
-
-SPIR-V is not generated for failed compile or link

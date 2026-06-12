@@ -114,33 +114,33 @@ struct OpDecorations {
         spv::Decoration nonUniform;
 };
 
-spv::Capability getCooperativeVectorAZDCapability()
+spv::Capability getCooperativeVectorHWCapability()
 {
-    return spv::CapabilityCooperativeVectorAZD;
+    return spv::CapabilityCooperativeVectorHW;
 }
 
-spv::Capability getCooperativeMatrixAZDCapability()
+spv::Capability getCooperativeMatrixHWCapability()
 {
-    return spv::CapabilityCooperativeMatrixAZD;
+    return spv::CapabilityCooperativeMatrixHW;
 }
 
-const char* getCooperativeMatrixAZDExtension()
+const char* getCooperativeMatrixHWExtension()
 {
-    return spv::E_SPV_AZD_neural_matrix;
+    return spv::E_SPV_HW_neural_matrix;
 }
 
-spv::CooperativeMatrixUseAZD translateCoopMatUseAZD(glslang::TCoopMatUse use)
+spv::CooperativeMatrixUseHW translateCoopMatUseHW(glslang::TCoopMatUse use)
 {
     switch (use) {
     case glslang::ECoopMatUseA:
-        return spv::CooperativeMatrixUseAZDMatrixUseAAZD;
+        return spv::CooperativeMatrixUseHWMatrixUseAHW;
     case glslang::ECoopMatUseB:
-        return spv::CooperativeMatrixUseAZDMatrixUseBAZD;
+        return spv::CooperativeMatrixUseHWMatrixUseBHW;
     case glslang::ECoopMatUseAccumulator:
-        return spv::CooperativeMatrixUseAZDMatrixAccumulatorAZD;
+        return spv::CooperativeMatrixUseHWMatrixAccumulatorHW;
     case glslang::ECoopMatUseUnknown:
     default:
-        return spv::CooperativeMatrixUseAZDMax;
+        return spv::CooperativeMatrixUseHWMax;
     }
 }
 
@@ -198,9 +198,9 @@ bool getCoopMatUseKey(glslang::TIntermTyped* node, glslang::TString& key)
     return true;
 }
 
-bool isCoopMatAZDTyped(glslang::TIntermTyped* node)
+bool isCoopMatHWTyped(glslang::TIntermTyped* node)
 {
-    return node && node->getType().isCoopMatAZD();
+    return node && node->getType().isCoopMatHW();
 }
 
 struct CoopMatUseConstraints {
@@ -257,25 +257,25 @@ public:
             if (rewrite)
                 rewriteType(node);
             return true;
-        } else if (collectDirect && node->getOp() == glslang::EOpCooperativeMatrixMulAZD && sequence.size() == 3) {
+        } else if (collectDirect && node->getOp() == glslang::EOpCooperativeMatrixMulHW && sequence.size() == 3) {
             constrain(sequence[0]->getAsTyped(), glslang::ECoopMatUseAccumulator, true);
             constrain(sequence[1]->getAsTyped(), glslang::ECoopMatUseA, true);
             constrain(sequence[2]->getAsTyped(), glslang::ECoopMatUseB, true);
-        } else if (collectDirect && node->getOp() == glslang::EOpCooperativeMatrixMulAddAZD && sequence.size() == 4) {
+        } else if (collectDirect && node->getOp() == glslang::EOpCooperativeMatrixMulAddHW && sequence.size() == 4) {
             constrain(sequence[0]->getAsTyped(), glslang::ECoopMatUseAccumulator, true);
             constrain(sequence[1]->getAsTyped(), glslang::ECoopMatUseA, true);
             constrain(sequence[2]->getAsTyped(), glslang::ECoopMatUseB, true);
             constrain(sequence[3]->getAsTyped(), glslang::ECoopMatUseAccumulator, true);
-        } else if (collectDirect && node->getOp() == glslang::EOpCooperativeVectorMatMulAZD &&
+        } else if (collectDirect && node->getOp() == glslang::EOpCooperativeVectorMatMulHW &&
                    sequence.size() == 3) {
             constrain(sequence[2]->getAsTyped(), glslang::ECoopMatUseA, true);
-        } else if (collectDirect && node->getOp() == glslang::EOpCooperativeVectorMatMulAddAZD &&
+        } else if (collectDirect && node->getOp() == glslang::EOpCooperativeVectorMatMulAddHW &&
                    sequence.size() == 4) {
             constrain(sequence[2]->getAsTyped(), glslang::ECoopMatUseA, true);
-        } else if (node->getOp() == glslang::EOpCooperativeMatrixReduceAZD && sequence.size() >= 1) {
+        } else if (node->getOp() == glslang::EOpCooperativeMatrixReduceHW && sequence.size() >= 1) {
             propagateSameUse(node, node, sequence[0]->getAsTyped());
-        } else if (node->getOp() == glslang::EOpConstructCooperativeMatrixAZD && sequence.size() == 1 &&
-                   isCoopMatAZDTyped(sequence[0]->getAsTyped())) {
+        } else if (node->getOp() == glslang::EOpConstructCooperativeMatrixHW && sequence.size() == 1 &&
+                   isCoopMatHWTyped(sequence[0]->getAsTyped())) {
             propagateSameUse(node, node, sequence[0]->getAsTyped());
             if (defaultNeutral)
                 defaultUsePreservingExpression(node, sequence[0]->getAsTyped());
@@ -291,7 +291,7 @@ public:
     bool visitBranch(glslang::TVisit visit, glslang::TIntermBranch* node) override
     {
         if (visit != glslang::EvPostVisit || node->getFlowOp() != glslang::EOpReturn ||
-            !isCoopMatAZDTyped(node->getExpression()))
+            !isCoopMatHWTyped(node->getExpression()))
             return true;
 
         if (rewrite)
@@ -319,17 +319,17 @@ public:
             break;
         case glslang::EOpAdd:
         case glslang::EOpSub:
-            if (isCoopMatAZDTyped(node))
+            if (isCoopMatHWTyped(node))
                 propagateSameUse(node, left, right);
             break;
         case glslang::EOpMul:
-            if (isCoopMatAZDTyped(left) && isCoopMatAZDTyped(right))
+            if (isCoopMatHWTyped(left) && isCoopMatHWTyped(right))
                 propagateSameUse(node, left, right);
             else
                 propagateScalarMultiply(node, left, right);
             break;
         case glslang::EOpDiv:
-            if (isCoopMatAZDTyped(left) && isCoopMatAZDTyped(right))
+            if (isCoopMatHWTyped(left) && isCoopMatHWTyped(right))
                 propagateSameUse(node, left, right);
             break;
         default:
@@ -347,7 +347,7 @@ public:
         if (visit != glslang::EvPostVisit)
             return true;
 
-        if (isCoopMatAZDTyped(node)) {
+        if (isCoopMatHWTyped(node)) {
             if (node->getOp() == glslang::EOpNegative) {
                 propagateSameUse(node, node, node->getOperand());
             } else if (isCoopMatUsePreservingUnary(node->getOp())) {
@@ -379,7 +379,7 @@ public:
         if (visit != glslang::EvPostVisit)
             return true;
 
-        if (!isCoopMatAZDTyped(node))
+        if (!isCoopMatHWTyped(node))
             return true;
 
         if (rewrite)
@@ -463,7 +463,7 @@ private:
 
     void defaultUsePreservingExpression(glslang::TIntermTyped* node, glslang::TIntermTyped* operand)
     {
-        if (!isCoopMatAZDTyped(node) || !isCoopMatAZDTyped(operand))
+        if (!isCoopMatHWTyped(node) || !isCoopMatHWTyped(operand))
             return;
         if (roleOf(node) != glslang::ECoopMatUseUnknown ||
             roleOf(operand) != glslang::ECoopMatUseUnknown)
@@ -486,7 +486,7 @@ private:
             return;
 
         if (logger)
-            logger->error("AZD cooperative matrix assignment cannot implicitly convert between OperandAB and Accumulator");
+            logger->error("HW cooperative matrix assignment cannot implicitly convert between OperandAB and Accumulator");
         state.hasError = true;
     }
 
@@ -505,7 +505,7 @@ private:
 
     bool constrain(glslang::TIntermTyped* node, glslang::TCoopMatUse use, bool direct)
     {
-        if (!isCoopMatAZDTyped(node) || use == glslang::ECoopMatUseUnknown)
+        if (!isCoopMatHWTyped(node) || use == glslang::ECoopMatUseUnknown)
             return false;
 
         glslang::TString key;
@@ -542,7 +542,7 @@ private:
 
     glslang::TCoopMatUse roleOf(glslang::TIntermTyped* node) const
     {
-        if (!isCoopMatAZDTyped(node))
+        if (!isCoopMatHWTyped(node))
             return glslang::ECoopMatUseUnknown;
 
         glslang::TString key;
@@ -568,8 +568,8 @@ private:
 
     void propagateGeneratedOutputTempUse(glslang::TIntermTyped* left, glslang::TIntermTyped* right)
     {
-        if (!isCoopMatAZDTyped(left) || !isCoopMatAZDTyped(right) ||
-            !left->getType().sameCoopMatAZDBaseType(right->getType()) ||
+        if (!isCoopMatHWTyped(left) || !isCoopMatHWTyped(right) ||
+            !left->getType().sameCoopMatHWBaseType(right->getType()) ||
             !isGeneratedOutputTempArg(right))
             return;
 
@@ -583,7 +583,7 @@ private:
 
     void propagateSameUse(glslang::TIntermTyped* node, glslang::TIntermTyped* left, glslang::TIntermTyped* right)
     {
-        if (!isCoopMatAZDTyped(left) || !isCoopMatAZDTyped(right))
+        if (!isCoopMatHWTyped(left) || !isCoopMatHWTyped(right))
             return;
 
         glslang::TCoopMatUse nodeUse = roleOf(node);
@@ -615,8 +615,8 @@ private:
     void propagateScalarMultiply(glslang::TIntermTyped* node, glslang::TIntermTyped* left,
                                  glslang::TIntermTyped* right)
     {
-        const bool leftCoop = isCoopMatAZDTyped(left);
-        const bool rightCoop = isCoopMatAZDTyped(right);
+        const bool leftCoop = isCoopMatHWTyped(left);
+        const bool rightCoop = isCoopMatHWTyped(right);
         if (leftCoop == rightCoop)
             return;
 
@@ -629,12 +629,12 @@ private:
             constrain(coopOperand, resultUse, false);
     }
 
-    // Rewrite the AZD cooperative matrix use on a node's type for SPIR-V emission.
+    // Rewrite the HW cooperative matrix use on a node's type for SPIR-V emission.
     //
     // Function parameter symbols are always rewritten as UseA regardless of the inferred
     // role. This is intentional: SPIR-V function parameter types must be uniform across all
     // callers, and UseA is the canonical default. When a caller passes an argument whose
-    // actual use is UseB or Accumulator, createCooperativeMatrixAZDUseCast inserts an
+    // actual use is UseB or Accumulator, createCooperativeMatrixHWUseCast inserts an
     // OpBitcast at the call site to the correct use-typed SPIR-V type, so the callee still
     // receives the right value. This two-layer design (uniform parameter type + per-call-site
     // cast) avoids needing a different function signature for every combination of argument uses.
@@ -646,7 +646,7 @@ private:
         else if (isFunctionParameterSymbol(node))
             use = glslang::ECoopMatUseA;  // see comment above: uniform parameter type, cast at call site
 
-        if (isCoopMatAZDTyped(node)) {
+        if (isCoopMatHWTyped(node)) {
             node->getWritableType().setCoopMatUse(use);
             rewriteStructMemberType(node, use);
         }
@@ -669,7 +669,7 @@ private:
             return;
 
         glslang::TType* memberType = (*members)[index].type;
-        if (memberType && memberType->isCoopMatAZD())
+        if (memberType && memberType->isCoopMatHW())
             memberType->setCoopMatUse(use);
     }
 
@@ -694,17 +694,17 @@ bool validateCoopMatUseConstraints(const CoopMatUseState& state, spv::SpvBuildLo
 
     for (const auto& entry : state.keyConstraints) {
         validate(entry.second,
-                 "same AZD cooperative matrix logical value cannot be used as both OperandAB and Accumulator");
+                 "same HW cooperative matrix logical value cannot be used as both OperandAB and Accumulator");
     }
 
     for (const auto& entry : state.nodeConstraints) {
         validate(entry.second,
-                 "AZD cooperative matrix expression cannot be used as both OperandAB and Accumulator");
+                 "HW cooperative matrix expression cannot be used as both OperandAB and Accumulator");
     }
 
     if (state.hasError) {
         if (logger)
-            logger->error("AZD cooperative matrix use validation failed");
+            logger->error("HW cooperative matrix use validation failed");
         valid = false;
     }
 
@@ -751,11 +751,11 @@ private:
     void validate(glslang::TIntermTyped* node)
     {
         if (!node || node->getType().isStruct() ||
-            !node->getType().isCoopMatAZD() || !node->getType().isCoopMatUseUnknown())
+            !node->getType().isCoopMatHW() || !node->getType().isCoopMatUseUnknown())
             return;
 
         if (!hasUnresolvedUse && logger)
-            logger->error("unresolved AZD cooperative matrix use");
+            logger->error("unresolved HW cooperative matrix use");
         hasUnresolvedUse = true;
     }
 
@@ -800,57 +800,57 @@ bool ResolveCoopMatUse(TIntermNode* root, spv::SpvBuildLogger* logger)
         TCoopMatUseValidator validator(nullptr);
         root->traverse(&validator);
         if (!validator.valid())
-            logger->error("unresolved AZD cooperative matrix use after rewrite");
+            logger->error("unresolved HW cooperative matrix use after rewrite");
         return validator.valid();
     }
 }
 
-const char* getCooperativeVectorAZDExtension()
+const char* getCooperativeVectorHWExtension()
 {
-    return spv::E_SPV_AZD_cooperative_vector;
+    return spv::E_SPV_HW_cooperative_vector;
 }
 
-spv::Id createCooperativeVectorAZDMatMul(spv::Builder& builder, spv::Id typeId, const std::vector<spv::Id>& operands)
+spv::Id createCooperativeVectorHWMatMul(spv::Builder& builder, spv::Id typeId, const std::vector<spv::Id>& operands)
 {
     std::vector<spv::IdImmediate> idImmOps;
     idImmOps.push_back(spv::IdImmediate(true, operands[1])); // Input
     idImmOps.push_back(spv::IdImmediate(true, operands[2])); // Matrix
 
-    return builder.createOp(spv::OpCooperativeVectorMatrixMulAZD, typeId, idImmOps);
+    return builder.createOp(spv::OpCooperativeVectorMatrixMulHW, typeId, idImmOps);
 }
 
-spv::Id createCooperativeVectorAZDMatMulAdd(spv::Builder& builder, spv::Id typeId, const std::vector<spv::Id>& operands)
+spv::Id createCooperativeVectorHWMatMulAdd(spv::Builder& builder, spv::Id typeId, const std::vector<spv::Id>& operands)
 {
     std::vector<spv::IdImmediate> idImmOps;
     idImmOps.push_back(spv::IdImmediate(true, operands[1])); // Input
     idImmOps.push_back(spv::IdImmediate(true, operands[2])); // Matrix
     idImmOps.push_back(spv::IdImmediate(true, operands[3])); // Bias
 
-    return builder.createOp(spv::OpCooperativeVectorMatrixMulAddAZD, typeId, idImmOps);
+    return builder.createOp(spv::OpCooperativeVectorMatrixMulAddHW, typeId, idImmOps);
 }
 
-spv::Id createCooperativeVectorAZDLoad(spv::Builder& builder, spv::Id typeId, const std::vector<spv::Id>& operands)
+spv::Id createCooperativeVectorHWLoad(spv::Builder& builder, spv::Id typeId, const std::vector<spv::Id>& operands)
 {
     std::vector<spv::IdImmediate> idImmOps;
     idImmOps.push_back(spv::IdImmediate(true, operands[1])); // buf
-    return builder.createOp(spv::OpCooperativeVectorLoadAZD, typeId, idImmOps);
+    return builder.createOp(spv::OpCooperativeVectorLoadHW, typeId, idImmOps);
 }
 
-void createCooperativeVectorAZDStore(spv::Builder& builder, const std::vector<spv::Id>& operands)
+void createCooperativeVectorHWStore(spv::Builder& builder, const std::vector<spv::Id>& operands)
 {
     std::vector<spv::IdImmediate> idImmOps;
     idImmOps.push_back(spv::IdImmediate(true, operands[1])); // buf
     idImmOps.push_back(spv::IdImmediate(true, operands[0])); // object
-    builder.createNoResultOp(spv::OpCooperativeVectorStoreAZD, idImmOps);
+    builder.createNoResultOp(spv::OpCooperativeVectorStoreHW, idImmOps);
 }
 
-spv::Id createCooperativeMatrixAZDUseCast(spv::Builder& builder, spv::Id object, spv::CooperativeMatrixUseAZD use)
+spv::Id createCooperativeMatrixHWUseCast(spv::Builder& builder, spv::Id object, spv::CooperativeMatrixUseHW use)
 {
     spv::Id typeId = builder.getTypeId(object);
-    if (!builder.isCooperativeMatrixAZDType(typeId))
+    if (!builder.isCooperativeMatrixHWType(typeId))
         return object;
 
-    spv::Id useTypeId = builder.makeCooperativeMatrixTypeAZD(builder.getIdOperand(typeId, 0),
+    spv::Id useTypeId = builder.makeCooperativeMatrixTypeHW(builder.getIdOperand(typeId, 0),
                                                              builder.getIdOperand(typeId, 1),
                                                              builder.getIdOperand(typeId, 2),
                                                              use);
@@ -860,58 +860,58 @@ spv::Id createCooperativeMatrixAZDUseCast(spv::Builder& builder, spv::Id object,
     return builder.createUnaryOp(spv::OpBitcast, useTypeId, object);
 }
 
-spv::Id createCooperativeMatrixAZDTypeCast(spv::Builder& builder, spv::Id object, spv::Id targetTypeId)
+spv::Id createCooperativeMatrixHWTypeCast(spv::Builder& builder, spv::Id object, spv::Id targetTypeId)
 {
     spv::Id objectTypeId = builder.getTypeId(object);
     if (objectTypeId == targetTypeId ||
-        !builder.isCooperativeMatrixAZDType(objectTypeId) ||
-        !builder.isCooperativeMatrixAZDType(targetTypeId))
+        !builder.isCooperativeMatrixHWType(objectTypeId) ||
+        !builder.isCooperativeMatrixHWType(targetTypeId))
         return object;
 
     return builder.createUnaryOp(spv::OpBitcast, targetTypeId, object);
 }
 
-spv::Id createCooperativeMatrixAZDMul(spv::Builder& builder, spv::Id typeId, const std::vector<spv::Id>& operands)
+spv::Id createCooperativeMatrixHWMul(spv::Builder& builder, spv::Id typeId, const std::vector<spv::Id>& operands)
 {
     std::vector<spv::IdImmediate> idImmOps;
-    spv::Id operandA = createCooperativeMatrixAZDUseCast(builder, operands[1],
-        spv::CooperativeMatrixUseAZDMatrixUseAAZD);
-    spv::Id operandB = createCooperativeMatrixAZDUseCast(builder, operands[2],
-        spv::CooperativeMatrixUseAZDMatrixUseBAZD);
+    spv::Id operandA = createCooperativeMatrixHWUseCast(builder, operands[1],
+        spv::CooperativeMatrixUseHWMatrixUseAHW);
+    spv::Id operandB = createCooperativeMatrixHWUseCast(builder, operands[2],
+        spv::CooperativeMatrixUseHWMatrixUseBHW);
     idImmOps.push_back(spv::IdImmediate(true, operandA)); // A
     idImmOps.push_back(spv::IdImmediate(true, operandB)); // B
     idImmOps.push_back(spv::IdImmediate(true, builder.makeNullConstant(typeId))); // C
 
-    return builder.createOp(spv::OpCooperativeMatrixMulAddAZD, typeId, idImmOps);
+    return builder.createOp(spv::OpCooperativeMatrixMulAddHW, typeId, idImmOps);
 }
 
-spv::Id createCooperativeMatrixAZDMulAdd(spv::Builder& builder, spv::Id typeId, const std::vector<spv::Id>& operands)
+spv::Id createCooperativeMatrixHWMulAdd(spv::Builder& builder, spv::Id typeId, const std::vector<spv::Id>& operands)
 {
     std::vector<spv::IdImmediate> idImmOps;
-    spv::Id operandA = createCooperativeMatrixAZDUseCast(builder, operands[1],
-        spv::CooperativeMatrixUseAZDMatrixUseAAZD);
-    spv::Id operandB = createCooperativeMatrixAZDUseCast(builder, operands[2],
-        spv::CooperativeMatrixUseAZDMatrixUseBAZD);
-    spv::Id operandC = createCooperativeMatrixAZDUseCast(builder, operands[3],
-        spv::CooperativeMatrixUseAZDMatrixAccumulatorAZD);
+    spv::Id operandA = createCooperativeMatrixHWUseCast(builder, operands[1],
+        spv::CooperativeMatrixUseHWMatrixUseAHW);
+    spv::Id operandB = createCooperativeMatrixHWUseCast(builder, operands[2],
+        spv::CooperativeMatrixUseHWMatrixUseBHW);
+    spv::Id operandC = createCooperativeMatrixHWUseCast(builder, operands[3],
+        spv::CooperativeMatrixUseHWMatrixAccumulatorHW);
     idImmOps.push_back(spv::IdImmediate(true, operandA)); // A
     idImmOps.push_back(spv::IdImmediate(true, operandB)); // B
     idImmOps.push_back(spv::IdImmediate(true, operandC)); // C
 
-    return builder.createOp(spv::OpCooperativeMatrixMulAddAZD, typeId, idImmOps);
+    return builder.createOp(spv::OpCooperativeMatrixMulAddHW, typeId, idImmOps);
 }
 
-spv::Id createCooperativeMatrixAZDLoad(spv::Builder& builder, spv::Id typeId, const std::vector<spv::Id>& operands)
+spv::Id createCooperativeMatrixHWLoad(spv::Builder& builder, spv::Id typeId, const std::vector<spv::Id>& operands)
 {
     std::vector<spv::IdImmediate> idImmOps;
     idImmOps.push_back(spv::IdImmediate(true, operands[1])); // buf
     idImmOps.push_back(spv::IdImmediate(true, operands[2])); // srcMatrixShape
     idImmOps.push_back(spv::IdImmediate(true, operands[3])); // srcMatrixOffset
     idImmOps.push_back(spv::IdImmediate(true, operands[4])); // matrixLayout
-    return builder.createOp(spv::OpCooperativeMatrixLoadAZD, typeId, idImmOps);
+    return builder.createOp(spv::OpCooperativeMatrixLoadHW, typeId, idImmOps);
 }
 
-void createCooperativeMatrixAZDStore(spv::Builder& builder, const std::vector<spv::Id>& operands)
+void createCooperativeMatrixHWStore(spv::Builder& builder, const std::vector<spv::Id>& operands)
 {
     std::vector<spv::IdImmediate> idImmOps;
     idImmOps.push_back(spv::IdImmediate(true, operands[1])); // buf
@@ -919,7 +919,7 @@ void createCooperativeMatrixAZDStore(spv::Builder& builder, const std::vector<sp
     idImmOps.push_back(spv::IdImmediate(true, operands[2])); // dstMatrixShape
     idImmOps.push_back(spv::IdImmediate(true, operands[3])); // dstMatrixOffset
     idImmOps.push_back(spv::IdImmediate(true, operands[4])); // matrixLayout
-    builder.createNoResultOp(spv::OpCooperativeMatrixStoreAZD, idImmOps);
+    builder.createNoResultOp(spv::OpCooperativeMatrixStoreHW, idImmOps);
 }
 
 } // namespace
@@ -1080,7 +1080,7 @@ protected:
                                                // rather than a pointer
     std::unordered_map<std::string, spv::Function*> functionMap;
     std::unordered_map<const glslang::TTypeList*, spv::Id> structMap[glslang::ElpCount][glslang::ElmCount];
-    std::unordered_map<const glslang::TIntermTyped*, spv::Id> coopMatAZDTypeParamSizeIds;
+    std::unordered_map<const glslang::TIntermTyped*, spv::Id> coopMatHWTypeParamSizeIds;
     // for mapping glslang block indices to spv indices (e.g., due to hidden members):
     std::unordered_map<long long, std::vector<int>> memberRemapper;
     // for mapping glslang symbol struct to symbol Id
@@ -3429,10 +3429,10 @@ bool TGlslangToSpvTraverser::visitUnary(glslang::TVisit /* visit */, glslang::TI
         // SPV wants "block" and member number as the operands, go get them.
 
         spv::Id length;
-        if (node->getOperand()->getType().isCoopMatAZD()) {
+        if (node->getOperand()->getType().isCoopMatHW()) {
             spv::Id typeId = convertGlslangToSpvType(node->getOperand()->getType());
             assert(builder.isCooperativeMatrixType(typeId));
-            length = builder.createCooperativeMatrixLengthAZD(typeId);
+            length = builder.createCooperativeMatrixLengthHW(typeId);
         } else if (node->getOperand()->getType().isCoopMat()) {
             spv::Id typeId = convertGlslangToSpvType(node->getOperand()->getType());
             assert(builder.isCooperativeMatrixType(typeId));
@@ -3443,7 +3443,7 @@ bool TGlslangToSpvTraverser::visitUnary(glslang::TVisit /* visit */, glslang::TI
                 spec_constant_op_mode_setter.turnOnSpecConstantOpMode();
                 length = builder.createCooperativeMatrixLengthNV(typeId);
             }
-        } else if (node->getOperand()->getType().isCoopVecAZD()) {
+        } else if (node->getOperand()->getType().isCoopVecHW()) {
             spv::Id typeId = convertGlslangToSpvType(node->getOperand()->getType());
             length = builder.getCooperativeVectorNumComponents(typeId);
         } else if (node->getOperand()->getType().isCoopVecNV()) {
@@ -4034,9 +4034,9 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
     case glslang::EOpConstructReference:
     case glslang::EOpConstructCooperativeMatrixNV:
     case glslang::EOpConstructCooperativeMatrixKHR:
-    case glslang::EOpConstructCooperativeMatrixAZD:
+    case glslang::EOpConstructCooperativeMatrixHW:
     case glslang::EOpConstructCooperativeVectorNV:
-    case glslang::EOpConstructCooperativeVectorAZD:
+    case glslang::EOpConstructCooperativeVectorHW:
     {
         builder.setDebugSourceLocation(node->getLoc().line, node->getLoc().getFilename());
         std::vector<spv::Id> arguments;
@@ -4057,7 +4057,7 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
             builder.addCapability(spv::CapabilityCooperativeMatrixConversionsNV);
             builder.addExtension(spv::E_SPV_NV_cooperative_matrix2);
             constructed = builder.createCooperativeMatrixConversion(resultType(), arguments[0]);
-        } else if (node->getOp() == glslang::EOpConstructCooperativeVectorAZD &&
+        } else if (node->getOp() == glslang::EOpConstructCooperativeVectorHW &&
                    arguments.size() == 1 &&
                    builder.getTypeId(arguments[0]) == resultType()) {
             constructed = arguments[0];
@@ -4068,9 +4068,9 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         } else if (node->getOp() == glslang::EOpConstructStruct ||
                  node->getOp() == glslang::EOpConstructCooperativeMatrixNV ||
                  node->getOp() == glslang::EOpConstructCooperativeMatrixKHR ||
-                 node->getOp() == glslang::EOpConstructCooperativeMatrixAZD ||
+                 node->getOp() == glslang::EOpConstructCooperativeMatrixHW ||
                  node->getType().isArray() ||
-                 (node->getOp() == glslang::EOpConstructCooperativeVectorAZD &&
+                 (node->getOp() == glslang::EOpConstructCooperativeVectorHW &&
                   arguments.size() == 1 && builder.isScalar(arguments[0])) ||
                  // Handle constructing coopvec from one component here, to avoid the component
                  // getting smeared
@@ -4255,23 +4255,23 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
     case glslang::EOpCooperativeMatrixStore:
     case glslang::EOpCooperativeMatrixLoadNV:
     case glslang::EOpCooperativeMatrixStoreNV:
-    case glslang::EOpCooperativeMatrixLoadAZD:
-    case glslang::EOpCooperativeMatrixStoreAZD:
+    case glslang::EOpCooperativeMatrixLoadHW:
+    case glslang::EOpCooperativeMatrixStoreHW:
     case glslang::EOpCooperativeMatrixLoadTensorNV:
     case glslang::EOpCooperativeMatrixStoreTensorNV:
     case glslang::EOpCooperativeMatrixReduceNV:
     case glslang::EOpCooperativeMatrixPerElementOpNV:
     case glslang::EOpCooperativeMatrixTransposeNV:
-    case glslang::EOpCooperativeMatrixMulAZD:
+    case glslang::EOpCooperativeMatrixMulHW:
     case glslang::EOpCooperativeVectorMatMulNV:
-    case glslang::EOpCooperativeVectorMatMulAZD:
+    case glslang::EOpCooperativeVectorMatMulHW:
     case glslang::EOpCooperativeVectorMatMulAddNV:
-    case glslang::EOpCooperativeVectorMatMulAddAZD:
-    case glslang::EOpCooperativeMatrixMulAddAZD:
+    case glslang::EOpCooperativeVectorMatMulAddHW:
+    case glslang::EOpCooperativeMatrixMulAddHW:
     case glslang::EOpCooperativeVectorLoadNV:
-    case glslang::EOpCooperativeVectorLoadAZD:
+    case glslang::EOpCooperativeVectorLoadHW:
     case glslang::EOpCooperativeVectorStoreNV:
-    case glslang::EOpCooperativeVectorStoreAZD:
+    case glslang::EOpCooperativeVectorStoreHW:
     case glslang::EOpCooperativeVectorOuterProductAccumulateNV:
     case glslang::EOpCooperativeVectorReduceSumAccumulateNV:
     case glslang::EOpCpAsyncTensorGlobalShared:
@@ -4595,8 +4595,8 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
             if (arg == 0 || arg == 1)
                 lvalue = true;
             break;
-        case glslang::EOpCooperativeMatrixLoadAZD:
-        case glslang::EOpCooperativeVectorLoadAZD:
+        case glslang::EOpCooperativeMatrixLoadHW:
+        case glslang::EOpCooperativeVectorLoadHW:
             if (arg == 0 || arg == 1)
                 lvalue = true;
             break;
@@ -4607,16 +4607,16 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
             if (arg == 1)
                 lvalue = true;
             break;
-        case glslang::EOpCooperativeMatrixStoreAZD:
-        case glslang::EOpCooperativeVectorStoreAZD:
+        case glslang::EOpCooperativeMatrixStoreHW:
+        case glslang::EOpCooperativeVectorStoreHW:
             if (arg == 1)
                 lvalue = true;
             break;
-        case glslang::EOpCooperativeMatrixMulAZD:
+        case glslang::EOpCooperativeMatrixMulHW:
             if (arg == 0)
                 lvalue = true;
             break;
-        case glslang::EOpCooperativeMatrixMulAddAZD:
+        case glslang::EOpCooperativeMatrixMulAddHW:
             if (arg == 0)
                 lvalue = true;
             break;
@@ -4626,7 +4626,7 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
             else if (arg == 3)
                 lvalue = true;
             break;
-        case glslang::EOpCooperativeVectorMatMulAZD:
+        case glslang::EOpCooperativeVectorMatMulHW:
             if (arg == 0)
                 lvalue = true;
             break;
@@ -4636,7 +4636,7 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
             else if (arg == 3 || arg == 6)
                 lvalue = true;
             break;
-        case glslang::EOpCooperativeVectorMatMulAddAZD:
+        case glslang::EOpCooperativeVectorMatMulAddHW:
             if (arg == 0)
                 lvalue = true;
             break;
@@ -4690,10 +4690,10 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
                          node->getOp() == glslang::EOpCooperativeMatrixStoreTensorNV;
         bool isCoopVec = node->getOp() == glslang::EOpCooperativeVectorLoadNV ||
                          node->getOp() == glslang::EOpCooperativeVectorStoreNV;
-        bool isCoopMatAZD = node->getOp() == glslang::EOpCooperativeMatrixLoadAZD ||
-                           node->getOp() == glslang::EOpCooperativeMatrixStoreAZD;
-        bool isCoopVecAZD = node->getOp() == glslang::EOpCooperativeVectorLoadAZD ||
-                           node->getOp() == glslang::EOpCooperativeVectorStoreAZD;
+        bool isCoopMatHW = node->getOp() == glslang::EOpCooperativeMatrixLoadHW ||
+                           node->getOp() == glslang::EOpCooperativeMatrixStoreHW;
+        bool isCoopVecHW = node->getOp() == glslang::EOpCooperativeVectorLoadHW ||
+                           node->getOp() == glslang::EOpCooperativeVectorStoreHW;
         if (isCoopMat || isCoopVec) {
 
             if (arg == 1) {
@@ -4751,21 +4751,21 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
             } else if (isCoopMat && arg == 2) {
                 continue;
             }
-        } else if (isCoopMatAZD || isCoopVecAZD) {
+        } else if (isCoopMatHW || isCoopVecHW) {
             if (arg == 1) {
                 spv::Builder::AccessChain::CoherentFlags coherentFlags = builder.getAccessChain().coherentFlags;
                 unsigned int alignment = builder.getAccessChain().alignment;
-                if (isCoopVecAZD) {
+                if (isCoopVecHW) {
                     coherentFlags |= TranslateCoherent(glslangOperands[arg]->getAsTyped()->getType());
                     alignment = 16;
                 }
 
                 int memoryAccess = TranslateMemoryAccess(coherentFlags);
-                if (node->getOp() == glslang::EOpCooperativeMatrixLoadAZD ||
-                    node->getOp() == glslang::EOpCooperativeVectorLoadAZD)
+                if (node->getOp() == glslang::EOpCooperativeMatrixLoadHW ||
+                    node->getOp() == glslang::EOpCooperativeVectorLoadHW)
                     memoryAccess &= ~spv::MemoryAccessMakePointerAvailableKHRMask;
-                if (node->getOp() == glslang::EOpCooperativeMatrixStoreAZD ||
-                    node->getOp() == glslang::EOpCooperativeVectorStoreAZD)
+                if (node->getOp() == glslang::EOpCooperativeMatrixStoreHW ||
+                    node->getOp() == glslang::EOpCooperativeVectorStoreHW)
                     memoryAccess &= ~spv::MemoryAccessMakePointerVisibleKHRMask;
                 if (builder.getStorageClass(builder.getAccessChain().base) ==
                     spv::StorageClassPhysicalStorageBufferEXT) {
@@ -4905,10 +4905,10 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         // store the result to the pointer (out param 'm')
         builder.createStore(result, operands[0]);
         result = 0;
-    } else if (node->getOp() == glslang::EOpCooperativeMatrixLoadAZD) {
+    } else if (node->getOp() == glslang::EOpCooperativeMatrixLoadHW) {
         spv::Id typeId = builder.getContainedTypeId(builder.getTypeId(operands[0]));
-        assert(builder.isCooperativeMatrixAZDType(typeId));
-        spv::Id result = createCooperativeMatrixAZDLoad(builder, typeId, operands);
+        assert(builder.isCooperativeMatrixHWType(typeId));
+        spv::Id result = createCooperativeMatrixHWLoad(builder, typeId, operands);
         builder.createStore(result, operands[0]);
         result = 0;
     } else if (node->getOp() == glslang::EOpCooperativeMatrixLoad ||
@@ -4962,8 +4962,8 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
 
         builder.createNoResultOp(spv::OpCooperativeMatrixStoreTensorNV, idImmOps);
         result = 0;
-    } else if (node->getOp() == glslang::EOpCooperativeMatrixStoreAZD) {
-        createCooperativeMatrixAZDStore(builder, operands);
+    } else if (node->getOp() == glslang::EOpCooperativeMatrixStoreHW) {
+        createCooperativeMatrixHWStore(builder, operands);
         result = 0;
     } else if (node->getOp() == glslang::EOpCooperativeMatrixStore ||
                node->getOp() == glslang::EOpCooperativeMatrixStoreNV) {
@@ -5129,10 +5129,10 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         // store the result to the pointer
         builder.createStore(result, operands[0]);
         result = 0;
-    } else if (node->getOp() == glslang::EOpCooperativeVectorMatMulAZD) {
+    } else if (node->getOp() == glslang::EOpCooperativeVectorMatMulHW) {
         spv::Id typeId = builder.getContainedTypeId(builder.getTypeId(operands[0]));
-        assert(builder.isCooperativeVectorAZDType(typeId));
-        result = createCooperativeVectorAZDMatMul(builder, typeId, operands);
+        assert(builder.isCooperativeVectorHWType(typeId));
+        result = createCooperativeVectorHWMatMul(builder, typeId, operands);
         builder.createStore(result, operands[0]);
         result = 0;
     } else if (node->getOp() == glslang::EOpCooperativeVectorMatMulNV ||
@@ -5176,17 +5176,17 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         // store the result to the pointer (out param 'res')
         builder.createStore(result, operands[0]);
         result = 0;
-    } else if (node->getOp() == glslang::EOpCooperativeVectorMatMulAddAZD) {
+    } else if (node->getOp() == glslang::EOpCooperativeVectorMatMulAddHW) {
         spv::Id typeId = builder.getContainedTypeId(builder.getTypeId(operands[0]));
-        assert(builder.isCooperativeVectorAZDType(typeId));
-        result = createCooperativeVectorAZDMatMulAdd(builder, typeId, operands);
+        assert(builder.isCooperativeVectorHWType(typeId));
+        result = createCooperativeVectorHWMatMulAdd(builder, typeId, operands);
         builder.createStore(result, operands[0]);
         result = 0;
-    } else if (node->getOp() == glslang::EOpCooperativeVectorLoadAZD) {
+    } else if (node->getOp() == glslang::EOpCooperativeVectorLoadHW) {
         // get the pointee type
         spv::Id typeId = builder.getContainedTypeId(builder.getTypeId(operands[0]));
-        assert(builder.isCooperativeVectorAZDType(typeId));
-        spv::Id result = createCooperativeVectorAZDLoad(builder, typeId, operands);
+        assert(builder.isCooperativeVectorHWType(typeId));
+        spv::Id result = createCooperativeVectorHWLoad(builder, typeId, operands);
         // store the result to the pointer (out param 'v')
         builder.createStore(result, operands[0]);
         result = 0;
@@ -5203,8 +5203,8 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         // store the result to the pointer (out param 'v')
         builder.createStore(result, operands[0]);
         result = 0;
-    } else if (node->getOp() == glslang::EOpCooperativeVectorStoreAZD) {
-        createCooperativeVectorAZDStore(builder, operands);
+    } else if (node->getOp() == glslang::EOpCooperativeVectorStoreHW) {
+        createCooperativeVectorHWStore(builder, operands);
         result = 0;
     } else if (node->getOp() == glslang::EOpCooperativeVectorStoreNV) {
         std::vector<spv::IdImmediate> idImmOps;
@@ -5274,16 +5274,16 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         idImmOps.push_back(spv::IdImmediate(true, operands[1])); // N
         builder.createNoResultOp(spv::OpBarrierWait, idImmOps);
         result = 0;
-    } else if (node->getOp() == glslang::EOpCooperativeMatrixMulAZD) {
+    } else if (node->getOp() == glslang::EOpCooperativeMatrixMulHW) {
         spv::Id typeId = builder.getContainedTypeId(builder.getTypeId(operands[0]));
-        assert(builder.isCooperativeMatrixAZDType(typeId));
-        spv::Id matrix = createCooperativeMatrixAZDMul(builder, typeId, operands);
+        assert(builder.isCooperativeMatrixHWType(typeId));
+        spv::Id matrix = createCooperativeMatrixHWMul(builder, typeId, operands);
         builder.createStore(matrix, operands[0]);
         result = 0;
-    } else if (node->getOp() == glslang::EOpCooperativeMatrixMulAddAZD) {
+    } else if (node->getOp() == glslang::EOpCooperativeMatrixMulAddHW) {
         spv::Id typeId = builder.getContainedTypeId(builder.getTypeId(operands[0]));
-        assert(builder.isCooperativeMatrixAZDType(typeId));
-        spv::Id matrix = createCooperativeMatrixAZDMulAdd(builder, typeId, operands);
+        assert(builder.isCooperativeMatrixHWType(typeId));
+        spv::Id matrix = createCooperativeMatrixHWMulAdd(builder, typeId, operands);
         builder.createStore(matrix, operands[0]);
         result = 0;
     } else if (atomic) {
@@ -5384,12 +5384,12 @@ bool TGlslangToSpvTraverser::visitSelection(glslang::TVisit /* visit */, glslang
     const auto isOpSelectable = [&]() {
         if (node->getBasicType() == glslang::EbtVoid)
             return false;
-        // AZD cooperative matrix types carry a Use operand (A/B/Accumulator) that distinguishes
+        // HW cooperative matrix types carry a Use operand (A/B/Accumulator) that distinguishes
         // otherwise structurally identical types. OpSelect requires all operand types to match
         // the result type exactly, but the two branches of a ternary may resolve to different
-        // uses. The resolver therefore lowers AZD ternaries to if/else with OpBitcast at the
+        // uses. The resolver therefore lowers HW ternaries to if/else with OpBitcast at the
         // branch boundaries instead of emitting OpSelect.
-        if (node->getType().isCoopMatAZD())
+        if (node->getType().isCoopMatHW())
             return false;
         // OpSelect can do all other types starting with SPV 1.4
         if (glslangIntermediate->getSpv().spv < glslang::EShTargetSpv_1_4) {
@@ -5424,9 +5424,9 @@ bool TGlslangToSpvTraverser::visitSelection(glslang::TVisit /* visit */, glslang
         const glslang::TType& trueType = node->getTrueBlock()->getAsTyped()->getType();
         const glslang::TType& falseType = node->getFalseBlock()->getAsTyped()->getType();
         assert((node->getType() == trueType && node->getType() == falseType) ||
-               (node->getType().isCoopMatAZD() && trueType.isCoopMatAZD() && falseType.isCoopMatAZD() &&
-                node->getType().sameCoopMatAZDBaseType(trueType) &&
-                node->getType().sameCoopMatAZDBaseType(falseType)));
+               (node->getType().isCoopMatHW() && trueType.isCoopMatHW() && falseType.isCoopMatHW() &&
+                node->getType().sameCoopMatHWBaseType(trueType) &&
+                node->getType().sameCoopMatHWBaseType(falseType)));
 
         // return true if a single operand to ? : is okay for OpSelect
         const auto operandOkay = [](glslang::TIntermTyped* node) {
@@ -5475,12 +5475,12 @@ bool TGlslangToSpvTraverser::visitSelection(glslang::TVisit /* visit */, glslang
             // Since isOpSelectable only lets us get here for SPIR-V >= 1.4, we can use OpCopyObject
             // to get matching types.
             if (builder.getTypeId(trueValue) != resultType) {
-                spv::Id castValue = createCooperativeMatrixAZDTypeCast(builder, trueValue, resultType);
+                spv::Id castValue = createCooperativeMatrixHWTypeCast(builder, trueValue, resultType);
                 trueValue = castValue != trueValue ? castValue :
                     builder.createUnaryOp(spv::OpCopyLogical, resultType, trueValue);
             }
             if (builder.getTypeId(falseValue) != resultType) {
-                spv::Id castValue = createCooperativeMatrixAZDTypeCast(builder, falseValue, resultType);
+                spv::Id castValue = createCooperativeMatrixHWTypeCast(builder, falseValue, resultType);
                 falseValue = castValue != falseValue ? castValue :
                     builder.createUnaryOp(spv::OpCopyLogical, resultType, falseValue);
             }
@@ -5754,7 +5754,7 @@ bool TGlslangToSpvTraverser::visitBranch(glslang::TVisit /* visit */, glslang::T
             const glslang::TType& glslangReturnType = node->getExpression()->getType();
             spv::Id returnId = accessChainLoad(glslangReturnType);
             spv::Id castReturnId =
-                createCooperativeMatrixAZDTypeCast(builder, returnId, currentFunction->getReturnType());
+                createCooperativeMatrixHWTypeCast(builder, returnId, currentFunction->getReturnType());
             if (castReturnId != returnId) {
                 returnId = castReturnId;
             } else if (builder.getTypeId(returnId) != currentFunction->getReturnType() ||
@@ -6245,9 +6245,9 @@ spv::Id TGlslangToSpvTraverser::convertGlslangToSpvType(const glslang::TType& ty
         spvType = builder.makeCooperativeMatrixTypeNV(spvType, scope, rows, cols);
     }
 
-    if (type.isCoopMatAZD()) {
-        builder.addCapability(spv::CapabilityCooperativeMatrixAZD);
-        builder.addExtension(spv::E_SPV_AZD_neural_matrix);
+    if (type.isCoopMatHW()) {
+        builder.addCapability(spv::CapabilityCooperativeMatrixHW);
+        builder.addExtension(spv::E_SPV_HW_neural_matrix);
 
         if (type.getBasicType() == glslang::EbtFloat16)
             builder.addCapability(spv::CapabilityFloat16);
@@ -6258,13 +6258,13 @@ spv::Id TGlslangToSpvTraverser::convertGlslangToSpvType(const glslang::TType& ty
 
         spv::Id rows = makeArraySizeId(*type.getTypeParameters()->arraySizes, 0, false, false, true);
         spv::Id cols = makeArraySizeId(*type.getTypeParameters()->arraySizes, 1, false, false, true);
-        spv::CooperativeMatrixUseAZD use = translateCoopMatUseAZD(type.getCoopMatUse());
-        if (use == spv::CooperativeMatrixUseAZDMax) {
-            logger->missingFunctionality("unresolved AZD cooperative matrix use");
+        spv::CooperativeMatrixUseHW use = translateCoopMatUseHW(type.getCoopMatUse());
+        if (use == spv::CooperativeMatrixUseHWMax) {
+            logger->missingFunctionality("unresolved HW cooperative matrix use");
             return spv::NoType;
         }
 
-        spvType = builder.makeCooperativeMatrixTypeAZD(spvType, rows, cols, use);
+        spvType = builder.makeCooperativeMatrixTypeHW(spvType, rows, cols, use);
     }
 
     if (type.isCoopMatKHR()) {
@@ -6285,9 +6285,9 @@ spv::Id TGlslangToSpvTraverser::convertGlslangToSpvType(const glslang::TType& ty
         spvType = builder.makeCooperativeMatrixTypeKHR(spvType, scope, rows, cols, use);
     }
 
-    if (type.isCoopVecAZD()) {
-        builder.addCapability(getCooperativeVectorAZDCapability());
-        builder.addExtension(getCooperativeVectorAZDExtension());
+    if (type.isCoopVecHW()) {
+        builder.addCapability(getCooperativeVectorHWCapability());
+        builder.addExtension(getCooperativeVectorHWExtension());
 
         if (type.getBasicType() == glslang::EbtFloat16)
             builder.addCapability(spv::CapabilityFloat16);
@@ -6296,7 +6296,7 @@ spv::Id TGlslangToSpvTraverser::convertGlslangToSpvType(const glslang::TType& ty
         }
 
         spv::Id components = makeArraySizeId(*type.getTypeParameters()->arraySizes, 0);
-        spvType = builder.makeCooperativeVectorTypeAZD(spvType, components);
+        spvType = builder.makeCooperativeVectorTypeHW(spvType, components);
     }
 
     if (type.isCoopVecNV()) {
@@ -6695,8 +6695,8 @@ spv::Id TGlslangToSpvTraverser::makeArraySizeId(const glslang::TArraySizes& arra
         builder.clearAccessChain();
 
         if (cacheSpecNode) {
-            auto existing = coopMatAZDTypeParamSizeIds.find(specNode);
-            if (existing != coopMatAZDTypeParamSizeIds.end())
+            auto existing = coopMatHWTypeParamSizeIds.find(specNode);
+            if (existing != coopMatHWTypeParamSizeIds.end())
                 return existing->second;
         }
 
@@ -6705,7 +6705,7 @@ spv::Id TGlslangToSpvTraverser::makeArraySizeId(const glslang::TArraySizes& arra
         specNode->traverse(this);
         spv::Id sizeId = accessChainLoad(specNode->getAsTyped()->getType());
         if (cacheSpecNode)
-            coopMatAZDTypeParamSizeIds[specNode] = sizeId;
+            coopMatHWTypeParamSizeIds[specNode] = sizeId;
         return sizeId;
     }
 
@@ -6800,11 +6800,11 @@ void TGlslangToSpvTraverser::accessChainStore(const glslang::TType& type, spv::I
 
     spv::Id nominalTypeId = builder.accessChainGetInferredType();
     spv::Id rvalueTypeId = builder.getTypeId(rvalue);
-    if (type.isCoopMatAZD() &&
-        builder.isCooperativeMatrixAZDType(nominalTypeId) &&
-        builder.isCooperativeMatrixAZDType(rvalueTypeId) &&
+    if (type.isCoopMatHW() &&
+        builder.isCooperativeMatrixHWType(nominalTypeId) &&
+        builder.isCooperativeMatrixHWType(rvalueTypeId) &&
         nominalTypeId != rvalueTypeId) {
-        rvalue = createCooperativeMatrixAZDTypeCast(builder, rvalue, nominalTypeId);
+        rvalue = createCooperativeMatrixHWTypeCast(builder, rvalue, nominalTypeId);
     }
 
     spv::Builder::AccessChain::CoherentFlags coherentFlags = builder.getAccessChain().coherentFlags;
@@ -8105,7 +8105,7 @@ spv::Id TGlslangToSpvTraverser::handleUserFunctionCall(const glslang::TIntermAgg
             // process r-value, which involves a copy for a type mismatch
             spv::Id rValue = rValues[rValueCount];
             spv::Id paramType = function->getParamType(a);
-            spv::Id castValue = createCooperativeMatrixAZDTypeCast(builder, rValue, paramType);
+            spv::Id castValue = createCooperativeMatrixHWTypeCast(builder, rValue, paramType);
             if (castValue != rValue) {
                 arg = castValue;
             } else if (paramType != builder.getTypeId(rValue) ||
@@ -9142,8 +9142,8 @@ spv::Id TGlslangToSpvTraverser::createIntWidthConversion(spv::Id operand, int ve
         type = builder.makeUintType(width);
     }
 
-    if (builder.getOpCode(destType) == spv::OpTypeCooperativeVectorAZD) {
-        type = builder.makeCooperativeVectorTypeAZD(type, builder.getCooperativeVectorNumComponents(destType));
+    if (builder.getOpCode(destType) == spv::OpTypeCooperativeVectorHW) {
+        type = builder.makeCooperativeVectorTypeHW(type, builder.getCooperativeVectorNumComponents(destType));
     } else if (builder.getOpCode(destType) == spv::OpTypeCooperativeVectorNV) {
         type = builder.makeCooperativeVectorTypeNV(type, builder.getCooperativeVectorNumComponents(destType));
     } else if (vectorSize > 0)
@@ -9151,7 +9151,7 @@ spv::Id TGlslangToSpvTraverser::createIntWidthConversion(spv::Id operand, int ve
     else if (builder.getOpCode(destType) == spv::OpTypeCooperativeMatrixKHR ||
              builder.getOpCode(destType) == spv::OpTypeCooperativeMatrixNV) {
         type = builder.makeCooperativeMatrixTypeWithSameShape(type, destType);
-    } else if (builder.getOpCode(destType) == spv::OpTypeCooperativeMatrixAZD) {
+    } else if (builder.getOpCode(destType) == spv::OpTypeCooperativeMatrixHW) {
         type = builder.makeCooperativeMatrixTypeWithSameShape(type, destType);
     }
 
@@ -10673,13 +10673,13 @@ spv::Id TGlslangToSpvTraverser::createMiscOperation(glslang::TOperator op, spv::
     case glslang::EOpCooperativeMatrixMulAddNV:
         opCode = spv::OpCooperativeMatrixMulAddNV;
         break;
-    case glslang::EOpCooperativeMatrixMulAddAZD:
-        opCode = spv::OpCooperativeMatrixMulAddAZD;
+    case glslang::EOpCooperativeMatrixMulAddHW:
+        opCode = spv::OpCooperativeMatrixMulAddHW;
         break;
-    case glslang::EOpCooperativeMatrixReduceAZD:
-        builder.addCapability(getCooperativeMatrixAZDCapability());
-        builder.addExtension(getCooperativeMatrixAZDExtension());
-        opCode = spv::OpCooperativeMatrixReduceAZD;
+    case glslang::EOpCooperativeMatrixReduceHW:
+        builder.addCapability(getCooperativeMatrixHWCapability());
+        builder.addExtension(getCooperativeMatrixHWExtension());
+        opCode = spv::OpCooperativeMatrixReduceHW;
         break;
     case glslang::EOpHitObjectTraceRayNV:
         builder.createNoResultOp(spv::OpHitObjectTraceRayNV, operands);
@@ -11573,7 +11573,7 @@ spv::Id TGlslangToSpvTraverser::createSpvConstantFromConstUnionArray(const glsla
         glslang::TType vectorType(glslangType, 0);
         for (int col = 0; col < glslangType.getMatrixCols(); ++col)
             spvConsts.push_back(createSpvConstantFromConstUnionArray(vectorType, consts, nextConst, false));
-    } else if (glslangType.isCoopMatAZD()) {
+    } else if (glslangType.isCoopMatHW()) {
         glslang::TType componentType(glslangType.getBasicType());
         spvConsts.push_back(createSpvConstantFromConstUnionArray(componentType, consts, nextConst, false));
     } else if (glslangType.isCoopMat()) {
@@ -11583,8 +11583,8 @@ spv::Id TGlslangToSpvTraverser::createSpvConstantFromConstUnionArray(const glsla
         glslang::TVector<glslang::TTypeLoc>::const_iterator iter;
         for (iter = glslangType.getStruct()->begin(); iter != glslangType.getStruct()->end(); ++iter)
             spvConsts.push_back(createSpvConstantFromConstUnionArray(*iter->type, consts, nextConst, false));
-    } else if (glslangType.getVectorSize() > 1 || glslangType.isCoopVecAZD()) {
-        unsigned int numComponents = glslangType.isCoopVecAZD() ? glslangType.getTypeParameters()->arraySizes->getDimSize(0) : glslangType.getVectorSize();
+    } else if (glslangType.getVectorSize() > 1 || glslangType.isCoopVecHW()) {
+        unsigned int numComponents = glslangType.isCoopVecHW() ? glslangType.getTypeParameters()->arraySizes->getDimSize(0) : glslangType.getVectorSize();
         for (unsigned int i = 0; i < numComponents; ++i) {
             bool zero = nextConst >= consts.size();
             switch (glslangType.getBasicType()) {

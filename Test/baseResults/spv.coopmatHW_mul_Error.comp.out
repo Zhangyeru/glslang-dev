@@ -1,0 +1,6 @@
+spv.coopmatHW_mul_Error.comp
+ERROR: 0:14: 'coopMatMulHW' : A column count must match B row count 
+ERROR: 1 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

@@ -1,0 +1,478 @@
+spv.coopvecHW.vert
+; SPIR-V
+; Version: 1.0
+; Generator: Khronos Glslang Reference Front End; 11
+; Bound: 325
+; Schema: 0
+               OpCapability Shader
+               OpCapability Float16
+               OpCapability Int16
+               OpCapability Int8
+               OpCapability VulkanMemoryModel
+               OpCapability ReplicatedCompositesEXT
+               OpCapability CooperativeVectorHW
+               OpCapability CooperativeMatrixHW
+               OpExtension "SPV_EXT_replicated_composites"
+               OpExtension "SPV_HW_cooperative_vector"
+               OpExtension "SPV_HW_neural_matrix"
+               OpExtension "SPV_KHR_vulkan_memory_model"
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint Vertex %main "main" %_
+               OpSource GLSL 450
+               OpSourceExtension "GL_EXT_shader_explicit_arithmetic_types"
+               OpSourceExtension "GL_HW_cooperative_vector"
+               OpSourceExtension "GL_HW_neural_matrix"
+               OpSourceExtension "GL_KHR_memory_scope_semantics"
+               OpName %main "main"
+               OpName %foo_coopvecHWf161_1__ "foo(coopvecHWf161<1>;"
+               OpName %x "x"
+               OpName %foo_coopvecHWf161_2__ "foo(coopvecHWf161<2>;"
+               OpName %x_0 "x"
+               OpName %gl_PerVertex "gl_PerVertex"
+               OpMemberName %gl_PerVertex 0 "gl_Position"
+               OpMemberName %gl_PerVertex 1 "gl_PointSize"
+               OpMemberName %gl_PerVertex 2 "gl_ClipDistance"
+               OpMemberName %gl_PerVertex 3 "gl_CullDistance"
+               OpName %_ ""
+               OpName %v "v"
+               OpName %x_1 "x"
+               OpName %y "y"
+               OpName %v2 "v2"
+               OpName %v3 "v3"
+               OpName %v4 "v4"
+               OpName %f "f"
+               OpName %len "len"
+               OpName %tempArg "tempArg"
+               OpName %v7h "v7h"
+               OpName %m8 "m8"
+               OpName %v8 "v8"
+               OpName %tempArg_0 "tempArg"
+               OpName %v9 "v9"
+               OpName %m10 "m10"
+               OpName %v10 "v10"
+               OpName %f162 "f162"
+               OpName %f161 "f161"
+               OpName %f16 "f16"
+               OpName %v11 "v11"
+               OpName %v12 "v12"
+               OpName %v13 "v13"
+               OpName %s11 "s11"
+               OpName %s12 "s12"
+               OpName %u11 "u11"
+               OpName %u12 "u12"
+               OpName %u13 "u13"
+               OpName %tempArg_1 "tempArg"
+               OpName %v8bias "v8bias"
+               OpName %tempArg_2 "tempArg"
+               OpName %v10bias "v10bias"
+               OpDecorate %gl_PerVertex Block
+               OpMemberDecorate %gl_PerVertex 0 BuiltIn Position
+               OpMemberDecorate %gl_PerVertex 1 BuiltIn PointSize
+               OpMemberDecorate %gl_PerVertex 2 BuiltIn ClipDistance
+               OpMemberDecorate %gl_PerVertex 3 BuiltIn CullDistance
+       %void = OpTypeVoid
+          %3 = OpTypeFunction %void
+       %half = OpTypeFloat 16
+       %uint = OpTypeInt 32 0
+     %uint_1 = OpConstant %uint 1
+          %9 = OpTypeCooperativeVectorHW %half %uint_1
+%_ptr_Function_9 = OpTypePointer Function %9
+         %11 = OpTypeFunction %9 %_ptr_Function_9
+     %uint_2 = OpConstant %uint 2
+         %16 = OpTypeCooperativeVectorHW %half %uint_2
+%_ptr_Function_16 = OpTypePointer Function %16
+         %18 = OpTypeFunction %16 %_ptr_Function_16
+      %float = OpTypeFloat 32
+    %v4float = OpTypeVector %float 4
+%_arr_float_uint_1 = OpTypeArray %float %uint_1
+%gl_PerVertex = OpTypeStruct %v4float %float %_arr_float_uint_1 %_arr_float_uint_1
+%_ptr_Output_gl_PerVertex = OpTypePointer Output %gl_PerVertex
+          %_ = OpVariable %_ptr_Output_gl_PerVertex Output
+        %int = OpTypeInt 32 1
+      %int_0 = OpConstant %int 0
+    %float_0 = OpConstant %float 0
+         %37 = OpConstantComposite %v4float %float_0 %float_0 %float_0 %float_0
+%_ptr_Output_v4float = OpTypePointer Output %v4float
+     %uint_5 = OpConstant %uint 5
+         %41 = OpTypeCooperativeVectorHW %float %uint_5
+%_ptr_Function_41 = OpTypePointer Function %41
+         %44 = OpConstantCompositeReplicateEXT %41 %float_0
+    %v3float = OpTypeVector %float 3
+%_ptr_Function_v3float = OpTypePointer Function %v3float
+    %float_1 = OpConstant %float 1
+         %49 = OpConstantComposite %v3float %float_1 %float_1 %float_1
+    %float_2 = OpConstant %float 2
+         %52 = OpConstantComposite %v3float %float_2 %float_2 %float_2
+         %62 = OpTypeCooperativeVectorHW %half %uint_5
+%_ptr_Function_62 = OpTypePointer Function %62
+%_ptr_Function_float = OpTypePointer Function %float
+    %float_5 = OpConstant %float 5
+%_ptr_Function_int = OpTypePointer Function %int
+      %int_4 = OpConstant %int 4
+   %uint_100 = OpConstant %uint 100
+         %96 = OpTypeCooperativeVectorHW %float %uint_100
+%_ptr_Function_96 = OpTypePointer Function %96
+    %uint_20 = OpConstant %uint 20
+        %100 = OpTypeCooperativeVectorHW %half %uint_20
+%_ptr_Function_100 = OpTypePointer Function %100
+        %104 = OpTypeCooperativeMatrixHW %half %uint_100 %uint_20 MatrixUseAHW
+%_ptr_Function_104 = OpTypePointer Function %104
+        %111 = OpTypeCooperativeVectorHW %int %uint_100
+%_ptr_Function_111 = OpTypePointer Function %111
+       %char = OpTypeInt 8 1
+        %115 = OpTypeCooperativeVectorHW %char %uint_20
+%_ptr_Function_115 = OpTypePointer Function %115
+        %119 = OpTypeCooperativeMatrixHW %char %uint_100 %uint_20 MatrixUseAHW
+%_ptr_Function_119 = OpTypePointer Function %119
+        %127 = OpTypeCooperativeVectorHW %float %uint_20
+%_ptr_Function_half = OpTypePointer Function %half
+     %uint_7 = OpConstant %uint 7
+        %137 = OpTypeCooperativeVectorHW %half %uint_7
+%_ptr_Function_137 = OpTypePointer Function %137
+      %short = OpTypeInt 16 1
+        %170 = OpTypeCooperativeVectorHW %short %uint_7
+%_ptr_Function_170 = OpTypePointer Function %170
+     %ushort = OpTypeInt 16 0
+        %203 = OpTypeCooperativeVectorHW %ushort %uint_7
+%_ptr_Function_203 = OpTypePointer Function %203
+       %main = OpFunction %void None %3
+          %5 = OpLabel
+          %v = OpVariable %_ptr_Function_41 Function
+        %x_1 = OpVariable %_ptr_Function_v3float Function
+          %y = OpVariable %_ptr_Function_v3float Function
+         %v2 = OpVariable %_ptr_Function_41 Function
+         %v3 = OpVariable %_ptr_Function_62 Function
+         %v4 = OpVariable %_ptr_Function_41 Function
+          %f = OpVariable %_ptr_Function_float Function
+        %len = OpVariable %_ptr_Function_int Function
+    %tempArg = OpVariable %_ptr_Function_96 Function
+        %v7h = OpVariable %_ptr_Function_100 Function
+         %m8 = OpVariable %_ptr_Function_104 Function
+         %v8 = OpVariable %_ptr_Function_96 Function
+  %tempArg_0 = OpVariable %_ptr_Function_111 Function
+         %v9 = OpVariable %_ptr_Function_115 Function
+        %m10 = OpVariable %_ptr_Function_119 Function
+        %v10 = OpVariable %_ptr_Function_111 Function
+       %f162 = OpVariable %_ptr_Function_16 Function
+       %f161 = OpVariable %_ptr_Function_9 Function
+        %f16 = OpVariable %_ptr_Function_half Function
+        %v11 = OpVariable %_ptr_Function_137 Function
+        %v12 = OpVariable %_ptr_Function_137 Function
+        %v13 = OpVariable %_ptr_Function_137 Function
+        %s11 = OpVariable %_ptr_Function_170 Function
+        %s12 = OpVariable %_ptr_Function_170 Function
+        %u11 = OpVariable %_ptr_Function_203 Function
+        %u12 = OpVariable %_ptr_Function_203 Function
+        %u13 = OpVariable %_ptr_Function_203 Function
+  %tempArg_1 = OpVariable %_ptr_Function_96 Function
+     %v8bias = OpVariable %_ptr_Function_96 Function
+  %tempArg_2 = OpVariable %_ptr_Function_111 Function
+    %v10bias = OpVariable %_ptr_Function_111 Function
+         %39 = OpAccessChain %_ptr_Output_v4float %_ %int_0
+               OpStore %39 %37
+               OpStore %v %44
+               OpStore %x_1 %49
+               OpStore %y %52
+         %54 = OpLoad %v3float %x_1
+         %55 = OpLoad %v3float %y
+         %56 = OpCompositeExtract %float %54 0
+         %57 = OpCompositeExtract %float %54 1
+         %58 = OpCompositeExtract %float %54 2
+         %59 = OpCompositeExtract %float %55 0
+         %60 = OpCompositeExtract %float %55 1
+         %61 = OpCompositeConstruct %41 %56 %57 %58 %59 %60
+               OpStore %v2 %61
+         %65 = OpLoad %41 %v2
+         %66 = OpFConvert %62 %65
+               OpStore %v3 %66
+         %68 = OpLoad %41 %v
+         %69 = OpLoad %41 %v2
+         %70 = OpFAdd %41 %68 %69
+               OpStore %v4 %70
+         %71 = OpLoad %41 %v
+         %72 = OpLoad %41 %v2
+         %73 = OpFSub %41 %71 %72
+               OpStore %v4 %73
+         %74 = OpLoad %41 %v
+         %75 = OpLoad %41 %v2
+         %76 = OpFMul %41 %74 %75
+               OpStore %v4 %76
+         %77 = OpLoad %41 %v
+         %78 = OpLoad %41 %v2
+         %79 = OpFDiv %41 %77 %78
+               OpStore %v4 %79
+               OpStore %f %float_0
+         %82 = OpLoad %float %f
+         %83 = OpLoad %41 %v4
+         %84 = OpVectorTimesScalar %41 %83 %82
+               OpStore %v4 %84
+         %86 = OpLoad %41 %v4
+         %87 = OpVectorTimesScalar %41 %86 %float_5
+               OpStore %v4 %87
+         %90 = OpBitcast %int %uint_5
+               OpStore %len %90
+         %91 = OpLoad %float %f
+         %92 = OpAccessChain %_ptr_Function_float %v4 %int_0
+               OpStore %92 %91
+         %94 = OpAccessChain %_ptr_Function_float %v4 %int_4
+               OpStore %94 %float_5
+        %103 = OpLoad %100 %v7h
+        %107 = OpLoad %104 %m8
+        %108 = OpCooperativeVectorMatrixMulHW %96 %103 %107
+               OpStore %tempArg %108
+        %110 = OpLoad %96 %tempArg
+               OpStore %v8 %110
+        %118 = OpLoad %115 %v9
+        %122 = OpLoad %119 %m10
+        %123 = OpCooperativeVectorMatrixMulHW %111 %118 %122
+               OpStore %tempArg_0 %123
+        %125 = OpLoad %111 %tempArg_0
+               OpStore %v10 %125
+        %128 = OpBitcast %int %uint_20
+        %129 = OpConvertSToF %half %128
+        %130 = OpCompositeConstructReplicateEXT %16 %129
+               OpStore %f162 %130
+        %134 = OpLoad %half %f16
+        %135 = OpCompositeConstructReplicateEXT %9 %134
+               OpStore %f161 %135
+        %140 = OpLoad %137 %v11
+        %142 = OpLoad %137 %v12
+        %143 = OpExtInst %137 %1 FMax %140 %142
+               OpStore %v11 %143
+        %144 = OpLoad %137 %v11
+        %145 = OpLoad %137 %v12
+        %146 = OpExtInst %137 %1 FMin %144 %145
+               OpStore %v11 %146
+        %147 = OpLoad %137 %v11
+        %148 = OpLoad %137 %v12
+        %149 = OpExtInst %137 %1 Step %147 %148
+               OpStore %v11 %149
+        %150 = OpLoad %137 %v11
+        %151 = OpLoad %137 %v12
+        %153 = OpLoad %137 %v13
+        %154 = OpExtInst %137 %1 FClamp %150 %151 %153
+               OpStore %v11 %154
+        %155 = OpLoad %137 %v11
+        %156 = OpFNegate %137 %155
+               OpStore %v11 %156
+        %157 = OpLoad %137 %v11
+        %158 = OpExtInst %137 %1 Exp %157
+               OpStore %v11 %158
+        %159 = OpLoad %137 %v11
+        %160 = OpExtInst %137 %1 Log %159
+               OpStore %v11 %160
+        %161 = OpLoad %137 %v11
+        %162 = OpExtInst %137 %1 Tanh %161
+               OpStore %v11 %162
+        %163 = OpLoad %137 %v11
+        %164 = OpExtInst %137 %1 Atan %163
+               OpStore %v11 %164
+        %165 = OpLoad %137 %v11
+        %166 = OpLoad %137 %v12
+        %167 = OpLoad %137 %v13
+        %168 = OpExtInst %137 %1 Fma %165 %166 %167
+               OpStore %v11 %168
+        %173 = OpLoad %170 %s11
+        %174 = OpSNegate %170 %173
+               OpStore %s11 %174
+        %175 = OpLoad %170 %s11
+        %176 = OpNot %170 %175
+               OpStore %s11 %176
+        %177 = OpLoad %170 %s11
+        %179 = OpLoad %170 %s12
+        %180 = OpIAdd %170 %177 %179
+               OpStore %s11 %180
+        %181 = OpLoad %170 %s11
+        %182 = OpLoad %170 %s12
+        %183 = OpISub %170 %181 %182
+               OpStore %s11 %183
+        %184 = OpLoad %170 %s11
+        %185 = OpLoad %170 %s12
+        %186 = OpIMul %170 %184 %185
+               OpStore %s11 %186
+        %187 = OpLoad %170 %s11
+        %188 = OpLoad %170 %s12
+        %189 = OpSDiv %170 %187 %188
+               OpStore %s11 %189
+        %190 = OpLoad %170 %s12
+        %191 = OpLoad %170 %s11
+        %192 = OpIAdd %170 %191 %190
+               OpStore %s11 %192
+        %193 = OpLoad %170 %s12
+        %194 = OpLoad %170 %s11
+        %195 = OpISub %170 %194 %193
+               OpStore %s11 %195
+        %196 = OpLoad %170 %s12
+        %197 = OpLoad %170 %s11
+        %198 = OpIMul %170 %197 %196
+               OpStore %s11 %198
+        %199 = OpLoad %170 %s12
+        %200 = OpLoad %170 %s11
+        %201 = OpSDiv %170 %200 %199
+               OpStore %s11 %201
+        %206 = OpLoad %203 %u11
+        %208 = OpLoad %203 %u12
+        %209 = OpExtInst %203 %1 UMin %206 %208
+               OpStore %u11 %209
+        %210 = OpLoad %203 %u11
+        %211 = OpLoad %203 %u12
+        %212 = OpExtInst %203 %1 UMax %210 %211
+               OpStore %u11 %212
+        %213 = OpLoad %203 %u11
+        %214 = OpLoad %203 %u12
+        %216 = OpLoad %203 %u13
+        %217 = OpExtInst %203 %1 UClamp %213 %214 %216
+               OpStore %u11 %217
+        %218 = OpLoad %203 %u11
+        %219 = OpNot %203 %218
+               OpStore %u11 %219
+        %220 = OpLoad %203 %u11
+        %221 = OpLoad %203 %u12
+        %222 = OpShiftRightLogical %203 %220 %221
+               OpStore %u11 %222
+        %223 = OpLoad %203 %u11
+        %224 = OpLoad %203 %u12
+        %225 = OpShiftLeftLogical %203 %223 %224
+               OpStore %u11 %225
+        %226 = OpLoad %203 %u11
+        %227 = OpLoad %203 %u12
+        %228 = OpBitwiseOr %203 %226 %227
+               OpStore %u11 %228
+        %229 = OpLoad %203 %u11
+        %230 = OpLoad %203 %u12
+        %231 = OpBitwiseAnd %203 %229 %230
+               OpStore %u11 %231
+        %232 = OpLoad %203 %u11
+        %233 = OpLoad %203 %u12
+        %234 = OpBitwiseXor %203 %232 %233
+               OpStore %u11 %234
+        %235 = OpLoad %203 %u11
+        %236 = OpLoad %203 %u12
+        %237 = OpIAdd %203 %235 %236
+               OpStore %u11 %237
+        %238 = OpLoad %203 %u11
+        %239 = OpLoad %203 %u12
+        %240 = OpISub %203 %238 %239
+               OpStore %u11 %240
+        %241 = OpLoad %203 %u11
+        %242 = OpLoad %203 %u12
+        %243 = OpIMul %203 %241 %242
+               OpStore %u11 %243
+        %244 = OpLoad %203 %u11
+        %245 = OpLoad %203 %u12
+        %246 = OpUDiv %203 %244 %245
+               OpStore %u11 %246
+        %247 = OpLoad %203 %u12
+        %248 = OpLoad %203 %u11
+        %249 = OpShiftRightLogical %203 %248 %247
+               OpStore %u11 %249
+        %250 = OpLoad %203 %u12
+        %251 = OpLoad %203 %u11
+        %252 = OpShiftLeftLogical %203 %251 %250
+               OpStore %u11 %252
+        %253 = OpLoad %203 %u12
+        %254 = OpLoad %203 %u11
+        %255 = OpBitwiseOr %203 %254 %253
+               OpStore %u11 %255
+        %256 = OpLoad %203 %u12
+        %257 = OpLoad %203 %u11
+        %258 = OpBitwiseAnd %203 %257 %256
+               OpStore %u11 %258
+        %259 = OpLoad %203 %u12
+        %260 = OpLoad %203 %u11
+        %261 = OpBitwiseXor %203 %260 %259
+               OpStore %u11 %261
+        %262 = OpLoad %203 %u12
+        %263 = OpLoad %203 %u11
+        %264 = OpIAdd %203 %263 %262
+               OpStore %u11 %264
+        %265 = OpLoad %203 %u12
+        %266 = OpLoad %203 %u11
+        %267 = OpISub %203 %266 %265
+               OpStore %u11 %267
+        %268 = OpLoad %203 %u12
+        %269 = OpLoad %203 %u11
+        %270 = OpIMul %203 %269 %268
+               OpStore %u11 %270
+        %271 = OpLoad %203 %u12
+        %272 = OpLoad %203 %u11
+        %273 = OpUDiv %203 %272 %271
+               OpStore %u11 %273
+        %274 = OpLoad %170 %s11
+        %275 = OpLoad %170 %s12
+        %276 = OpShiftRightArithmetic %170 %274 %275
+               OpStore %s11 %276
+        %277 = OpLoad %170 %s11
+        %278 = OpLoad %170 %s12
+        %279 = OpShiftLeftLogical %170 %277 %278
+               OpStore %s11 %279
+        %280 = OpLoad %170 %s11
+        %281 = OpLoad %170 %s12
+        %282 = OpBitwiseOr %170 %280 %281
+               OpStore %s11 %282
+        %283 = OpLoad %170 %s11
+        %284 = OpLoad %170 %s12
+        %285 = OpBitwiseAnd %170 %283 %284
+               OpStore %s11 %285
+        %286 = OpLoad %170 %s11
+        %287 = OpLoad %170 %s12
+        %288 = OpBitwiseXor %170 %286 %287
+               OpStore %s11 %288
+        %289 = OpLoad %170 %s12
+        %290 = OpLoad %170 %s11
+        %291 = OpShiftRightArithmetic %170 %290 %289
+               OpStore %s11 %291
+        %292 = OpLoad %170 %s12
+        %293 = OpLoad %170 %s11
+        %294 = OpShiftLeftLogical %170 %293 %292
+               OpStore %s11 %294
+        %295 = OpLoad %170 %s12
+        %296 = OpLoad %170 %s11
+        %297 = OpBitwiseOr %170 %296 %295
+               OpStore %s11 %297
+        %298 = OpLoad %170 %s12
+        %299 = OpLoad %170 %s11
+        %300 = OpBitwiseAnd %170 %299 %298
+               OpStore %s11 %300
+        %301 = OpLoad %170 %s12
+        %302 = OpLoad %170 %s11
+        %303 = OpBitwiseXor %170 %302 %301
+               OpStore %s11 %303
+        %305 = OpLoad %100 %v7h
+        %306 = OpLoad %104 %m8
+        %308 = OpLoad %96 %v8bias
+        %309 = OpCooperativeVectorMatrixMulAddHW %96 %305 %306 %308
+               OpStore %tempArg_1 %309
+        %310 = OpLoad %96 %tempArg_1
+               OpStore %v8 %310
+        %312 = OpLoad %115 %v9
+        %313 = OpLoad %119 %m10
+        %315 = OpLoad %111 %v10bias
+        %316 = OpCooperativeVectorMatrixMulAddHW %111 %312 %313 %315
+               OpStore %tempArg_2 %316
+        %317 = OpLoad %111 %tempArg_2
+               OpStore %v10 %317
+        %318 = OpLoad %41 %v
+        %319 = OpLoad %41 %v
+        %320 = OpFAdd %41 %319 %318
+               OpStore %v %320
+        %321 = OpLoad %int %len
+        %322 = OpVectorExtractDynamic %float %320 %321
+        %323 = OpLoad %float %f
+        %324 = OpFAdd %float %323 %322
+               OpStore %f %324
+               OpReturn
+               OpFunctionEnd
+%foo_coopvecHWf161_1__ = OpFunction %9 None %11
+          %x = OpFunctionParameter %_ptr_Function_9
+         %14 = OpLabel
+         %22 = OpLoad %9 %x
+               OpReturnValue %22
+               OpFunctionEnd
+%foo_coopvecHWf161_2__ = OpFunction %16 None %18
+        %x_0 = OpFunctionParameter %_ptr_Function_16
+         %21 = OpLabel
+         %25 = OpLoad %16 %x_0
+               OpReturnValue %25
+               OpFunctionEnd

@@ -1,0 +1,7 @@
+spv.coopvecHWMatMulAdd_Error.comp
+ERROR: 0:16: 'coopVecMatMulAddHW' : result and bias component types must match 
+ERROR: 0:16: 'coopVecMatMulAddHW' : result and bias component counts must match 
+ERROR: 2 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

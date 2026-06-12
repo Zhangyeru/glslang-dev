@@ -1,0 +1,16 @@
+#version 450 core
+#extension GL_KHR_memory_scope_semantics : enable
+#extension GL_HW_neural_matrix : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+void main()
+{
+    coopmatHW<float16_t, 16, 8> A;
+    coopmatHW<float16_t, 16, 8> B;
+    coopmatHW<float16_t, 15, 8> C;
+    coopmatHW<float16_t, 16, 16> result;
+
+    coopMatMulAddHW(result, A, B, C);
+}

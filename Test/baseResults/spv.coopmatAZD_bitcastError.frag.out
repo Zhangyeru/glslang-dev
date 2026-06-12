@@ -1,9 +1,0 @@
-spv.coopmatAZD_bitcastError.frag
-ERROR: 0:13: 'floatBitsToInt' : requires coopmatAZD<float|float16_t, ...> 
-ERROR: 0:14: 'uintBitsToFloat' : requires coopmatAZD<uint|uint16_t, ...> 
-ERROR: 0:15: 'float16BitsToInt16' : requires coopmatAZD<float16_t, ...> 
-ERROR: 0:16: 'int16BitsToFloat16' : requires coopmatAZD<int16_t, ...> 
-ERROR: 4 compilation errors.  No code generated.
-
-
-SPIR-V is not generated for failed compile or link

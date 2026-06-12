@@ -1,0 +1,390 @@
+spv.coopmatHW_arithmetic.vert
+; SPIR-V
+; Version: 1.0
+; Generator: Khronos Glslang Reference Front End; 11
+; Bound: 268
+; Schema: 0
+               OpCapability Shader
+               OpCapability Float16
+               OpCapability Int16
+               OpCapability Int8
+               OpCapability VulkanMemoryModel
+               OpCapability CooperativeMatrixHW
+               OpExtension "SPV_HW_neural_matrix"
+               OpExtension "SPV_KHR_vulkan_memory_model"
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint Vertex %main "main" %_
+               OpSource GLSL 450
+               OpSourceExtension "GL_EXT_shader_explicit_arithmetic_types"
+               OpSourceExtension "GL_HW_neural_matrix"
+               OpSourceExtension "GL_KHR_memory_scope_semantics"
+               OpName %main "main"
+               OpName %gl_PerVertex "gl_PerVertex"
+               OpMemberName %gl_PerVertex 0 "gl_Position"
+               OpMemberName %gl_PerVertex 1 "gl_PointSize"
+               OpMemberName %gl_PerVertex 2 "gl_ClipDistance"
+               OpMemberName %gl_PerVertex 3 "gl_CullDistance"
+               OpName %_ ""
+               OpName %f16a "f16a"
+               OpName %f16b "f16b"
+               OpName %f32a "f32a"
+               OpName %f32b "f32b"
+               OpName %i32a "i32a"
+               OpName %i32b "i32b"
+               OpName %i8a "i8a"
+               OpName %i8b "i8b"
+               OpName %i16a "i16a"
+               OpName %i16b "i16b"
+               OpName %u32a "u32a"
+               OpName %u32b "u32b"
+               OpName %u8a "u8a"
+               OpName %u8b "u8b"
+               OpName %u16a "u16a"
+               OpName %u16b "u16b"
+               OpDecorate %gl_PerVertex Block
+               OpMemberDecorate %gl_PerVertex 0 BuiltIn Position
+               OpMemberDecorate %gl_PerVertex 1 BuiltIn PointSize
+               OpMemberDecorate %gl_PerVertex 2 BuiltIn ClipDistance
+               OpMemberDecorate %gl_PerVertex 3 BuiltIn CullDistance
+       %void = OpTypeVoid
+          %3 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+    %v4float = OpTypeVector %float 4
+       %uint = OpTypeInt 32 0
+     %uint_1 = OpConstant %uint 1
+%_arr_float_uint_1 = OpTypeArray %float %uint_1
+%gl_PerVertex = OpTypeStruct %v4float %float %_arr_float_uint_1 %_arr_float_uint_1
+%_ptr_Output_gl_PerVertex = OpTypePointer Output %gl_PerVertex
+          %_ = OpVariable %_ptr_Output_gl_PerVertex Output
+        %int = OpTypeInt 32 1
+      %int_0 = OpConstant %int 0
+    %float_0 = OpConstant %float 0
+         %17 = OpConstantComposite %v4float %float_0 %float_0 %float_0 %float_0
+%_ptr_Output_v4float = OpTypePointer Output %v4float
+       %half = OpTypeFloat 16
+    %uint_16 = OpConstant %uint 16
+     %uint_8 = OpConstant %uint 8
+         %23 = OpTypeCooperativeMatrixHW %half %uint_16 %uint_8 MatrixUseAHW
+%_ptr_Function_23 = OpTypePointer Function %23
+         %53 = OpTypeCooperativeMatrixHW %float %uint_8 %uint_16 MatrixUseAHW
+%_ptr_Function_53 = OpTypePointer Function %53
+         %83 = OpTypeCooperativeMatrixHW %int %uint_8 %uint_8 MatrixUseAHW
+%_ptr_Function_83 = OpTypePointer Function %83
+       %char = OpTypeInt 8 1
+        %114 = OpTypeCooperativeMatrixHW %char %uint_16 %uint_8 MatrixUseAHW
+%_ptr_Function_114 = OpTypePointer Function %114
+      %short = OpTypeInt 16 1
+        %145 = OpTypeCooperativeMatrixHW %short %uint_16 %uint_16 MatrixUseAHW
+%_ptr_Function_145 = OpTypePointer Function %145
+        %175 = OpTypeCooperativeMatrixHW %uint %uint_8 %uint_16 MatrixUseAHW
+%_ptr_Function_175 = OpTypePointer Function %175
+      %uchar = OpTypeInt 8 0
+        %206 = OpTypeCooperativeMatrixHW %uchar %uint_16 %uint_8 MatrixUseAHW
+%_ptr_Function_206 = OpTypePointer Function %206
+     %ushort = OpTypeInt 16 0
+     %uint_4 = OpConstant %uint 4
+        %238 = OpTypeCooperativeMatrixHW %ushort %uint_4 %uint_16 MatrixUseAHW
+%_ptr_Function_238 = OpTypePointer Function %238
+       %main = OpFunction %void None %3
+          %5 = OpLabel
+       %f16a = OpVariable %_ptr_Function_23 Function
+       %f16b = OpVariable %_ptr_Function_23 Function
+       %f32a = OpVariable %_ptr_Function_53 Function
+       %f32b = OpVariable %_ptr_Function_53 Function
+       %i32a = OpVariable %_ptr_Function_83 Function
+       %i32b = OpVariable %_ptr_Function_83 Function
+        %i8a = OpVariable %_ptr_Function_114 Function
+        %i8b = OpVariable %_ptr_Function_114 Function
+       %i16a = OpVariable %_ptr_Function_145 Function
+       %i16b = OpVariable %_ptr_Function_145 Function
+       %u32a = OpVariable %_ptr_Function_175 Function
+       %u32b = OpVariable %_ptr_Function_175 Function
+        %u8a = OpVariable %_ptr_Function_206 Function
+        %u8b = OpVariable %_ptr_Function_206 Function
+       %u16a = OpVariable %_ptr_Function_238 Function
+       %u16b = OpVariable %_ptr_Function_238 Function
+         %19 = OpAccessChain %_ptr_Output_v4float %_ %int_0
+               OpStore %19 %17
+         %26 = OpLoad %23 %f16a
+         %27 = OpFNegate %23 %26
+               OpStore %f16a %27
+         %28 = OpLoad %23 %f16a
+         %30 = OpLoad %23 %f16b
+         %31 = OpFAdd %23 %28 %30
+               OpStore %f16a %31
+         %32 = OpLoad %23 %f16a
+         %33 = OpLoad %23 %f16b
+         %34 = OpFSub %23 %32 %33
+               OpStore %f16a %34
+         %35 = OpLoad %23 %f16a
+         %36 = OpLoad %23 %f16b
+         %37 = OpFMul %23 %35 %36
+               OpStore %f16a %37
+         %38 = OpLoad %23 %f16a
+         %39 = OpLoad %23 %f16b
+         %40 = OpFDiv %23 %38 %39
+               OpStore %f16a %40
+         %41 = OpLoad %23 %f16b
+         %42 = OpLoad %23 %f16a
+         %43 = OpFAdd %23 %42 %41
+               OpStore %f16a %43
+         %44 = OpLoad %23 %f16b
+         %45 = OpLoad %23 %f16a
+         %46 = OpFSub %23 %45 %44
+               OpStore %f16a %46
+         %47 = OpLoad %23 %f16b
+         %48 = OpLoad %23 %f16a
+         %49 = OpFMul %23 %48 %47
+               OpStore %f16a %49
+         %50 = OpLoad %23 %f16b
+         %51 = OpLoad %23 %f16a
+         %52 = OpFDiv %23 %51 %50
+               OpStore %f16a %52
+         %56 = OpLoad %53 %f32a
+         %57 = OpFNegate %53 %56
+               OpStore %f32a %57
+         %58 = OpLoad %53 %f32a
+         %60 = OpLoad %53 %f32b
+         %61 = OpFAdd %53 %58 %60
+               OpStore %f32a %61
+         %62 = OpLoad %53 %f32a
+         %63 = OpLoad %53 %f32b
+         %64 = OpFSub %53 %62 %63
+               OpStore %f32a %64
+         %65 = OpLoad %53 %f32a
+         %66 = OpLoad %53 %f32b
+         %67 = OpFMul %53 %65 %66
+               OpStore %f32a %67
+         %68 = OpLoad %53 %f32a
+         %69 = OpLoad %53 %f32b
+         %70 = OpFDiv %53 %68 %69
+               OpStore %f32a %70
+         %71 = OpLoad %53 %f32b
+         %72 = OpLoad %53 %f32a
+         %73 = OpFAdd %53 %72 %71
+               OpStore %f32a %73
+         %74 = OpLoad %53 %f32b
+         %75 = OpLoad %53 %f32a
+         %76 = OpFSub %53 %75 %74
+               OpStore %f32a %76
+         %77 = OpLoad %53 %f32b
+         %78 = OpLoad %53 %f32a
+         %79 = OpFMul %53 %78 %77
+               OpStore %f32a %79
+         %80 = OpLoad %53 %f32b
+         %81 = OpLoad %53 %f32a
+         %82 = OpFDiv %53 %81 %80
+               OpStore %f32a %82
+         %86 = OpLoad %83 %i32a
+         %87 = OpSNegate %83 %86
+               OpStore %i32a %87
+         %88 = OpLoad %83 %i32a
+         %90 = OpLoad %83 %i32b
+         %91 = OpIAdd %83 %88 %90
+               OpStore %i32a %91
+         %92 = OpLoad %83 %i32a
+         %93 = OpLoad %83 %i32b
+         %94 = OpISub %83 %92 %93
+               OpStore %i32a %94
+         %95 = OpLoad %83 %i32a
+         %96 = OpLoad %83 %i32b
+         %97 = OpIMul %83 %95 %96
+               OpStore %i32a %97
+         %98 = OpLoad %83 %i32a
+         %99 = OpLoad %83 %i32b
+        %100 = OpSDiv %83 %98 %99
+               OpStore %i32a %100
+        %101 = OpLoad %83 %i32b
+        %102 = OpLoad %83 %i32a
+        %103 = OpIAdd %83 %102 %101
+               OpStore %i32a %103
+        %104 = OpLoad %83 %i32b
+        %105 = OpLoad %83 %i32a
+        %106 = OpISub %83 %105 %104
+               OpStore %i32a %106
+        %107 = OpLoad %83 %i32b
+        %108 = OpLoad %83 %i32a
+        %109 = OpIMul %83 %108 %107
+               OpStore %i32a %109
+        %110 = OpLoad %83 %i32b
+        %111 = OpLoad %83 %i32a
+        %112 = OpSDiv %83 %111 %110
+               OpStore %i32a %112
+        %117 = OpLoad %114 %i8a
+        %118 = OpSNegate %114 %117
+               OpStore %i8a %118
+        %119 = OpLoad %114 %i8a
+        %121 = OpLoad %114 %i8b
+        %122 = OpIAdd %114 %119 %121
+               OpStore %i8a %122
+        %123 = OpLoad %114 %i8a
+        %124 = OpLoad %114 %i8b
+        %125 = OpISub %114 %123 %124
+               OpStore %i8a %125
+        %126 = OpLoad %114 %i8a
+        %127 = OpLoad %114 %i8b
+        %128 = OpIMul %114 %126 %127
+               OpStore %i8a %128
+        %129 = OpLoad %114 %i8a
+        %130 = OpLoad %114 %i8b
+        %131 = OpSDiv %114 %129 %130
+               OpStore %i8a %131
+        %132 = OpLoad %114 %i8b
+        %133 = OpLoad %114 %i8a
+        %134 = OpIAdd %114 %133 %132
+               OpStore %i8a %134
+        %135 = OpLoad %114 %i8b
+        %136 = OpLoad %114 %i8a
+        %137 = OpISub %114 %136 %135
+               OpStore %i8a %137
+        %138 = OpLoad %114 %i8b
+        %139 = OpLoad %114 %i8a
+        %140 = OpIMul %114 %139 %138
+               OpStore %i8a %140
+        %141 = OpLoad %114 %i8b
+        %142 = OpLoad %114 %i8a
+        %143 = OpSDiv %114 %142 %141
+               OpStore %i8a %143
+        %148 = OpLoad %145 %i16a
+        %149 = OpSNegate %145 %148
+               OpStore %i16a %149
+        %150 = OpLoad %145 %i16a
+        %152 = OpLoad %145 %i16b
+        %153 = OpIAdd %145 %150 %152
+               OpStore %i16a %153
+        %154 = OpLoad %145 %i16a
+        %155 = OpLoad %145 %i16b
+        %156 = OpISub %145 %154 %155
+               OpStore %i16a %156
+        %157 = OpLoad %145 %i16a
+        %158 = OpLoad %145 %i16b
+        %159 = OpIMul %145 %157 %158
+               OpStore %i16a %159
+        %160 = OpLoad %145 %i16a
+        %161 = OpLoad %145 %i16b
+        %162 = OpSDiv %145 %160 %161
+               OpStore %i16a %162
+        %163 = OpLoad %145 %i16b
+        %164 = OpLoad %145 %i16a
+        %165 = OpIAdd %145 %164 %163
+               OpStore %i16a %165
+        %166 = OpLoad %145 %i16b
+        %167 = OpLoad %145 %i16a
+        %168 = OpISub %145 %167 %166
+               OpStore %i16a %168
+        %169 = OpLoad %145 %i16b
+        %170 = OpLoad %145 %i16a
+        %171 = OpIMul %145 %170 %169
+               OpStore %i16a %171
+        %172 = OpLoad %145 %i16b
+        %173 = OpLoad %145 %i16a
+        %174 = OpSDiv %145 %173 %172
+               OpStore %i16a %174
+        %178 = OpLoad %175 %u32a
+        %179 = OpSNegate %175 %178
+               OpStore %u32a %179
+        %180 = OpLoad %175 %u32a
+        %182 = OpLoad %175 %u32b
+        %183 = OpIAdd %175 %180 %182
+               OpStore %u32a %183
+        %184 = OpLoad %175 %u32a
+        %185 = OpLoad %175 %u32b
+        %186 = OpISub %175 %184 %185
+               OpStore %u32a %186
+        %187 = OpLoad %175 %u32a
+        %188 = OpLoad %175 %u32b
+        %189 = OpIMul %175 %187 %188
+               OpStore %u32a %189
+        %190 = OpLoad %175 %u32a
+        %191 = OpLoad %175 %u32b
+        %192 = OpUDiv %175 %190 %191
+               OpStore %u32a %192
+        %193 = OpLoad %175 %u32b
+        %194 = OpLoad %175 %u32a
+        %195 = OpIAdd %175 %194 %193
+               OpStore %u32a %195
+        %196 = OpLoad %175 %u32b
+        %197 = OpLoad %175 %u32a
+        %198 = OpISub %175 %197 %196
+               OpStore %u32a %198
+        %199 = OpLoad %175 %u32b
+        %200 = OpLoad %175 %u32a
+        %201 = OpIMul %175 %200 %199
+               OpStore %u32a %201
+        %202 = OpLoad %175 %u32b
+        %203 = OpLoad %175 %u32a
+        %204 = OpUDiv %175 %203 %202
+               OpStore %u32a %204
+        %209 = OpLoad %206 %u8a
+        %210 = OpSNegate %206 %209
+               OpStore %u8a %210
+        %211 = OpLoad %206 %u8a
+        %213 = OpLoad %206 %u8b
+        %214 = OpIAdd %206 %211 %213
+               OpStore %u8a %214
+        %215 = OpLoad %206 %u8a
+        %216 = OpLoad %206 %u8b
+        %217 = OpISub %206 %215 %216
+               OpStore %u8a %217
+        %218 = OpLoad %206 %u8a
+        %219 = OpLoad %206 %u8b
+        %220 = OpIMul %206 %218 %219
+               OpStore %u8a %220
+        %221 = OpLoad %206 %u8a
+        %222 = OpLoad %206 %u8b
+        %223 = OpUDiv %206 %221 %222
+               OpStore %u8a %223
+        %224 = OpLoad %206 %u8b
+        %225 = OpLoad %206 %u8a
+        %226 = OpIAdd %206 %225 %224
+               OpStore %u8a %226
+        %227 = OpLoad %206 %u8b
+        %228 = OpLoad %206 %u8a
+        %229 = OpISub %206 %228 %227
+               OpStore %u8a %229
+        %230 = OpLoad %206 %u8b
+        %231 = OpLoad %206 %u8a
+        %232 = OpIMul %206 %231 %230
+               OpStore %u8a %232
+        %233 = OpLoad %206 %u8b
+        %234 = OpLoad %206 %u8a
+        %235 = OpUDiv %206 %234 %233
+               OpStore %u8a %235
+        %241 = OpLoad %238 %u16a
+        %242 = OpSNegate %238 %241
+               OpStore %u16a %242
+        %243 = OpLoad %238 %u16a
+        %245 = OpLoad %238 %u16b
+        %246 = OpIAdd %238 %243 %245
+               OpStore %u16a %246
+        %247 = OpLoad %238 %u16a
+        %248 = OpLoad %238 %u16b
+        %249 = OpISub %238 %247 %248
+               OpStore %u16a %249
+        %250 = OpLoad %238 %u16a
+        %251 = OpLoad %238 %u16b
+        %252 = OpIMul %238 %250 %251
+               OpStore %u16a %252
+        %253 = OpLoad %238 %u16a
+        %254 = OpLoad %238 %u16b
+        %255 = OpUDiv %238 %253 %254
+               OpStore %u16a %255
+        %256 = OpLoad %238 %u16b
+        %257 = OpLoad %238 %u16a
+        %258 = OpIAdd %238 %257 %256
+               OpStore %u16a %258
+        %259 = OpLoad %238 %u16b
+        %260 = OpLoad %238 %u16a
+        %261 = OpISub %238 %260 %259
+               OpStore %u16a %261
+        %262 = OpLoad %238 %u16b
+        %263 = OpLoad %238 %u16a
+        %264 = OpIMul %238 %263 %262
+               OpStore %u16a %264
+        %265 = OpLoad %238 %u16b
+        %266 = OpLoad %238 %u16a
+        %267 = OpUDiv %238 %266 %265
+               OpStore %u16a %267
+               OpReturn
+               OpFunctionEnd

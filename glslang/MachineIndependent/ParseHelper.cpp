@@ -54,15 +54,15 @@ namespace glslang {
 
 namespace {
 
-const int CoopMatAZDRoleOperandAB = 1;
-const int CoopMatAZDRoleAccumulator = 2;
+const int CoopMatHWRoleOperandAB = 1;
+const int CoopMatHWRoleAccumulator = 2;
 
-TString coopMatAZDKeyInteger(long long value)
+TString coopMatHWKeyInteger(long long value)
 {
     return std::to_string(value).c_str();
 }
 
-bool isCoopMatAZDLogicalValueIndexOp(TOperator op)
+bool isCoopMatHWLogicalValueIndexOp(TOperator op)
 {
     return op == EOpIndexDirect || op == EOpIndexIndirect || op == EOpIndexDirectStruct;
 }
@@ -95,13 +95,13 @@ bool haveSameInnermostArrayElementType(const TType& left, const TType& right)
     return left == right;
 }
 
-bool isAZDCooperativeBufferBuiltin(TOperator op)
+bool isHWCooperativeBufferBuiltin(TOperator op)
 {
     switch (op) {
-    case EOpCooperativeMatrixLoadAZD:
-    case EOpCooperativeMatrixStoreAZD:
-    case EOpCooperativeVectorLoadAZD:
-    case EOpCooperativeVectorStoreAZD:
+    case EOpCooperativeMatrixLoadHW:
+    case EOpCooperativeMatrixStoreHW:
+    case EOpCooperativeVectorLoadHW:
+    case EOpCooperativeVectorStoreHW:
         return true;
     default:
         return false;
@@ -129,63 +129,63 @@ void inheritCooperativeResultTypeFromFirstArgument(TIntermTyped* result)
         result->setType(aggregate->getSequence()[0]->getAsTyped()->getType());
 }
 
-bool handleCoopVecAZDBitcastBuiltin(TParseContext& parseContext, const TSourceLoc& loc, const TFunction* fnCandidate,
+bool handleCoopVecHWBitcastBuiltin(TParseContext& parseContext, const TSourceLoc& loc, const TFunction* fnCandidate,
                                    TIntermTyped* result, TIntermNode* arguments)
 {
-    if (!result->getType().isCoopVecAZD() || result->getType().isParameterized())
+    if (!result->getType().isCoopVecHW() || result->getType().isParameterized())
         return false;
 
     const TType* argType = getFirstCooperativeADArgumentType(arguments);
     switch (fnCandidate->getBuiltInOp()) {
     case EOpFloatBitsToInt:
-        if (argType == nullptr || !argType->isCoopVecAZD() ||
+        if (argType == nullptr || !argType->isCoopVecHW() ||
             (argType->getBasicType() != EbtFloat && argType->getBasicType() != EbtFloat16))
-            parseContext.error(loc, "requires coopvecAZD<float|float16_t, ...>", "floatBitsToInt", "");
+            parseContext.error(loc, "requires coopvecHW<float|float16_t, ...>", "floatBitsToInt", "");
         else
             setCooperativeADResultBasicType(result, argType, argType->getBasicType() == EbtFloat16 ? EbtInt16 : EbtInt);
         return true;
     case EOpFloatBitsToUint:
-        if (argType == nullptr || !argType->isCoopVecAZD() ||
+        if (argType == nullptr || !argType->isCoopVecHW() ||
             (argType->getBasicType() != EbtFloat && argType->getBasicType() != EbtFloat16))
-            parseContext.error(loc, "requires coopvecAZD<float|float16_t, ...>", "floatBitsToUint", "");
+            parseContext.error(loc, "requires coopvecHW<float|float16_t, ...>", "floatBitsToUint", "");
         else
             setCooperativeADResultBasicType(result, argType, argType->getBasicType() == EbtFloat16 ? EbtUint16 : EbtUint);
         return true;
     case EOpIntBitsToFloat:
-        if (argType == nullptr || !argType->isCoopVecAZD() ||
+        if (argType == nullptr || !argType->isCoopVecHW() ||
             (argType->getBasicType() != EbtInt && argType->getBasicType() != EbtInt16))
-            parseContext.error(loc, "requires coopvecAZD<int|int16_t, ...>", "intBitsToFloat", "");
+            parseContext.error(loc, "requires coopvecHW<int|int16_t, ...>", "intBitsToFloat", "");
         else
             setCooperativeADResultBasicType(result, argType, argType->getBasicType() == EbtInt16 ? EbtFloat16 : EbtFloat);
         return true;
     case EOpUintBitsToFloat:
-        if (argType == nullptr || !argType->isCoopVecAZD() ||
+        if (argType == nullptr || !argType->isCoopVecHW() ||
             (argType->getBasicType() != EbtUint && argType->getBasicType() != EbtUint16))
-            parseContext.error(loc, "requires coopvecAZD<uint|uint16_t, ...>", "uintBitsToFloat", "");
+            parseContext.error(loc, "requires coopvecHW<uint|uint16_t, ...>", "uintBitsToFloat", "");
         else
             setCooperativeADResultBasicType(result, argType, argType->getBasicType() == EbtUint16 ? EbtFloat16 : EbtFloat);
         return true;
     case EOpFloat16BitsToInt16:
-        if (argType == nullptr || !argType->isCoopVecAZD() || argType->getBasicType() != EbtFloat16)
-            parseContext.error(loc, "requires coopvecAZD<float16_t, ...>", "float16BitsToInt16", "");
+        if (argType == nullptr || !argType->isCoopVecHW() || argType->getBasicType() != EbtFloat16)
+            parseContext.error(loc, "requires coopvecHW<float16_t, ...>", "float16BitsToInt16", "");
         else
             setCooperativeADResultBasicType(result, argType, EbtInt16);
         return true;
     case EOpFloat16BitsToUint16:
-        if (argType == nullptr || !argType->isCoopVecAZD() || argType->getBasicType() != EbtFloat16)
-            parseContext.error(loc, "requires coopvecAZD<float16_t, ...>", "float16BitsToUint16", "");
+        if (argType == nullptr || !argType->isCoopVecHW() || argType->getBasicType() != EbtFloat16)
+            parseContext.error(loc, "requires coopvecHW<float16_t, ...>", "float16BitsToUint16", "");
         else
             setCooperativeADResultBasicType(result, argType, EbtUint16);
         return true;
     case EOpInt16BitsToFloat16:
-        if (argType == nullptr || !argType->isCoopVecAZD() || argType->getBasicType() != EbtInt16)
-            parseContext.error(loc, "requires coopvecAZD<int16_t, ...>", "int16BitsToFloat16", "");
+        if (argType == nullptr || !argType->isCoopVecHW() || argType->getBasicType() != EbtInt16)
+            parseContext.error(loc, "requires coopvecHW<int16_t, ...>", "int16BitsToFloat16", "");
         else
             setCooperativeADResultBasicType(result, argType, EbtFloat16);
         return true;
     case EOpUint16BitsToFloat16:
-        if (argType == nullptr || !argType->isCoopVecAZD() || argType->getBasicType() != EbtUint16)
-            parseContext.error(loc, "requires coopvecAZD<uint16_t, ...>", "uint16BitsToFloat16", "");
+        if (argType == nullptr || !argType->isCoopVecHW() || argType->getBasicType() != EbtUint16)
+            parseContext.error(loc, "requires coopvecHW<uint16_t, ...>", "uint16BitsToFloat16", "");
         else
             setCooperativeADResultBasicType(result, argType, EbtFloat16);
         return true;
@@ -194,63 +194,63 @@ bool handleCoopVecAZDBitcastBuiltin(TParseContext& parseContext, const TSourceLo
     }
 }
 
-bool handleCoopMatAZDBitcastBuiltin(TParseContext& parseContext, const TSourceLoc& loc, const TFunction* fnCandidate,
+bool handleCoopMatHWBitcastBuiltin(TParseContext& parseContext, const TSourceLoc& loc, const TFunction* fnCandidate,
                                    TIntermTyped* result, TIntermNode* arguments)
 {
-    if (!result->getType().isCoopMatAZD() || result->getType().isParameterized())
+    if (!result->getType().isCoopMatHW() || result->getType().isParameterized())
         return false;
 
     const TType* argType = getFirstCooperativeADArgumentType(arguments, result);
     switch (fnCandidate->getBuiltInOp()) {
     case EOpFloatBitsToInt:
-        if (argType == nullptr || !argType->isCoopMatAZD() ||
+        if (argType == nullptr || !argType->isCoopMatHW() ||
             (argType->getBasicType() != EbtFloat && argType->getBasicType() != EbtFloat16))
-            parseContext.error(loc, "requires coopmatAZD<float|float16_t, ...>", "floatBitsToInt", "");
+            parseContext.error(loc, "requires coopmatHW<float|float16_t, ...>", "floatBitsToInt", "");
         else
             setCooperativeADResultBasicType(result, argType, argType->getBasicType() == EbtFloat16 ? EbtInt16 : EbtInt);
         return true;
     case EOpFloatBitsToUint:
-        if (argType == nullptr || !argType->isCoopMatAZD() ||
+        if (argType == nullptr || !argType->isCoopMatHW() ||
             (argType->getBasicType() != EbtFloat && argType->getBasicType() != EbtFloat16))
-            parseContext.error(loc, "requires coopmatAZD<float|float16_t, ...>", "floatBitsToUint", "");
+            parseContext.error(loc, "requires coopmatHW<float|float16_t, ...>", "floatBitsToUint", "");
         else
             setCooperativeADResultBasicType(result, argType, argType->getBasicType() == EbtFloat16 ? EbtUint16 : EbtUint);
         return true;
     case EOpFloat16BitsToUint16:
-        if (argType == nullptr || !argType->isCoopMatAZD() || argType->getBasicType() != EbtFloat16)
-            parseContext.error(loc, "requires coopmatAZD<float16_t, ...>", "float16BitsToUint16", "");
+        if (argType == nullptr || !argType->isCoopMatHW() || argType->getBasicType() != EbtFloat16)
+            parseContext.error(loc, "requires coopmatHW<float16_t, ...>", "float16BitsToUint16", "");
         else
             setCooperativeADResultBasicType(result, argType, EbtUint16);
         return true;
     case EOpIntBitsToFloat:
-        if (argType == nullptr || !argType->isCoopMatAZD() ||
+        if (argType == nullptr || !argType->isCoopMatHW() ||
             (argType->getBasicType() != EbtInt && argType->getBasicType() != EbtInt16))
-            parseContext.error(loc, "requires coopmatAZD<int|int16_t, ...>", "intBitsToFloat", "");
+            parseContext.error(loc, "requires coopmatHW<int|int16_t, ...>", "intBitsToFloat", "");
         else
             setCooperativeADResultBasicType(result, argType, argType->getBasicType() == EbtInt16 ? EbtFloat16 : EbtFloat);
         return true;
     case EOpInt16BitsToFloat16:
-        if (argType == nullptr || !argType->isCoopMatAZD() || argType->getBasicType() != EbtInt16)
-            parseContext.error(loc, "requires coopmatAZD<int16_t, ...>", "int16BitsToFloat16", "");
+        if (argType == nullptr || !argType->isCoopMatHW() || argType->getBasicType() != EbtInt16)
+            parseContext.error(loc, "requires coopmatHW<int16_t, ...>", "int16BitsToFloat16", "");
         else
             setCooperativeADResultBasicType(result, argType, EbtFloat16);
         return true;
     case EOpUintBitsToFloat:
-        if (argType == nullptr || !argType->isCoopMatAZD() ||
+        if (argType == nullptr || !argType->isCoopMatHW() ||
             (argType->getBasicType() != EbtUint && argType->getBasicType() != EbtUint16))
-            parseContext.error(loc, "requires coopmatAZD<uint|uint16_t, ...>", "uintBitsToFloat", "");
+            parseContext.error(loc, "requires coopmatHW<uint|uint16_t, ...>", "uintBitsToFloat", "");
         else
             setCooperativeADResultBasicType(result, argType, argType->getBasicType() == EbtUint16 ? EbtFloat16 : EbtFloat);
         return true;
     case EOpUint16BitsToFloat16:
-        if (argType == nullptr || !argType->isCoopMatAZD() || argType->getBasicType() != EbtUint16)
-            parseContext.error(loc, "requires coopmatAZD<uint16_t, ...>", "uint16BitsToFloat16", "");
+        if (argType == nullptr || !argType->isCoopMatHW() || argType->getBasicType() != EbtUint16)
+            parseContext.error(loc, "requires coopmatHW<uint16_t, ...>", "uint16BitsToFloat16", "");
         else
             setCooperativeADResultBasicType(result, argType, EbtFloat16);
         return true;
     case EOpFloat16BitsToInt16:
-        if (argType == nullptr || !argType->isCoopMatAZD() || argType->getBasicType() != EbtFloat16)
-            parseContext.error(loc, "requires coopmatAZD<float16_t, ...>", "float16BitsToInt16", "");
+        if (argType == nullptr || !argType->isCoopMatHW() || argType->getBasicType() != EbtFloat16)
+            parseContext.error(loc, "requires coopmatHW<float16_t, ...>", "float16BitsToInt16", "");
         else
             setCooperativeADResultBasicType(result, argType, EbtInt16);
         return true;
@@ -259,7 +259,7 @@ bool handleCoopMatAZDBitcastBuiltin(TParseContext& parseContext, const TSourceLo
     }
 }
 
-int getCoopAZDTypeParameterDim(const TType& type, int dim)
+int getCoopHWTypeParameterDim(const TType& type, int dim)
 {
     const TTypeParameters* params = type.getTypeParameters();
     if (params == nullptr || params->arraySizes == nullptr || params->arraySizes->getNumDims() <= dim)
@@ -268,19 +268,19 @@ int getCoopAZDTypeParameterDim(const TType& type, int dim)
     return params->arraySizes->getDimSize(dim);
 }
 
-int getCoopVecAZDComponents(const TType& type)
+int getCoopVecHWComponents(const TType& type)
 {
-    return getCoopAZDTypeParameterDim(type, 0);
+    return getCoopHWTypeParameterDim(type, 0);
 }
 
-int getCoopMatAZDRows(const TType& type)
+int getCoopMatHWRows(const TType& type)
 {
-    return getCoopAZDTypeParameterDim(type, 0);
+    return getCoopHWTypeParameterDim(type, 0);
 }
 
-int getCoopMatAZDColumns(const TType& type)
+int getCoopMatHWColumns(const TType& type)
 {
-    return getCoopAZDTypeParameterDim(type, 1);
+    return getCoopHWTypeParameterDim(type, 1);
 }
 
 bool getConstantIntValue(TIntermNode* node, int& value)
@@ -298,48 +298,48 @@ bool getConstantIntValue(TIntermNode* node, int& value)
     return true;
 }
 
-bool handleCoopVecAZDMatMulBuiltin(TParseContext& parseContext, const TSourceLoc& loc,
+bool handleCoopVecHWMatMulBuiltin(TParseContext& parseContext, const TSourceLoc& loc,
                                   const TIntermOperator& callNode, const TIntermSequence& arguments)
 {
-    if (callNode.getOp() == EOpCooperativeVectorMatMulAZD && arguments.size() == 3) {
+    if (callNode.getOp() == EOpCooperativeVectorMatMulHW && arguments.size() == 3) {
         const TType& resultType = arguments[0]->getAsTyped()->getType();
         const TType& inputType = arguments[1]->getAsTyped()->getType();
         const TType& matrixType = arguments[2]->getAsTyped()->getType();
 
-        if (!resultType.isCoopVecAZD() || !inputType.isCoopVecAZD() || !matrixType.isCoopMatAZD())
-            parseContext.error(loc, "requires coopVecMatMulAZD(out coopvecAZD, coopvecAZD, coopmatAZD)", "coopVecMatMulAZD", "");
+        if (!resultType.isCoopVecHW() || !inputType.isCoopVecHW() || !matrixType.isCoopMatHW())
+            parseContext.error(loc, "requires coopVecMatMulHW(out coopvecHW, coopvecHW, coopmatHW)", "coopVecMatMulHW", "");
         else {
             if (inputType.getBasicType() != matrixType.getBasicType())
-                parseContext.error(loc, "input vector and matrix component types must match", "coopVecMatMulAZD", "");
-            if (getCoopVecAZDComponents(resultType) != getCoopMatAZDRows(matrixType))
-                parseContext.error(loc, "result vector component count must match matrix row count", "coopVecMatMulAZD", "");
-            if (getCoopVecAZDComponents(inputType) != getCoopMatAZDColumns(matrixType))
-                parseContext.error(loc, "input vector component count must match matrix column count", "coopVecMatMulAZD", "");
+                parseContext.error(loc, "input vector and matrix component types must match", "coopVecMatMulHW", "");
+            if (getCoopVecHWComponents(resultType) != getCoopMatHWRows(matrixType))
+                parseContext.error(loc, "result vector component count must match matrix row count", "coopVecMatMulHW", "");
+            if (getCoopVecHWComponents(inputType) != getCoopMatHWColumns(matrixType))
+                parseContext.error(loc, "input vector component count must match matrix column count", "coopVecMatMulHW", "");
         }
 
         return true;
     }
 
-    if (callNode.getOp() == EOpCooperativeVectorMatMulAddAZD && arguments.size() == 4) {
+    if (callNode.getOp() == EOpCooperativeVectorMatMulAddHW && arguments.size() == 4) {
         const TType& resultType = arguments[0]->getAsTyped()->getType();
         const TType& inputType = arguments[1]->getAsTyped()->getType();
         const TType& matrixType = arguments[2]->getAsTyped()->getType();
         const TType& biasType = arguments[3]->getAsTyped()->getType();
 
-        if (!resultType.isCoopVecAZD() || !inputType.isCoopVecAZD() || !matrixType.isCoopMatAZD() || !biasType.isCoopVecAZD())
-            parseContext.error(loc, "requires coopVecMatMulAddAZD(out coopvecAZD, coopvecAZD, coopmatAZD, coopvecAZD)", "coopVecMatMulAddAZD", "");
+        if (!resultType.isCoopVecHW() || !inputType.isCoopVecHW() || !matrixType.isCoopMatHW() || !biasType.isCoopVecHW())
+            parseContext.error(loc, "requires coopVecMatMulAddHW(out coopvecHW, coopvecHW, coopmatHW, coopvecHW)", "coopVecMatMulAddHW", "");
         else {
             if (resultType.getBasicType() != biasType.getBasicType())
-                parseContext.error(loc, "result and bias component types must match", "coopVecMatMulAddAZD", "");
-            if (getCoopVecAZDComponents(resultType) != getCoopVecAZDComponents(biasType))
-                parseContext.error(loc, "result and bias component counts must match", "coopVecMatMulAddAZD", "");
+                parseContext.error(loc, "result and bias component types must match", "coopVecMatMulAddHW", "");
+            if (getCoopVecHWComponents(resultType) != getCoopVecHWComponents(biasType))
+                parseContext.error(loc, "result and bias component counts must match", "coopVecMatMulAddHW", "");
 
             if (inputType.getBasicType() != matrixType.getBasicType())
-                parseContext.error(loc, "input vector and matrix component types must match", "coopVecMatMulAddAZD", "");
-            if (getCoopVecAZDComponents(resultType) != getCoopMatAZDRows(matrixType))
-                parseContext.error(loc, "result vector component count must match matrix row count", "coopVecMatMulAddAZD", "");
-            if (getCoopVecAZDComponents(inputType) != getCoopMatAZDColumns(matrixType))
-                parseContext.error(loc, "input vector component count must match matrix column count", "coopVecMatMulAddAZD", "");
+                parseContext.error(loc, "input vector and matrix component types must match", "coopVecMatMulAddHW", "");
+            if (getCoopVecHWComponents(resultType) != getCoopMatHWRows(matrixType))
+                parseContext.error(loc, "result vector component count must match matrix row count", "coopVecMatMulAddHW", "");
+            if (getCoopVecHWComponents(inputType) != getCoopMatHWColumns(matrixType))
+                parseContext.error(loc, "input vector component count must match matrix column count", "coopVecMatMulAddHW", "");
         }
 
         return true;
@@ -348,55 +348,55 @@ bool handleCoopVecAZDMatMulBuiltin(TParseContext& parseContext, const TSourceLoc
     return false;
 }
 
-bool handleCoopMatAZDMultiplyBuiltin(TParseContext& parseContext, const TSourceLoc& loc,
+bool handleCoopMatHWMultiplyBuiltin(TParseContext& parseContext, const TSourceLoc& loc,
                                      const TIntermOperator& callNode, const TIntermSequence& arguments)
 {
-    if (callNode.getOp() == EOpCooperativeMatrixMulAZD && arguments.size() == 3) {
+    if (callNode.getOp() == EOpCooperativeMatrixMulHW && arguments.size() == 3) {
         const TType& resultType = arguments[0]->getAsTyped()->getType();
         const TType& aType = arguments[1]->getAsTyped()->getType();
         const TType& bType = arguments[2]->getAsTyped()->getType();
 
-        if (!resultType.isCoopMatAZD() || !aType.isCoopMatAZD() || !bType.isCoopMatAZD())
-            parseContext.error(loc, "requires coopMatMulAZD(out coopmatAZD, coopmatAZD, coopmatAZD)", "coopMatMulAZD", "");
+        if (!resultType.isCoopMatHW() || !aType.isCoopMatHW() || !bType.isCoopMatHW())
+            parseContext.error(loc, "requires coopMatMulHW(out coopmatHW, coopmatHW, coopmatHW)", "coopMatMulHW", "");
         else {
-            if (getCoopMatAZDRows(aType) != getCoopMatAZDRows(resultType))
-                parseContext.error(loc, "A row count must match result row count", "coopMatMulAZD", "");
-            if (getCoopMatAZDColumns(bType) != getCoopMatAZDColumns(resultType))
-                parseContext.error(loc, "B column count must match result column count", "coopMatMulAZD", "");
-            if (getCoopMatAZDColumns(aType) != getCoopMatAZDRows(bType))
-                parseContext.error(loc, "A column count must match B row count", "coopMatMulAZD", "");
+            if (getCoopMatHWRows(aType) != getCoopMatHWRows(resultType))
+                parseContext.error(loc, "A row count must match result row count", "coopMatMulHW", "");
+            if (getCoopMatHWColumns(bType) != getCoopMatHWColumns(resultType))
+                parseContext.error(loc, "B column count must match result column count", "coopMatMulHW", "");
+            if (getCoopMatHWColumns(aType) != getCoopMatHWRows(bType))
+                parseContext.error(loc, "A column count must match B row count", "coopMatMulHW", "");
         }
 
-        parseContext.recordCoopMatAZDLogicalValueUse(loc, arguments[1]->getAsTyped(), false, "coopMatMulAZD");
-        parseContext.recordCoopMatAZDLogicalValueUse(loc, arguments[2]->getAsTyped(), false, "coopMatMulAZD");
-        parseContext.recordCoopMatAZDLogicalValueUse(loc, arguments[0]->getAsTyped(), true, "coopMatMulAZD");
+        parseContext.recordCoopMatHWLogicalValueUse(loc, arguments[1]->getAsTyped(), false, "coopMatMulHW");
+        parseContext.recordCoopMatHWLogicalValueUse(loc, arguments[2]->getAsTyped(), false, "coopMatMulHW");
+        parseContext.recordCoopMatHWLogicalValueUse(loc, arguments[0]->getAsTyped(), true, "coopMatMulHW");
 
         return true;
     }
 
-    if (callNode.getOp() == EOpCooperativeMatrixMulAddAZD && arguments.size() == 4) {
+    if (callNode.getOp() == EOpCooperativeMatrixMulAddHW && arguments.size() == 4) {
         const TType& resultType = arguments[0]->getAsTyped()->getType();
         const TType& aType = arguments[1]->getAsTyped()->getType();
         const TType& bType = arguments[2]->getAsTyped()->getType();
         const TType& cType = arguments[3]->getAsTyped()->getType();
 
-        if (!resultType.isCoopMatAZD() || !aType.isCoopMatAZD() || !bType.isCoopMatAZD() || !cType.isCoopMatAZD())
-            parseContext.error(loc, "requires coopMatMulAddAZD(out coopmatAZD, coopmatAZD, coopmatAZD, coopmatAZD)", "coopMatMulAddAZD", "");
+        if (!resultType.isCoopMatHW() || !aType.isCoopMatHW() || !bType.isCoopMatHW() || !cType.isCoopMatHW())
+            parseContext.error(loc, "requires coopMatMulAddHW(out coopmatHW, coopmatHW, coopmatHW, coopmatHW)", "coopMatMulAddHW", "");
         else {
-            if (getCoopMatAZDRows(aType) != getCoopMatAZDRows(cType) ||
-                getCoopMatAZDRows(aType) != getCoopMatAZDRows(resultType))
-                parseContext.error(loc, "A, C, and result row counts must match", "coopMatMulAddAZD", "");
-            if (getCoopMatAZDColumns(bType) != getCoopMatAZDColumns(cType) ||
-                getCoopMatAZDColumns(bType) != getCoopMatAZDColumns(resultType))
-                parseContext.error(loc, "B, C, and result column counts must match", "coopMatMulAddAZD", "");
-            if (getCoopMatAZDColumns(aType) != getCoopMatAZDRows(bType))
-                parseContext.error(loc, "A column count must match B row count", "coopMatMulAddAZD", "");
+            if (getCoopMatHWRows(aType) != getCoopMatHWRows(cType) ||
+                getCoopMatHWRows(aType) != getCoopMatHWRows(resultType))
+                parseContext.error(loc, "A, C, and result row counts must match", "coopMatMulAddHW", "");
+            if (getCoopMatHWColumns(bType) != getCoopMatHWColumns(cType) ||
+                getCoopMatHWColumns(bType) != getCoopMatHWColumns(resultType))
+                parseContext.error(loc, "B, C, and result column counts must match", "coopMatMulAddHW", "");
+            if (getCoopMatHWColumns(aType) != getCoopMatHWRows(bType))
+                parseContext.error(loc, "A column count must match B row count", "coopMatMulAddHW", "");
         }
 
-        parseContext.recordCoopMatAZDLogicalValueUse(loc, arguments[1]->getAsTyped(), false, "coopMatMulAddAZD");
-        parseContext.recordCoopMatAZDLogicalValueUse(loc, arguments[2]->getAsTyped(), false, "coopMatMulAddAZD");
-        parseContext.recordCoopMatAZDLogicalValueUse(loc, arguments[3]->getAsTyped(), true, "coopMatMulAddAZD");
-        parseContext.recordCoopMatAZDLogicalValueUse(loc, arguments[0]->getAsTyped(), true, "coopMatMulAddAZD");
+        parseContext.recordCoopMatHWLogicalValueUse(loc, arguments[1]->getAsTyped(), false, "coopMatMulAddHW");
+        parseContext.recordCoopMatHWLogicalValueUse(loc, arguments[2]->getAsTyped(), false, "coopMatMulAddHW");
+        parseContext.recordCoopMatHWLogicalValueUse(loc, arguments[3]->getAsTyped(), true, "coopMatMulAddHW");
+        parseContext.recordCoopMatHWLogicalValueUse(loc, arguments[0]->getAsTyped(), true, "coopMatMulAddHW");
 
         return true;
     }
@@ -404,21 +404,21 @@ bool handleCoopMatAZDMultiplyBuiltin(TParseContext& parseContext, const TSourceL
     return false;
 }
 
-bool handleCoopMatAZDFunctionCall(TParseContext& parseContext, const TSourceLoc& loc, const TFunction* fnCandidate,
+bool handleCoopMatHWFunctionCall(TParseContext& parseContext, const TSourceLoc& loc, const TFunction* fnCandidate,
                                  TIntermTyped* result, TIntermNode* arguments)
 {
-    if (!result->getType().isCoopMatAZD() || result->getType().isParameterized())
+    if (!result->getType().isCoopMatHW() || result->getType().isParameterized())
         return false;
 
-    if (handleCoopMatAZDBitcastBuiltin(parseContext, loc, fnCandidate, result, arguments))
+    if (handleCoopMatHWBitcastBuiltin(parseContext, loc, fnCandidate, result, arguments))
         return true;
 
-    if (fnCandidate->getBuiltInOp() == EOpCooperativeMatrixReduceAZD) {
+    if (fnCandidate->getBuiltInOp() == EOpCooperativeMatrixReduceHW) {
         result->setType(result->getAsAggregate()->getSequence()[0]->getAsTyped()->getType());
         return true;
     }
 
-    if (fnCandidate->getBuiltInOp() == EOpCooperativeMatrixMulAddAZD) {
+    if (fnCandidate->getBuiltInOp() == EOpCooperativeMatrixMulAddHW) {
         result->setType(result->getAsAggregate()->getSequence()[2]->getAsTyped()->getType());
         return true;
     }
@@ -926,7 +926,7 @@ TIntermTyped* TParseContext::handleBracketDereference(const TSourceLoc& loc, TIn
     // basic type checks...
     variableCheck(base);
 
-    if (!(base->getType().isCoopMatAZD() || base->getType().isCoopVecAZD()) &&
+    if (!(base->getType().isCoopMatHW() || base->getType().isCoopVecHW()) &&
         ! base->isArray() && ! base->isMatrix() && ! base->isVector() && ! base->getType().isCoopMat() &&
         ! base->isReference() && ! base->getType().isCoopVecNV()) {
         if (base->getAsSymbolNode())
@@ -1349,7 +1349,7 @@ TIntermTyped* TParseContext::handleDotDereference(const TSourceLoc& loc, TInterm
             const char* feature = ".length() on vectors and matrices";
             requireProfile(loc, ~EEsProfile, feature);
             profileRequires(loc, ~EEsProfile, 420, E_GL_ARB_shading_language_420pack, feature);
-        } else if (!(base->getType().isCoopMatAZD() || base->getType().isCoopVecAZD()) &&
+        } else if (!(base->getType().isCoopMatHW() || base->getType().isCoopVecHW()) &&
                    !base->getType().isCoopMat() && !base->getType().isCoopVecNV()) {
             bool enhanced = intermediate.getEnhancedMsgs();
             error(loc, "does not operate on this type:", field.c_str(), base->getType().getCompleteString(enhanced).c_str());
@@ -1367,7 +1367,7 @@ TIntermTyped* TParseContext::handleDotDereference(const TSourceLoc& loc, TInterm
         return base;
     }
 
-    if (base->getType().isCoopMatAZD()) {
+    if (base->getType().isCoopMatHW()) {
         error(loc, "cannot apply to a cooperative matrix type:", ".", field.c_str());
         return base;
     }
@@ -1897,10 +1897,10 @@ TIntermTyped* TParseContext::handleFunctionCall(const TSourceLoc& loc, TFunction
             }
 
             handleCoopMat2FunctionCall(loc, fnCandidate, result, arguments);
-            handleCoopMatAZDFunctionCall(*this, loc, fnCandidate, result, arguments);
-            bool handledCoopVecBitcast = handleCoopVecAZDBitcastBuiltin(*this, loc, fnCandidate, result, arguments);
+            handleCoopMatHWFunctionCall(*this, loc, fnCandidate, result, arguments);
+            bool handledCoopVecBitcast = handleCoopVecHWBitcastBuiltin(*this, loc, fnCandidate, result, arguments);
             if (!handledCoopVecBitcast && !result->getAsTyped()->getType().isParameterized()) {
-                if (result->getAsTyped()->getType().isCoopVecAZD())
+                if (result->getAsTyped()->getType().isCoopVecHW())
                     inheritCooperativeResultTypeFromFirstArgument(result);
                 else if (result->getAsTyped()->getType().isCoopVec())
                     inheritCooperativeResultTypeFromFirstArgument(result);
@@ -2434,7 +2434,7 @@ TIntermTyped* TParseContext::handleLengthMethod(const TSourceLoc& loc, TFunction
             length = type.getMatrixCols();
         else if (type.isVector())
             length = type.getVectorSize();
-        else if (type.isCoopMatAZD() || type.isCoopVecAZD())
+        else if (type.isCoopMatHW() || type.isCoopVecHW())
             return intermediate.addBuiltInFunctionCall(loc, EOpArrayLength, true, intermNode, TType(EbtInt));
         else if (type.isCoopMat() || type.isCoopVecNV())
             return intermediate.addBuiltInFunctionCall(loc, EOpArrayLength, true, intermNode, TType(EbtInt));
@@ -2465,7 +2465,7 @@ void TParseContext::addInputArgumentConversions(const TFunction& function, TInte
         TIntermTyped* arg = function.getParamCount() == 1 ? arguments->getAsTyped() : (aggregate ? aggregate->getSequence()[i]->getAsTyped() : arguments->getAsTyped());
         if (*function[i].type != arg->getType()) {
             if (function[i].type->getQualifier().isParamInput() &&
-               !function[i].type->isCoopMatAZD() &&
+               !function[i].type->isCoopMatHW() &&
                !function[i].type->isCoopMat()) {
                 // In-qualified arguments just need an extra node added above the argument to
                 // convert to the correct type.
@@ -2583,29 +2583,29 @@ TIntermTyped* TParseContext::addAssign(const TSourceLoc& loc, TOperator op, TInt
     return result;
 }
 
-bool TParseContext::getCoopMatAZDLogicalValueKey(TIntermTyped* node, TString& key) const
+bool TParseContext::getCoopMatHWLogicalValueKey(TIntermTyped* node, TString& key) const
 {
     if (!node)
         return false;
 
     if (TIntermSymbol* symbol = node->getAsSymbolNode()) {
         key = "s";
-        key.append(coopMatAZDKeyInteger(symbol->getId()));
+        key.append(coopMatHWKeyInteger(symbol->getId()));
         return true;
     }
 
     TIntermBinary* binary = node->getAsBinaryNode();
-    if (!binary || !isCoopMatAZDLogicalValueIndexOp(binary->getOp()))
+    if (!binary || !isCoopMatHWLogicalValueIndexOp(binary->getOp()))
         return false;
 
-    if (!getCoopMatAZDLogicalValueKey(binary->getLeft(), key))
+    if (!getCoopMatHWLogicalValueKey(binary->getLeft(), key))
         return false;
 
     TIntermConstantUnion* constant = binary->getRight()->getAsConstantUnion();
     if (binary->getOp() == EOpIndexDirectStruct) {
         key.append(".m");
         if (constant)
-            key.append(coopMatAZDKeyInteger(constant->getConstArray()[0].getIConst()));
+            key.append(coopMatHWKeyInteger(constant->getConstArray()[0].getIConst()));
         else
             key.append("*");
         return true;
@@ -2619,27 +2619,27 @@ bool TParseContext::getCoopMatAZDLogicalValueKey(TIntermTyped* node, TString& ke
     const TConstUnionArray& indices = constant->getConstArray();
     for (int i = 0; i < indices.size(); ++i) {
         key.append(".i");
-        key.append(coopMatAZDKeyInteger(indices[i].getIConst()));
+        key.append(coopMatHWKeyInteger(indices[i].getIConst()));
     }
 
     return true;
 }
 
-void TParseContext::recordCoopMatAZDLogicalValueUse(const TSourceLoc& loc, TIntermTyped* node,
+void TParseContext::recordCoopMatHWLogicalValueUse(const TSourceLoc& loc, TIntermTyped* node,
                                                     bool accumulator, const char* token)
 {
-    if (!node || !node->getType().isCoopMatAZD())
+    if (!node || !node->getType().isCoopMatHW())
         return;
 
-    const int role = accumulator ? CoopMatAZDRoleAccumulator : CoopMatAZDRoleOperandAB;
+    const int role = accumulator ? CoopMatHWRoleAccumulator : CoopMatHWRoleOperandAB;
 
     TString logicalValueKey;
-    if (!getCoopMatAZDLogicalValueKey(node, logicalValueKey))
+    if (!getCoopMatHWLogicalValueKey(node, logicalValueKey))
         return;
 
-    int& existingRole = coopMatAZDLogicalValueRoles[logicalValueKey];
+    int& existingRole = coopMatHWLogicalValueRoles[logicalValueKey];
     if (existingRole != 0 && (existingRole & role) == 0) {
-        error(loc, "same AZD cooperative matrix logical value cannot be used directly as both OperandAB and Accumulator",
+        error(loc, "same HW cooperative matrix logical value cannot be used directly as both OperandAB and Accumulator",
               token, "");
     }
     existingRole |= role;
@@ -3569,17 +3569,17 @@ void TParseContext::builtInOpCheck(const TSourceLoc& loc, const TFunction& fnCan
         }
 
         break;
-    case EOpCooperativeVectorMatMulAZD:
-    case EOpCooperativeVectorMatMulAddAZD:
+    case EOpCooperativeVectorMatMulHW:
+    case EOpCooperativeVectorMatMulAddHW:
         {
-            if (handleCoopVecAZDMatMulBuiltin(*this, loc, callNode, *argp))
+            if (handleCoopVecHWMatMulBuiltin(*this, loc, callNode, *argp))
                 break;
         }
         break;
-    case EOpCooperativeMatrixMulAZD:
-    case EOpCooperativeMatrixMulAddAZD:
+    case EOpCooperativeMatrixMulHW:
+    case EOpCooperativeMatrixMulAddHW:
         {
-            if (handleCoopMatAZDMultiplyBuiltin(*this, loc, callNode, *argp))
+            if (handleCoopMatHWMultiplyBuiltin(*this, loc, callNode, *argp))
                 break;
         }
         break;
@@ -3619,7 +3619,7 @@ void TParseContext::builtInOpCheck(const TSourceLoc& loc, const TFunction& fnCan
         if (!(*argp)[6]->getAsTyped()->getType().getQualifier().isConstant())
             error(loc, "argument must be compile-time constant", "matrixInterpretation", "");
         break;
-    case EOpCooperativeMatrixReduceAZD:
+    case EOpCooperativeMatrixReduceHW:
         if (!(*argp)[1]->getAsTyped()->getType().getQualifier().isConstant())
             error(loc, "argument must be compile-time constant", "reduceMask", "");
         else {
@@ -4582,17 +4582,17 @@ bool TParseContext::constructorError(const TSourceLoc& loc, TIntermNode* node, T
 
     TIntermTyped* typed = node->getAsTyped();
 
-    if (type.isCoopMatAZD() && function.getParamCount() != 1) {
+    if (type.isCoopMatHW() && function.getParamCount() != 1) {
         error(loc, "wrong number of arguments", constructorString.c_str(), "");
         return true;
     }
-    if (type.isCoopMatAZD() &&
-        !(function[0].type->isScalar() || function[0].type->isCoopMatAZD())) {
+    if (type.isCoopMatHW() &&
+        !(function[0].type->isScalar() || function[0].type->isCoopMatHW())) {
         error(loc, "Cooperative matrix constructor argument must be scalar or cooperative matrix", constructorString.c_str(), "");
         return true;
     }
-    if (type.isCoopMatAZD() && typed != nullptr && typed->getType().isCoopMatAZD() &&
-        !type.sameCoopMatAZDShape(typed->getType())) {
+    if (type.isCoopMatHW() && typed != nullptr && typed->getType().isCoopMatHW() &&
+        !type.sameCoopMatHWShape(typed->getType())) {
         error(loc, "Cooperative matrix type parameters mismatch", constructorString.c_str(), "");
         return true;
     }
@@ -8117,7 +8117,7 @@ const TFunction* TParseContext::findFunction400(const TSourceLoc& loc, const TFu
             return true;
         if (from.coopMatParameterOK(to))
             return true;
-        if (from.coopMatAZDParameterOK(to))
+        if (from.coopMatHWParameterOK(to))
             return true;
         if (from.tensorParameterOK(to))
             return true;
@@ -8125,7 +8125,7 @@ const TFunction* TParseContext::findFunction400(const TSourceLoc& loc, const TFu
             return true;
         if (from.coopVecParameterOK(to))
             return true;
-        if (from.coopVecAZDParameterOK(to))
+        if (from.coopVecHWParameterOK(to))
             return true;
         if (builtIn && op == EOpCpAsyncTensorGlobalShared && param == 0 &&
             from.isArray() && to.isArray() &&
@@ -8138,7 +8138,7 @@ const TFunction* TParseContext::findFunction400(const TSourceLoc& loc, const TFu
         }
         // Preserve the legacy one-dimensional array matching for builtins that
         // consume raw buffer data, and only enable nested array matching for
-        // AZD cooperative matrix/vector load-store builtins.
+        // HW cooperative matrix/vector load-store builtins.
         if (builtIn && from.isArray() && to.isUnsizedArray()) {
             TType fromElementType(from, 0);
             TType toElementType(to, 0);
@@ -8150,7 +8150,7 @@ const TFunction* TParseContext::findFunction400(const TSourceLoc& loc, const TFu
             }
             if (fromElementType == toElementType)
                 return true;
-            if (isAZDCooperativeBufferBuiltin(op) &&
+            if (isHWCooperativeBufferBuiltin(op) &&
                 haveSameInnermostArrayElementType(from, to))
                 return true;
         }
@@ -8158,12 +8158,12 @@ const TFunction* TParseContext::findFunction400(const TSourceLoc& loc, const TFu
             return false;
         if (from.isCoopMat() && to.isCoopMat())
             return from.sameCoopMatBaseType(to);
-        if (from.isCoopMatAZD() && to.isCoopMatAZD())
-            return from.sameCoopMatAZDBaseType(to);
+        if (from.isCoopMatHW() && to.isCoopMatHW())
+            return from.sameCoopMatHWBaseType(to);
         if (from.isCoopVecNV() && to.isCoopVecNV())
             return from.sameCoopVecBaseType(to);
-        if (from.isCoopVecAZD() && to.isCoopVecAZD())
-            return from.sameCoopVecAZDBaseType(to);
+        if (from.isCoopVecHW() && to.isCoopVecHW())
+            return from.sameCoopVecHWBaseType(to);
         return intermediate.canImplicitlyPromote(from.getBasicType(), to.getBasicType());
     };
 
@@ -8229,7 +8229,7 @@ const TFunction* TParseContext::findFunctionExplicitTypes(const TSourceLoc& loc,
             return true;
         if (from.coopMatParameterOK(to))
             return true;
-        if (from.coopMatAZDParameterOK(to))
+        if (from.coopMatHWParameterOK(to))
             return true;
         if (from.tensorParameterOK(to))
             return true;
@@ -8237,7 +8237,7 @@ const TFunction* TParseContext::findFunctionExplicitTypes(const TSourceLoc& loc,
             return true;
         if (from.coopVecParameterOK(to))
             return true;
-        if (from.coopVecAZDParameterOK(to))
+        if (from.coopVecHWParameterOK(to))
             return true;
         if (builtIn && op == EOpCpAsyncTensorGlobalShared && param == 0 &&
             from.isArray() && to.isArray() &&
@@ -8250,7 +8250,7 @@ const TFunction* TParseContext::findFunctionExplicitTypes(const TSourceLoc& loc,
         }
         // Preserve the legacy one-dimensional array matching for builtins that
         // consume raw buffer data, and only enable nested array matching for
-        // AZD cooperative matrix/vector load-store builtins.
+        // HW cooperative matrix/vector load-store builtins.
         if (builtIn && from.isArray() && to.isUnsizedArray()) {
             TType fromElementType(from, 0);
             TType toElementType(to, 0);
@@ -8262,7 +8262,7 @@ const TFunction* TParseContext::findFunctionExplicitTypes(const TSourceLoc& loc,
             }
             if (fromElementType == toElementType)
                 return true;
-            if (isAZDCooperativeBufferBuiltin(op) &&
+            if (isHWCooperativeBufferBuiltin(op) &&
                 haveSameInnermostArrayElementType(from, to))
                 return true;
         }
@@ -8270,12 +8270,12 @@ const TFunction* TParseContext::findFunctionExplicitTypes(const TSourceLoc& loc,
             return false;
         if (from.isCoopMat() && to.isCoopMat())
             return from.sameCoopMatBaseType(to);
-        if (from.isCoopMatAZD() && to.isCoopMatAZD())
-            return from.sameCoopMatAZDBaseType(to);
+        if (from.isCoopMatHW() && to.isCoopMatHW())
+            return from.sameCoopMatHWBaseType(to);
         if (from.isCoopVecNV() && to.isCoopVecNV())
             return from.sameCoopVecBaseType(to);
-        if (from.isCoopVecAZD() && to.isCoopVecAZD())
-            return from.sameCoopVecAZDBaseType(to);
+        if (from.isCoopVecHW() && to.isCoopVecHW())
+            return from.sameCoopVecHWBaseType(to);
         return intermediate.canImplicitlyPromote(from.getBasicType(), to.getBasicType());
     };
 
@@ -8415,9 +8415,9 @@ void TParseContext::typeParametersCheck(const TSourceLoc& loc, const TPublicType
 {
     if (parsingBuiltins)
         return;
-    if (publicType.isCoopmatAZD()) {
+    if (publicType.isCoopmatHW()) {
         if (publicType.typeParameters == nullptr) {
-            error(loc, "coopmatAZD missing type parameters", "", "");
+            error(loc, "coopmatHW missing type parameters", "", "");
             return;
         }
         switch (publicType.typeParameters->basicType) {
@@ -8431,11 +8431,11 @@ void TParseContext::typeParametersCheck(const TSourceLoc& loc, const TPublicType
         case EbtUint16:
             break;
         default:
-            error(loc, "coopmatAZD invalid basic type", TType::getBasicString(publicType.typeParameters->basicType), "");
+            error(loc, "coopmatHW invalid basic type", TType::getBasicString(publicType.typeParameters->basicType), "");
             break;
         }
         if (publicType.typeParameters->arraySizes->getNumDims() != 2) {
-            error(loc, "coopmatAZD incorrect number of type parameters", "", "");
+            error(loc, "coopmatHW incorrect number of type parameters", "", "");
             return;
         }
     }
@@ -8663,7 +8663,7 @@ void TParseContext::vkRelaxedRemapUniformMembers(const TSourceLoc& loc, const TP
                       memberType.matrixRows = type.getMatrixRows();
                       memberType.coopmatNV = type.isCoopMatNV();
                       memberType.coopmatKHR = type.isCoopMatKHR();
-                      memberType.coopmatAZD = type.isCoopMatAZD();
+                      memberType.coopmatHW = type.isCoopMatHW();
                       memberType.arraySizes = nullptr;
                       memberType.userDef = nullptr;
                       memberType.loc = loc;
@@ -8889,7 +8889,7 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
             }
         }
     }
-    else if (type.isCoopMatAZD()) {
+    else if (type.isCoopMatHW()) {
         intermediate.setUseVulkanMemoryModel();
         intermediate.setUseStorageBuffer();
 
@@ -8935,7 +8935,7 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
         if (!publicType.typeParameters || publicType.typeParameters->arraySizes->getNumDims() > 7) {
             error(loc, "expected 1-7 type parameters", identifier.c_str(), "");
         }
-    } else if (type.isCoopVecAZD()) {
+    } else if (type.isCoopVecHW()) {
         intermediate.setUseVulkanMemoryModel();
         intermediate.setUseStorageBuffer();
 
@@ -8989,7 +8989,7 @@ TIntermNode* TParseContext::declareVariable(const TSourceLoc& loc, TString& iden
     if (type.getQualifier().storage == EvqtaskPayloadSharedEXT)
         intermediate.addTaskPayloadEXTCount();
     if (type.getQualifier().storage == EvqShared &&
-        (type.containsCoopMat() || type.containsCoopMatAZD()))
+        (type.containsCoopMat() || type.containsCoopMatHW()))
         error(loc, "qualifier", "Cooperative matrix types must not be used in shared memory", "");
 
     if (profile == EEsProfile) {
@@ -9797,11 +9797,11 @@ TIntermTyped* TParseContext::constructBuiltIn(const TType& type, TOperator op, T
             return nullptr;
         }
 
-    case EOpConstructCooperativeVectorAZD:
+    case EOpConstructCooperativeVectorHW:
         if (node->getType().isCoopVecNV()) {
             return nullptr;
         }
-        if (!node->getType().isCoopVecAZD()) {
+        if (!node->getType().isCoopVecHW()) {
             if (type.getBasicType() != node->getType().getBasicType()) {
                 node = intermediate.addConversion(type.getBasicType(), node);
                 if (node == nullptr)
@@ -9842,21 +9842,21 @@ TIntermTyped* TParseContext::constructBuiltIn(const TType& type, TOperator op, T
 
         return node;
 
-    case EOpConstructCooperativeMatrixAZD:
+    case EOpConstructCooperativeMatrixHW:
         if (node->getType() == type) {
             return node;
         }
         if (node->getType().isCoopMat()) {
             return nullptr;
         }
-        if (!node->getType().isCoopMatAZD()) {
+        if (!node->getType().isCoopMatHW()) {
             if (type.getBasicType() != node->getType().getBasicType()) {
                 node = intermediate.addConversion(type.getBasicType(), node);
                 if (node == nullptr)
                     return nullptr;
             }
             node = intermediate.setAggregateOperator(node, op, type, node->getLoc());
-        } else if (type.sameCoopMatAZDShape(node->getType()) &&
+        } else if (type.sameCoopMatHWShape(node->getType()) &&
                    type.getBasicType() == node->getType().getBasicType()) {
             node = intermediate.setAggregateOperator(node, op, type, node->getLoc());
         } else {
@@ -10051,10 +10051,10 @@ void TParseContext::declareBlock(const TSourceLoc& loc, TTypeList& typeList, con
                 error(memberLoc, "member of block cannot be or contain a sampler, image, or atomic_uint type", typeList[member].type->getFieldName().c_str(), "");
             }
 
-        if (memberType.containsCoopMat() || memberType.containsCoopMatAZD())
+        if (memberType.containsCoopMat() || memberType.containsCoopMatHW())
             error(memberLoc, "member of block cannot be or contain a cooperative matrix type", typeList[member].type->getFieldName().c_str(), "");
 
-        if (memberType.containsCoopVec() || memberType.containsCoopVecAZD())
+        if (memberType.containsCoopVec() || memberType.containsCoopVecHW())
             error(memberLoc, "member of block cannot be or contain a cooperative vector type", typeList[member].type->getFieldName().c_str(), "");
     }
 

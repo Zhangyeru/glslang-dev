@@ -1045,7 +1045,7 @@ const char* CapabilityString(int info)
     case CapabilityVariablePointers:                    return "VariablePointers";
 
     case CapabilityCooperativeMatrixNV:     return "CooperativeMatrixNV";
-    case CapabilityCooperativeMatrixAZD:     return "CooperativeMatrixAZD";
+    case CapabilityCooperativeMatrixHW:     return "CooperativeMatrixHW";
     case CapabilityCooperativeMatrixKHR:    return "CooperativeMatrixKHR";
     case CapabilityCooperativeMatrixReductionsNV:           return "CooperativeMatrixReductionsNV";
     case CapabilityCooperativeMatrixConversionsNV:          return "CooperativeMatrixConversionsNV";
@@ -1057,7 +1057,7 @@ const char* CapabilityString(int info)
     case CapabilityShaderSMBuiltinsNV:      return "ShaderSMBuiltinsNV";
 
     case CapabilityCooperativeVectorNV:                     return "CooperativeVectorNV";
-    case CapabilityCooperativeVectorAZD:                     return "CooperativeVectorAZD";
+    case CapabilityCooperativeVectorHW:                     return "CooperativeVectorHW";
     case CapabilityCooperativeVectorTrainingNV:             return "CooperativeVectorTrainingNV";
     case CapabilityFragmentShaderSampleInterlockEXT:        return "CapabilityFragmentShaderSampleInterlockEXT";
     case CapabilityFragmentShaderPixelInterlockEXT:         return "CapabilityFragmentShaderPixelInterlockEXT";
@@ -1574,16 +1574,16 @@ const char* OpcodeString(int op)
     case OpRayQueryIsLSSHitNV:                                                return "OpRayQueryIsLSSHitNV";
 
     case OpTypeCooperativeMatrixNV:         return "OpTypeCooperativeMatrixNV";
-    case OpTypeCooperativeMatrixAZD:         return "OpTypeCooperativeMatrixAZD";
+    case OpTypeCooperativeMatrixHW:         return "OpTypeCooperativeMatrixHW";
     case OpCooperativeMatrixLoadNV:         return "OpCooperativeMatrixLoadNV";
-    case OpCooperativeMatrixLoadAZD:         return "OpCooperativeMatrixLoadAZD";
+    case OpCooperativeMatrixLoadHW:         return "OpCooperativeMatrixLoadHW";
     case OpCooperativeMatrixStoreNV:        return "OpCooperativeMatrixStoreNV";
-    case OpCooperativeMatrixStoreAZD:        return "OpCooperativeMatrixStoreAZD";
+    case OpCooperativeMatrixStoreHW:        return "OpCooperativeMatrixStoreHW";
     case OpCooperativeMatrixMulAddNV:       return "OpCooperativeMatrixMulAddNV";
-    case OpCooperativeMatrixMulAddAZD:       return "OpCooperativeMatrixMulAddAZD";
+    case OpCooperativeMatrixMulAddHW:       return "OpCooperativeMatrixMulAddHW";
     case OpCooperativeMatrixLengthNV:       return "OpCooperativeMatrixLengthNV";
-    case OpCooperativeMatrixLengthAZD:       return "OpCooperativeMatrixLengthAZD";
-    case OpCooperativeMatrixReduceAZD:       return "OpCooperativeMatrixReduceAZD";
+    case OpCooperativeMatrixLengthHW:       return "OpCooperativeMatrixLengthHW";
+    case OpCooperativeMatrixReduceHW:       return "OpCooperativeMatrixReduceHW";
     case OpTypeCooperativeMatrixKHR:        return "OpTypeCooperativeMatrixKHR";
     case OpCooperativeMatrixLoadKHR:        return "OpCooperativeMatrixLoadKHR";
     case OpCooperativeMatrixStoreKHR:       return "OpCooperativeMatrixStoreKHR";
@@ -1618,15 +1618,15 @@ const char* OpcodeString(int op)
     case OpTensorViewSetClipNV:             return "OpTensorViewSetClipNV";
 
     case OpTypeCooperativeVectorNV:         return "OpTypeCooperativeVectorNV";
-    case OpTypeCooperativeVectorAZD:         return "OpTypeCooperativeVectorAZD";
+    case OpTypeCooperativeVectorHW:         return "OpTypeCooperativeVectorHW";
     case OpCooperativeVectorMatrixMulNV:    return "OpCooperativeVectorMatrixMulNV";
-    case OpCooperativeVectorMatrixMulAZD:    return "OpCooperativeVectorMatrixMulAZD";
-    case OpCooperativeVectorMatrixMulAddAZD: return "OpCooperativeVectorMatrixMulAddAZD";
+    case OpCooperativeVectorMatrixMulHW:    return "OpCooperativeVectorMatrixMulHW";
+    case OpCooperativeVectorMatrixMulAddHW: return "OpCooperativeVectorMatrixMulAddHW";
     case OpCooperativeVectorMatrixMulAddNV: return "OpCooperativeVectorMatrixMulAddNV";
     case OpCooperativeVectorLoadNV:         return "OpCooperativeVectorLoadNV";
-    case OpCooperativeVectorLoadAZD:         return "OpCooperativeVectorLoadAZD";
+    case OpCooperativeVectorLoadHW:         return "OpCooperativeVectorLoadHW";
     case OpCooperativeVectorStoreNV:        return "OpCooperativeVectorStoreNV";
-    case OpCooperativeVectorStoreAZD:        return "OpCooperativeVectorStoreAZD";
+    case OpCooperativeVectorStoreHW:        return "OpCooperativeVectorStoreHW";
     case OpCooperativeVectorOuterProductAccumulateNV:   return "OpCooperativeVectorOuterProductAccumulateNV";
     case OpCooperativeVectorReduceSumAccumulateNV:      return "OpCooperativeVectorReduceSumAccumulateNV";
 
@@ -1815,10 +1815,10 @@ void Parameterize()
         InstructionDesc[OpAtomicFlagClear].setResultAndType(false, false);
         InstructionDesc[OpModuleProcessed].setResultAndType(false, false);
         InstructionDesc[OpTypeCooperativeMatrixNV].setResultAndType(true, false);
-        InstructionDesc[OpTypeCooperativeMatrixAZD].setResultAndType(true, false);
+        InstructionDesc[OpTypeCooperativeMatrixHW].setResultAndType(true, false);
         InstructionDesc[OpCooperativeMatrixStoreNV].setResultAndType(false, false);
-        InstructionDesc[OpCooperativeMatrixStoreAZD].setResultAndType(false, false);
-        InstructionDesc[OpCooperativeMatrixReduceAZD].setResultAndType(true, true);
+        InstructionDesc[OpCooperativeMatrixStoreHW].setResultAndType(false, false);
+        InstructionDesc[OpCooperativeMatrixReduceHW].setResultAndType(true, true);
         InstructionDesc[OpTypeCooperativeMatrixKHR].setResultAndType(true, false);
         InstructionDesc[OpCooperativeMatrixStoreKHR].setResultAndType(false, false);
         InstructionDesc[OpBeginInvocationInterlockEXT].setResultAndType(false, false);
@@ -1834,9 +1834,9 @@ void Parameterize()
         InstructionDesc[OpBarrierWait].setResultAndType(false, false);
         InstructionDesc[OpCooperativeMatrixStoreTensorNV].setResultAndType(false, false);
         InstructionDesc[OpTypeCooperativeVectorNV].setResultAndType(true, false);
-        InstructionDesc[OpTypeCooperativeVectorAZD].setResultAndType(true, false);
+        InstructionDesc[OpTypeCooperativeVectorHW].setResultAndType(true, false);
         InstructionDesc[OpCooperativeVectorStoreNV].setResultAndType(false, false);
-        InstructionDesc[OpCooperativeVectorStoreAZD].setResultAndType(false, false);
+        InstructionDesc[OpCooperativeVectorStoreHW].setResultAndType(false, false);
         InstructionDesc[OpCooperativeVectorOuterProductAccumulateNV].setResultAndType(false, false);
         InstructionDesc[OpCooperativeVectorReduceSumAccumulateNV].setResultAndType(false, false);
 
@@ -3327,10 +3327,10 @@ void Parameterize()
         InstructionDesc[OpTypeCooperativeMatrixNV].operands.push(OperandId, "'Scope'");
         InstructionDesc[OpTypeCooperativeMatrixNV].operands.push(OperandId, "'Rows'");
         InstructionDesc[OpTypeCooperativeMatrixNV].operands.push(OperandId, "'Columns'");
-        InstructionDesc[OpTypeCooperativeMatrixAZD].operands.push(OperandId, "'Component Type'");
-        InstructionDesc[OpTypeCooperativeMatrixAZD].operands.push(OperandId, "'Rows'");
-        InstructionDesc[OpTypeCooperativeMatrixAZD].operands.push(OperandId, "'Columns'");
-        InstructionDesc[OpTypeCooperativeMatrixAZD].operands.push(OperandLiteralNumber, "'Use'", true);
+        InstructionDesc[OpTypeCooperativeMatrixHW].operands.push(OperandId, "'Component Type'");
+        InstructionDesc[OpTypeCooperativeMatrixHW].operands.push(OperandId, "'Rows'");
+        InstructionDesc[OpTypeCooperativeMatrixHW].operands.push(OperandId, "'Columns'");
+        InstructionDesc[OpTypeCooperativeMatrixHW].operands.push(OperandLiteralNumber, "'Use'", true);
 
         InstructionDesc[OpCooperativeMatrixLoadNV].operands.push(OperandId, "'Pointer'");
         InstructionDesc[OpCooperativeMatrixLoadNV].operands.push(OperandId, "'Stride'");
@@ -3338,11 +3338,11 @@ void Parameterize()
         InstructionDesc[OpCooperativeMatrixLoadNV].operands.push(OperandMemoryAccess, "'Memory Access'");
         InstructionDesc[OpCooperativeMatrixLoadNV].operands.push(OperandLiteralNumber, "", true);
         InstructionDesc[OpCooperativeMatrixLoadNV].operands.push(OperandId, "", true);
-        InstructionDesc[OpCooperativeMatrixLoadAZD].operands.push(OperandId, "'Pointer'");
-        InstructionDesc[OpCooperativeMatrixLoadAZD].operands.push(OperandId, "'Matrix Shape'");
-        InstructionDesc[OpCooperativeMatrixLoadAZD].operands.push(OperandId, "'Matrix Offset'");
-        InstructionDesc[OpCooperativeMatrixLoadAZD].operands.push(OperandId, "'Matrix Layout'");
-        InstructionDesc[OpCooperativeMatrixLoadAZD].setResultAndType(true, true);
+        InstructionDesc[OpCooperativeMatrixLoadHW].operands.push(OperandId, "'Pointer'");
+        InstructionDesc[OpCooperativeMatrixLoadHW].operands.push(OperandId, "'Matrix Shape'");
+        InstructionDesc[OpCooperativeMatrixLoadHW].operands.push(OperandId, "'Matrix Offset'");
+        InstructionDesc[OpCooperativeMatrixLoadHW].operands.push(OperandId, "'Matrix Layout'");
+        InstructionDesc[OpCooperativeMatrixLoadHW].setResultAndType(true, true);
 
         InstructionDesc[OpCooperativeMatrixStoreNV].operands.push(OperandId, "'Pointer'");
         InstructionDesc[OpCooperativeMatrixStoreNV].operands.push(OperandId, "'Object'");
@@ -3351,24 +3351,24 @@ void Parameterize()
         InstructionDesc[OpCooperativeMatrixStoreNV].operands.push(OperandMemoryAccess, "'Memory Access'");
         InstructionDesc[OpCooperativeMatrixStoreNV].operands.push(OperandLiteralNumber, "", true);
         InstructionDesc[OpCooperativeMatrixStoreNV].operands.push(OperandId, "", true);
-        InstructionDesc[OpCooperativeMatrixStoreAZD].operands.push(OperandId, "'Pointer'");
-        InstructionDesc[OpCooperativeMatrixStoreAZD].operands.push(OperandId, "'Object'");
-        InstructionDesc[OpCooperativeMatrixStoreAZD].operands.push(OperandId, "'Matrix Shape'");
-        InstructionDesc[OpCooperativeMatrixStoreAZD].operands.push(OperandId, "'Matrix Offset'");
-        InstructionDesc[OpCooperativeMatrixStoreAZD].operands.push(OperandId, "'Matrix Layout'");
-        InstructionDesc[OpCooperativeMatrixStoreAZD].setResultAndType(false, false);
+        InstructionDesc[OpCooperativeMatrixStoreHW].operands.push(OperandId, "'Pointer'");
+        InstructionDesc[OpCooperativeMatrixStoreHW].operands.push(OperandId, "'Object'");
+        InstructionDesc[OpCooperativeMatrixStoreHW].operands.push(OperandId, "'Matrix Shape'");
+        InstructionDesc[OpCooperativeMatrixStoreHW].operands.push(OperandId, "'Matrix Offset'");
+        InstructionDesc[OpCooperativeMatrixStoreHW].operands.push(OperandId, "'Matrix Layout'");
+        InstructionDesc[OpCooperativeMatrixStoreHW].setResultAndType(false, false);
 
         InstructionDesc[OpCooperativeMatrixMulAddNV].operands.push(OperandId, "'A'");
         InstructionDesc[OpCooperativeMatrixMulAddNV].operands.push(OperandId, "'B'");
         InstructionDesc[OpCooperativeMatrixMulAddNV].operands.push(OperandId, "'C'");
-        InstructionDesc[OpCooperativeMatrixMulAddAZD].operands.push(OperandId, "'A'");
-        InstructionDesc[OpCooperativeMatrixMulAddAZD].operands.push(OperandId, "'B'");
-        InstructionDesc[OpCooperativeMatrixMulAddAZD].operands.push(OperandId, "'C'");
-        InstructionDesc[OpCooperativeMatrixMulAddAZD].setResultAndType(true, true);
+        InstructionDesc[OpCooperativeMatrixMulAddHW].operands.push(OperandId, "'A'");
+        InstructionDesc[OpCooperativeMatrixMulAddHW].operands.push(OperandId, "'B'");
+        InstructionDesc[OpCooperativeMatrixMulAddHW].operands.push(OperandId, "'C'");
+        InstructionDesc[OpCooperativeMatrixMulAddHW].setResultAndType(true, true);
 
         InstructionDesc[OpCooperativeMatrixLengthNV].operands.push(OperandId, "'Type'");
-        InstructionDesc[OpCooperativeMatrixLengthAZD].operands.push(OperandId, "'Type'");
-        InstructionDesc[OpCooperativeMatrixLengthAZD].setResultAndType(true, true);
+        InstructionDesc[OpCooperativeMatrixLengthHW].operands.push(OperandId, "'Type'");
+        InstructionDesc[OpCooperativeMatrixLengthHW].setResultAndType(true, true);
 
         InstructionDesc[OpTypeCooperativeMatrixKHR].operands.push(OperandId, "'Component Type'");
         InstructionDesc[OpTypeCooperativeMatrixKHR].operands.push(OperandId, "'Scope'");
@@ -3400,8 +3400,8 @@ void Parameterize()
 
         InstructionDesc[OpTypeCooperativeVectorNV].operands.push(OperandId, "'Component Type'");
         InstructionDesc[OpTypeCooperativeVectorNV].operands.push(OperandId, "'Components'");
-        InstructionDesc[OpTypeCooperativeVectorAZD].operands.push(OperandId, "'Component Type'");
-        InstructionDesc[OpTypeCooperativeVectorAZD].operands.push(OperandId, "'Components'");
+        InstructionDesc[OpTypeCooperativeVectorHW].operands.push(OperandId, "'Component Type'");
+        InstructionDesc[OpTypeCooperativeVectorHW].operands.push(OperandId, "'Components'");
 
         InstructionDesc[OpCooperativeVectorMatrixMulNV].operands.push(OperandId, "'Input'");
         InstructionDesc[OpCooperativeVectorMatrixMulNV].operands.push(OperandId, "'InputInterpretation'");
@@ -3414,9 +3414,9 @@ void Parameterize()
         InstructionDesc[OpCooperativeVectorMatrixMulNV].operands.push(OperandId, "'Transpose'");
         InstructionDesc[OpCooperativeVectorMatrixMulNV].operands.push(OperandId, "'MatrixStride'", true);
         InstructionDesc[OpCooperativeVectorMatrixMulNV].operands.push(OperandCooperativeMatrixOperands, "'Cooperative Matrix Operands'", true);
-        InstructionDesc[OpCooperativeVectorMatrixMulAZD].operands.push(OperandId, "'Input'");
-        InstructionDesc[OpCooperativeVectorMatrixMulAZD].operands.push(OperandId, "'Matrix'");
-        InstructionDesc[OpCooperativeVectorMatrixMulAZD].setResultAndType(true, true);
+        InstructionDesc[OpCooperativeVectorMatrixMulHW].operands.push(OperandId, "'Input'");
+        InstructionDesc[OpCooperativeVectorMatrixMulHW].operands.push(OperandId, "'Matrix'");
+        InstructionDesc[OpCooperativeVectorMatrixMulHW].setResultAndType(true, true);
 
         InstructionDesc[OpCooperativeVectorMatrixMulAddNV].operands.push(OperandId, "'Input'");
         InstructionDesc[OpCooperativeVectorMatrixMulAddNV].operands.push(OperandId, "'InputInterpretation'");
@@ -3432,18 +3432,18 @@ void Parameterize()
         InstructionDesc[OpCooperativeVectorMatrixMulAddNV].operands.push(OperandId, "'Transpose'");
         InstructionDesc[OpCooperativeVectorMatrixMulAddNV].operands.push(OperandId, "'MatrixStride'", true);
         InstructionDesc[OpCooperativeVectorMatrixMulAddNV].operands.push(OperandCooperativeMatrixOperands, "'Cooperative Matrix Operands'", true);
-        InstructionDesc[OpCooperativeVectorMatrixMulAddAZD].operands.push(OperandId, "'Input'");
-        InstructionDesc[OpCooperativeVectorMatrixMulAddAZD].operands.push(OperandId, "'Matrix'");
-        InstructionDesc[OpCooperativeVectorMatrixMulAddAZD].operands.push(OperandId, "'Bias'");
-        InstructionDesc[OpCooperativeVectorMatrixMulAddAZD].setResultAndType(true, true);
+        InstructionDesc[OpCooperativeVectorMatrixMulAddHW].operands.push(OperandId, "'Input'");
+        InstructionDesc[OpCooperativeVectorMatrixMulAddHW].operands.push(OperandId, "'Matrix'");
+        InstructionDesc[OpCooperativeVectorMatrixMulAddHW].operands.push(OperandId, "'Bias'");
+        InstructionDesc[OpCooperativeVectorMatrixMulAddHW].setResultAndType(true, true);
 
         InstructionDesc[OpCooperativeVectorLoadNV].operands.push(OperandId, "'Pointer'");
         InstructionDesc[OpCooperativeVectorLoadNV].operands.push(OperandId, "'Offset'");
         InstructionDesc[OpCooperativeVectorLoadNV].operands.push(OperandMemoryAccess, "'Memory Access'");
         InstructionDesc[OpCooperativeVectorLoadNV].operands.push(OperandLiteralNumber, "", true);
         InstructionDesc[OpCooperativeVectorLoadNV].operands.push(OperandId, "", true);
-        InstructionDesc[OpCooperativeVectorLoadAZD].operands.push(OperandId, "'Pointer'");
-        InstructionDesc[OpCooperativeVectorLoadAZD].setResultAndType(true, true);
+        InstructionDesc[OpCooperativeVectorLoadHW].operands.push(OperandId, "'Pointer'");
+        InstructionDesc[OpCooperativeVectorLoadHW].setResultAndType(true, true);
 
         InstructionDesc[OpCooperativeVectorStoreNV].operands.push(OperandId, "'Pointer'");
         InstructionDesc[OpCooperativeVectorStoreNV].operands.push(OperandId, "'Offset'");
@@ -3451,9 +3451,9 @@ void Parameterize()
         InstructionDesc[OpCooperativeVectorStoreNV].operands.push(OperandMemoryAccess, "'Memory Access'");
         InstructionDesc[OpCooperativeVectorStoreNV].operands.push(OperandLiteralNumber, "", true);
         InstructionDesc[OpCooperativeVectorStoreNV].operands.push(OperandId, "", true);
-        InstructionDesc[OpCooperativeVectorStoreAZD].operands.push(OperandId, "'Pointer'");
-        InstructionDesc[OpCooperativeVectorStoreAZD].operands.push(OperandId, "'Object'");
-        InstructionDesc[OpCooperativeVectorStoreAZD].setResultAndType(false, false);
+        InstructionDesc[OpCooperativeVectorStoreHW].operands.push(OperandId, "'Pointer'");
+        InstructionDesc[OpCooperativeVectorStoreHW].operands.push(OperandId, "'Object'");
+        InstructionDesc[OpCooperativeVectorStoreHW].setResultAndType(false, false);
 
         InstructionDesc[OpCooperativeVectorOuterProductAccumulateNV].operands.push(OperandId, "'Pointer'");
         InstructionDesc[OpCooperativeVectorOuterProductAccumulateNV].operands.push(OperandId, "'Offset'");
@@ -3765,9 +3765,9 @@ void Parameterize()
         InstructionDesc[OpCooperativeMatrixReduceNV].operands.push(OperandId, "'Matrix'");
         InstructionDesc[OpCooperativeMatrixReduceNV].operands.push(OperandLiteralNumber, "'ReduceMask'");
         InstructionDesc[OpCooperativeMatrixReduceNV].operands.push(OperandId, "'CombineFunc'");
-        InstructionDesc[OpCooperativeMatrixReduceAZD].operands.push(OperandId, "'Matrix'");
-        InstructionDesc[OpCooperativeMatrixReduceAZD].operands.push(OperandId, "'ReduceMask'");
-        InstructionDesc[OpCooperativeMatrixReduceAZD].operands.push(OperandId, "'CombineOp'");
+        InstructionDesc[OpCooperativeMatrixReduceHW].operands.push(OperandId, "'Matrix'");
+        InstructionDesc[OpCooperativeMatrixReduceHW].operands.push(OperandId, "'ReduceMask'");
+        InstructionDesc[OpCooperativeMatrixReduceHW].operands.push(OperandId, "'CombineOp'");
 
         InstructionDesc[OpCooperativeMatrixPerElementOpNV].operands.push(OperandId, "'Matrix'");
         InstructionDesc[OpCooperativeMatrixPerElementOpNV].operands.push(OperandId, "'Operation'");
