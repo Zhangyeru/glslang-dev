@@ -2357,6 +2357,9 @@ enum Op {
     OpCpAsyncWaitGroup = 6475,
     OpBarrierArrive = 6476,
     OpBarrierWait = 6477,
+    OpShuffleIndex = 6478,
+    OpBytePermute = 6479,
+    OpShuffleFillDown = 6480,
     OpMax = 0x7fffffff,
 };
 
@@ -2875,6 +2878,9 @@ inline void HasResultAndType(Op opcode, bool *hasResult, bool *hasResultType) {
     case OpCpAsyncWaitGroup: *hasResult = false; *hasResultType = false; break;
     case OpBarrierArrive: *hasResult = false; *hasResultType = false; break;
     case OpBarrierWait: *hasResult = false; *hasResultType = false; break;
+    case OpShuffleIndex: *hasResult = true; *hasResultType = true; break;
+    case OpBytePermute: *hasResult = true; *hasResultType = true; break;
+    case OpShuffleFillDown: *hasResult = true; *hasResultType = true; break;
     case OpCreateTensorLayoutNV: *hasResult = true; *hasResultType = true; break;
     case OpTensorLayoutSetDimensionNV: *hasResult = true; *hasResultType = true; break;
     case OpTensorLayoutSetStrideNV: *hasResult = true; *hasResultType = true; break;
@@ -4813,6 +4819,9 @@ inline const char* OpToString(Op value) {
     case OpCpAsyncWaitGroup: return "OpCpAsyncWaitGroup";
     case OpBarrierArrive: return "OpBarrierArrive";
     case OpBarrierWait: return "OpBarrierWait";
+    case OpShuffleIndex: return "OpShuffleIndex";
+    case OpBytePermute: return "OpBytePermute";
+    case OpShuffleFillDown: return "OpShuffleFillDown";
     case OpCreateTensorLayoutNV: return "OpCreateTensorLayoutNV";
     case OpTensorLayoutSetDimensionNV: return "OpTensorLayoutSetDimensionNV";
     case OpTensorLayoutSetStrideNV: return "OpTensorLayoutSetStrideNV";

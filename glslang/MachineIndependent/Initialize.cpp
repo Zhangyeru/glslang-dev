@@ -4959,6 +4959,11 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
                                               << scalarAndVectorTypes[i] << "[] buf, uint offset);\n";
         }
         commonBuiltins.append(cooperativeVectorADLoadStoreFuncs.str().c_str());
+        commonBuiltins.append(
+            "int32_t shufidx(int32_t val, int32_t idx);\n"
+            "uint32_t bytePrmt(uint32_t src0, uint32_t src1, uint32_t mask);\n"
+            "uint32_t shuffle_fill_down(uint32_t src, uint32_t fill, int32_t shift);\n"
+        );
 
         commonBuiltins.append(
             "const int gl_CooperativeVectorMatrixLayoutRowMajorNV = 0;\n"
@@ -9570,6 +9575,9 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
 
             symbolTable.setFunctionExtensions("coopVecMatMulHW",                    1, &E_GL_HW_neural_shader);
             symbolTable.setFunctionExtensions("coopVecMatMulAddHW",                 1, &E_GL_HW_neural_shader);
+            symbolTable.setFunctionExtensions("shufidx",                            1, &E_GL_HW_neural_shader);
+            symbolTable.setFunctionExtensions("bytePrmt",                           1, &E_GL_HW_neural_shader);
+            symbolTable.setFunctionExtensions("shuffle_fill_down",                  1, &E_GL_HW_neural_shader);
         }
 
         if ((profile != EEsProfile && version >= 450) || (profile == EEsProfile && version >= 320)) {
@@ -10701,6 +10709,9 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
         symbolTable.relateToOperator("coopVecLoadHW",                EOpCooperativeVectorLoadHW);
         symbolTable.relateToOperator("coopVecStoreNV",               EOpCooperativeVectorStoreNV);
         symbolTable.relateToOperator("coopVecStoreHW",               EOpCooperativeVectorStoreHW);
+        symbolTable.relateToOperator("shufidx",                      EOpShuffleIndex);
+        symbolTable.relateToOperator("bytePrmt",                     EOpBytePermute);
+        symbolTable.relateToOperator("shuffle_fill_down",            EOpShuffleFillDown);
         symbolTable.relateToOperator("coopVecOuterProductAccumulateNV", EOpCooperativeVectorOuterProductAccumulateNV);
         symbolTable.relateToOperator("coopVecReduceSumAccumulateNV",    EOpCooperativeVectorReduceSumAccumulateNV);
     }

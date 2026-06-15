@@ -10473,6 +10473,18 @@ spv::Id TGlslangToSpvTraverser::createMiscOperation(glslang::TOperator op, spv::
     case glslang::EOpSubgroupPartitionedExclusiveOr:
     case glslang::EOpSubgroupPartitionedExclusiveXor:
         return createSubgroupOperation(op, typeId, operands, typeProxy);
+    case glslang::EOpShuffleIndex:
+        builder.addExtension(spv::E_SPV_HW_neural_shader);
+        opCode = spv::OpShuffleIndex;
+        break;
+    case glslang::EOpBytePermute:
+        builder.addExtension(spv::E_SPV_HW_neural_shader);
+        opCode = spv::OpBytePermute;
+        break;
+    case glslang::EOpShuffleFillDown:
+        builder.addExtension(spv::E_SPV_HW_neural_shader);
+        opCode = spv::OpShuffleFillDown;
+        break;
 
     case glslang::EOpSwizzleInvocations:
         extBuiltins = getExtBuiltins(spv::E_SPV_AMD_shader_ballot);

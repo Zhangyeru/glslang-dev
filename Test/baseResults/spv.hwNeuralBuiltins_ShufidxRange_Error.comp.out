@@ -1,0 +1,6 @@
+spv.hwNeuralBuiltins_ShufidxRange_Error.comp
+ERROR: 0:10: 'shufidx' : idx must be in the range [0, 31] 
+ERROR: 1 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

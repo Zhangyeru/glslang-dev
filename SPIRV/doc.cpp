@@ -1606,6 +1606,9 @@ const char* OpcodeString(int op)
     case OpCpAsyncWaitGroup:                return "OpCpAsyncWaitGroup";
     case OpBarrierArrive:                   return "OpBarrierArrive";
     case OpBarrierWait:                     return "OpBarrierWait";
+    case OpShuffleIndex:                    return "OpShuffleIndex";
+    case OpBytePermute:                     return "OpBytePermute";
+    case OpShuffleFillDown:                 return "OpShuffleFillDown";
     case OpCreateTensorLayoutNV:            return "OpCreateTensorLayoutNV";
     case OpTensorLayoutSetBlockSizeNV:      return "OpTensorLayoutSetBlockSizeNV";
     case OpTensorLayoutSetDimensionNV:      return "OpTensorLayoutSetDimensionNV";
@@ -1832,6 +1835,9 @@ void Parameterize()
         InstructionDesc[OpCpAsyncWaitGroup].setResultAndType(false, false);
         InstructionDesc[OpBarrierArrive].setResultAndType(false, false);
         InstructionDesc[OpBarrierWait].setResultAndType(false, false);
+        InstructionDesc[OpShuffleIndex].setResultAndType(true, true);
+        InstructionDesc[OpBytePermute].setResultAndType(true, true);
+        InstructionDesc[OpShuffleFillDown].setResultAndType(true, true);
         InstructionDesc[OpCooperativeMatrixStoreTensorNV].setResultAndType(false, false);
         InstructionDesc[OpTypeCooperativeVectorNV].setResultAndType(true, false);
         InstructionDesc[OpTypeCooperativeVectorHW].setResultAndType(true, false);
@@ -3806,6 +3812,14 @@ void Parameterize()
         InstructionDesc[OpBarrierArrive].operands.push(OperandId, "'N'");
         InstructionDesc[OpBarrierWait].operands.push(OperandId, "'Id'");
         InstructionDesc[OpBarrierWait].operands.push(OperandId, "'N'");
+        InstructionDesc[OpShuffleIndex].operands.push(OperandId, "'Value'");
+        InstructionDesc[OpShuffleIndex].operands.push(OperandId, "'Index'");
+        InstructionDesc[OpBytePermute].operands.push(OperandId, "'Src0'");
+        InstructionDesc[OpBytePermute].operands.push(OperandId, "'Src1'");
+        InstructionDesc[OpBytePermute].operands.push(OperandId, "'Mask'");
+        InstructionDesc[OpShuffleFillDown].operands.push(OperandId, "'Src'");
+        InstructionDesc[OpShuffleFillDown].operands.push(OperandId, "'Fill'");
+        InstructionDesc[OpShuffleFillDown].operands.push(OperandId, "'Shift'");
 
         InstructionDesc[OpTensorLayoutSetBlockSizeNV].operands.push(OperandId, "'TensorLayout'");
         InstructionDesc[OpTensorLayoutSetBlockSizeNV].operands.push(OperandVariableIds, "'BlockSize'");

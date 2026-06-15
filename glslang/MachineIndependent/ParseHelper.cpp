@@ -3576,6 +3576,13 @@ void TParseContext::builtInOpCheck(const TSourceLoc& loc, const TFunction& fnCan
                 break;
         }
         break;
+    case EOpShuffleIndex:
+        {
+            int idx = 0;
+            if (getConstantIntValue((*argp)[1], idx) && (idx < 0 || idx > 31))
+                error(loc, "idx must be in the range [0, 31]", fnCandidate.getName().c_str(), "");
+        }
+        break;
     case EOpCooperativeMatrixMulHW:
     case EOpCooperativeMatrixMulAddHW:
         {

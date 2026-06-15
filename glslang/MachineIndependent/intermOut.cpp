@@ -386,6 +386,9 @@ bool TOutputTraverser::visitUnary(TVisit /* visit */, TIntermUnary* node)
     case EOpSubgroupShuffleXor:              out.debug << "subgroupShuffleXor";              break;
     case EOpSubgroupShuffleUp:               out.debug << "subgroupShuffleUp";               break;
     case EOpSubgroupShuffleDown:             out.debug << "subgroupShuffleDown";             break;
+    case EOpShuffleIndex:                    out.debug << "shufidx";                         break;
+    case EOpBytePermute:                     out.debug << "bytePrmt";                        break;
+    case EOpShuffleFillDown:                 out.debug << "shuffle_fill_down";               break;
     case EOpSubgroupRotate:                  out.debug << "subgroupRotate";                  break;
     case EOpSubgroupClusteredRotate:         out.debug << "subgroupClusteredRotate";         break;
     case EOpSubgroupAdd:                     out.debug << "subgroupAdd";                     break;
@@ -978,6 +981,9 @@ bool TOutputTraverser::visitAggregate(TVisit /* visit */, TIntermAggregate* node
     case EOpCooperativeVectorLoadHW:  out.debug << "Load cooperative vector HW"; break;
     case EOpCooperativeVectorStoreNV:  out.debug << "Store cooperative vector NV"; break;
     case EOpCooperativeVectorStoreHW:  out.debug << "Store cooperative vector HW"; break;
+    case EOpShuffleIndex: out.debug << "Shuffle index"; break;
+    case EOpBytePermute: out.debug << "Byte permute"; break;
+    case EOpShuffleFillDown: out.debug << "Shuffle fill down"; break;
     case EOpCooperativeVectorOuterProductAccumulateNV: out.debug << "Cooperative vector outer product accumulate NV"; break;
     case EOpCooperativeVectorReduceSumAccumulateNV: out.debug << "Cooperative vector reduce sum accumulate NV"; break;
 

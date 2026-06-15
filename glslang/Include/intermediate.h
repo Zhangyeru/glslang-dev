@@ -490,6 +490,9 @@ enum TOperator {
     EOpCooperativeVectorLoadHW,
     EOpCooperativeVectorStoreNV,
     EOpCooperativeVectorStoreHW,
+    EOpShuffleIndex,
+    EOpBytePermute,
+    EOpShuffleFillDown,
     EOpCooperativeVectorOuterProductAccumulateNV,
     EOpCooperativeVectorReduceSumAccumulateNV,
 

@@ -124,6 +124,7 @@ public:
         return shaderName == "spv.tensorMap.comp" ||
                shaderName == "spv.cpAsyncTensor.comp" ||
                shaderName == "spv.cpAsyncGroupBarrier.comp" ||
+               shaderName == "spv.hwNeuralBuiltins.comp" ||
                ((shaderName.rfind("spv.coopmatHW", 0) == 0) &&
                 shaderName.find("Error") == std::string::npos) ||
                ((shaderName.rfind("spv.coopvecHW", 0) == 0) &&
