@@ -96,7 +96,7 @@ option(ENABLE_SPIRV "Enables SPIRV output support" ON)
 option(ENABLE_SPVREMAPPER "Enables building of SPVRemapper" ON)
 
 option(ENABLE_GLSLANG_BINARIES "Builds glslang and spirv-remap" ON)
-option(GLSLANG_ENABLE_AZD_VK_TESTS "Build optional AZD Vulkan function/perf test runner" OFF)
+option(GLSLANG_ENABLE_HW_VK_TESTS "Build optional HW Vulkan function/perf test runner" OFF)
 
 option(ENABLE_GLSLANG_JS "If using Emscripten, build glslang.js. Otherwise, builds a sample executable for binary-size testing.")
 CMAKE_DEPENDENT_OPTION(ENABLE_EMSCRIPTEN_SINGLE_FILE
@@ -321,8 +321,8 @@ endif()
 if(GLSLANG_TESTS)
     enable_testing()
     add_subdirectory(gtests)
-    if(GLSLANG_ENABLE_AZD_VK_TESTS AND IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/vk_azd)
-        add_subdirectory(tests/vk_azd)
+    if(GLSLANG_ENABLE_HW_VK_TESTS AND IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/tests/vk_hw)
+        add_subdirectory(tests/vk_hw)
     endif()
 
     # glslang-testsuite runs a bash script on Windows.

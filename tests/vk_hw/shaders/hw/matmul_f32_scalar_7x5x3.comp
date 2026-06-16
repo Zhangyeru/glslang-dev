@@ -1,0 +1,28 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA { float data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float data[]; } B;
+layout(set = 0, binding = 2) buffer InputC { float data[]; } C;
+layout(set = 0, binding = 3) buffer OutputD { float data[]; } D;
+
+void main()
+{
+    const ivec2 shapeA = ivec2(7.0, 3.0);
+    const ivec2 shapeB = ivec2(3.0, 5.0);
+    const ivec2 shapeD = ivec2(7.0, 5.0);
+    const ivec2 zeroOffset = ivec2(0.0, 0.0);
+
+    coopmatHW<float, 7, 3> a;
+    coopmatHW<float, 3, 5> b;
+    coopmatHW<float, 7, 5> c;
+    coopmatHW<float, 7, 5> d;
+
+    coopMatLoadHW(a, A.data, shapeA, zeroOffset, gl_RowMajorHW);
+    coopMatLoadHW(b, B.data, shapeB, zeroOffset, gl_RowMajorHW);
+    coopMatLoadHW(c, C.data, shapeD, zeroOffset, gl_RowMajorHW);
+    coopMatMulAddHW(d, a, b, c);
+    coopMatStoreHW(d, D.data, shapeD, zeroOffset, gl_RowMajorHW);
+}

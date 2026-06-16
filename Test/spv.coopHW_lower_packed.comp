@@ -1,0 +1,43 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+void main()
+{
+    coopmatHW<float16_t, 8, 8> a16;
+    coopmatHW<float16_t, 8, 8> b16;
+    coopmatHW<float16_t, 8, 8> c16;
+    coopmatHW<float16_t, 8, 8> d16;
+    coopMatMulAddHW(d16, a16, b16, c16);
+
+    coopmatHW<float, 8, 8> a32;
+    coopmatHW<float, 8, 8> b32;
+    coopmatHW<float, 8, 8> c32;
+    coopmatHW<float, 8, 8> d32;
+    coopMatMulAddHW(d32, a32, b32, c32);
+
+    coopmatHW<float, 3, 5> a32TailK;
+    coopmatHW<float, 5, 8> b32TailK;
+    coopmatHW<float, 3, 8> c32TailK;
+    coopmatHW<float, 3, 8> d32TailK;
+    coopMatMulAddHW(d32TailK, a32TailK, b32TailK, c32TailK);
+
+    coopvecHW<float16_t, 16> x16;
+    coopvecHW<float16_t, 16> y16;
+    coopvecHW<float16_t, 16> bias16;
+    coopmatHW<float16_t, 16, 16> w16;
+    coopVecMatMulAddHW(y16, x16, w16, bias16);
+
+    coopvecHW<float, 16> x32;
+    coopvecHW<float, 16> y32;
+    coopvecHW<float, 16> bias32;
+    coopmatHW<float, 16, 16> w32;
+    coopVecMatMulAddHW(y32, x32, w32, bias32);
+
+    coopvecHW<float, 5> x32TailK;
+    coopvecHW<float, 5> y32TailK;
+    coopmatHW<float, 5, 5> w32TailK;
+    coopVecMatMulHW(y32TailK, x32TailK, w32TailK);
+}

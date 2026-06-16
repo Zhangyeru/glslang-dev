@@ -69,7 +69,7 @@ std::string FileNameAsCustomTestSuffixIoMap(
 
 using CompileVulkanToSpirvTest = GlslangTest<::testing::TestWithParam<std::string>>;
 using CompileVulkanToSpirvToolsTest = GlslangTest<::testing::TestWithParam<std::string>>;
-using CompileVulkanToSpirvAzdLowerToStandardTest = GlslangTest<::testing::TestWithParam<std::string>>;
+using CompileVulkanToSpirvHwLowerToStandardTest = GlslangTest<::testing::TestWithParam<std::string>>;
 using CompileVulkanToSpirvTestNoLink = GlslangTest<::testing::TestWithParam<std::string>>;
 using CompileVulkanToSpirvDeadCodeElimTest = GlslangTest<::testing::TestWithParam<std::string>>;
 using CompileVulkan1_1ToSpirvTest = GlslangTest<::testing::TestWithParam<std::string>>;
@@ -112,7 +112,7 @@ TEST_P(CompileVulkanToSpirvToolsTest, FromFile)
                             Target::Spv);
 }
 
-TEST_P(CompileVulkanToSpirvAzdLowerToStandardTest, FromFile)
+TEST_P(CompileVulkanToSpirvHwLowerToStandardTest, FromFile)
 {
 #if !ENABLE_OPT
     GTEST_SKIP() << "SPIRV-Tools is required for this test baseline";
@@ -142,7 +142,7 @@ TEST_P(CompileVulkanToSpirvAzdLowerToStandardTest, FromFile)
             optimizerMessages << position.line << ":" << position.column << ":" << position.index << ": "
                               << message << "\n";
         });
-    ASSERT_TRUE(optimizer.RegisterPassFromFlag("--azd-lower-to-standard"));
+    ASSERT_TRUE(optimizer.RegisterPassFromFlag("--hw-lower-to-standard"));
 
     std::vector<uint32_t> optimized;
     ASSERT_TRUE(optimizer.Run(result.spirvBinary.data(), result.spirvBinary.size(), &optimized))
@@ -151,8 +151,11 @@ TEST_P(CompileVulkanToSpirvAzdLowerToStandardTest, FromFile)
     std::ostringstream disassembly;
     glslang::SpirvToolsDisassemble(disassembly, optimized, spv_target_env::SPV_ENV_UNIVERSAL_1_5);
     result.spirv = disassembly.str();
-    EXPECT_EQ(std::string::npos, result.spirv.find("AZD"));
+    EXPECT_EQ(std::string::npos, result.spirv.find("HW"));
     EXPECT_EQ(std::string::npos, result.spirv.find("CooperativeMatrixKHR"));
+    EXPECT_EQ(std::string::npos, result.spirv.find("CooperativeMatrixHW"));
+    EXPECT_EQ(std::string::npos, result.spirv.find("CooperativeVectorHW"));
+    EXPECT_EQ(std::string::npos, result.spirv.find("HW_neural_shader"));
 
     std::ostringstream stream;
     outputResultToStream(&stream, result, controls);
@@ -489,51 +492,7 @@ INSTANTIATE_TEST_SUITE_P(
         "spv.coopmatHW_mul_Error.comp",
         "spv.coopmatHW_mulAdd_Error.comp",
         "spv.coopmatHW_reduce_Error.comp",
-        "spv.coopmatAZD.comp",
-        "spv.coopmatAZD.vert",
-        "spv.coopmatAZD.frag",
-        "spv.coopmatAZD_builtin.comp",
-        "spv.coopmatAZD_builtin.vert",
-        "spv.coopmatAZD_builtin.frag",
-        "spv.coopmatAZD_bitcast.comp",
-        "spv.coopmatAZD_bitcast.vert",
-        "spv.coopmatAZD_bitcast.frag",
-        "spv.coopmatAZD_bitcastError.comp",
-        "spv.coopmatAZD_bitcastError.vert",
-        "spv.coopmatAZD_bitcastError.frag",
-        "spv.coopmatAZD_conversion.comp",
-        "spv.coopmatAZD_conversion.vert",
-        "spv.coopmatAZD_conversion.frag",
-        "spv.coopmatAZD_conversionError.comp",
-        "spv.coopmatAZD_conversionError.vert",
-        "spv.coopmatAZD_conversionError.frag",
-        "spv.coopmatAZD_logicalUse.comp",
-        "spv.coopmatAZD_logicalUseError.comp",
-        "spv.coopmatAZD_roleCheck.comp",
-        "spv.coopmatAZD_roleResultError.comp",
-        "spv.coopmatAZD_roleBlockError.comp",
-        "spv.coopmatAZD_roleFunctionError.comp",
-        "spv.coopmatAZD_roleReturnError.comp",
-        "spv.coopmatAZD_roleReturnForwardError.comp",
-        "spv.coopmatAZD_roleLValueError.comp",
-        "spv.coopmatAZD_use_pass_block.comp",
-        "spv.coopmatAZD_use_pass_array.comp",
-        "spv.coopmatAZD_use_pass_func.comp",
-        "spv.coopmatAZD_use_pass_matmul_rect.comp",
-        "spv.coopmatAZD_use_pass_nomul.comp",
-        "spv.coopmatAZD_lower_tile.comp",
-        "spv.coopmatAZD_arithmetic.comp",
-        "spv.coopmatAZD_arithmetic.vert",
-        "spv.coopmatAZD_arithmetic.frag",
-        "spv.coopmatAZD_arithmeticError.comp",
-        "spv.coopmatAZD_arithmeticError.vert",
-        "spv.coopmatAZD_arithmeticError.frag",
-        "spv.coopmatAZD_Error.comp",
-        "spv.coopmatAZD_Error.vert",
-        "spv.coopmatAZD_Error.frag",
-        "spv.coopmatAZD_mul_Error.comp",
-        "spv.coopmatAZD_mulAdd_Error.comp",
-        "spv.coopmatAZD_reduce_Error.comp",
+        "spv.coopmatHW_lower_tile.comp",
         "spv.coopmat_Error.comp",
         "spv.coopmatKHR.comp",
         "spv.coopmat_armlayout.comp",
@@ -587,43 +546,7 @@ INSTANTIATE_TEST_SUITE_P(
         "spv.hwNeuralBuiltins_NoExt.comp",
         "spv.hwNeuralBuiltins_ShufidxRange_Error.comp",
         "spv.hwNeuralBuiltins_TypeError.comp",
-        "spv.coopvecAZD.comp",
-        "spv.coopvecAZD_lower_tile.comp",
-        "spv.coopvecAZD.vert",
-        "spv.coopvecAZD.frag",
-        "spv.coopvecAZD_bitcast.comp",
-        "spv.coopvecAZD_bitcast.vert",
-        "spv.coopvecAZD_bitcast.frag",
-        "spv.coopvecAZD_bitcastError.comp",
-        "spv.coopvecAZD_bitcastError.vert",
-        "spv.coopvecAZD_bitcastError.frag",
-        "spv.coopvecAZD_conversion.comp",
-        "spv.coopvecAZD_conversion.vert",
-        "spv.coopvecAZD_conversion.frag",
-        "spv.coopvecAZD_conversionError.comp",
-        "spv.coopvecAZD_conversionError.vert",
-        "spv.coopvecAZD_conversionError.frag",
-        "spv.coopvecAZDloadstore.comp",
-        "spv.coopvecAZDloadstore.vert",
-        "spv.coopvecAZDloadstore.frag",
-        "spv.coopvecAZDloadstore_Error.comp",
-        "spv.coopvecAZDloadstore_Error.vert",
-        "spv.coopvecAZDloadstore_Error.frag",
-        "spv.coopvecAZDMatMul_Error.comp",
-        "spv.coopvecAZDMatMul_Error.vert",
-        "spv.coopvecAZDMatMul_Error.frag",
-        "spv.coopvecAZDMatMulAdd_Error.comp",
-        "spv.coopvecAZDMatMulAdd_Error.vert",
-        "spv.coopvecAZDMatMulAdd_Error.frag",
-        "spv.coopvecAZDstore_Error.comp",
-        "spv.coopvecAZDstore_Error.vert",
-        "spv.coopvecAZDstore_Error.frag",
-        "spv.coopvecAZD_Error.comp",
-        "spv.coopvecAZD_Error.vert",
-        "spv.coopvecAZD_Error.frag",
-        "spv.coopvecAZD_Params_Error.comp",
-        "spv.coopvecAZD_Params_Error.vert",
-        "spv.coopvecAZD_Params_Error.frag",
+        "spv.coopvecHW_lower_tile.comp",
         "spv.coopvecloadstore.comp",
         "spv.coopvec_Error.comp",
         "spv.coopvecTraining.comp",
@@ -840,11 +763,11 @@ INSTANTIATE_TEST_SUITE_P(
 );
 
 INSTANTIATE_TEST_SUITE_P(
-    Glsl, CompileVulkanToSpirvAzdLowerToStandardTest,
+    Glsl, CompileVulkanToSpirvHwLowerToStandardTest,
     ::testing::ValuesIn(std::vector<std::string>({
-        "spv.coopAZD_lower_packed.comp",
-        "spv.coopmatAZD_lower_tile.comp",
-        "spv.coopvecAZD_lower_tile.comp",
+        "spv.coopHW_lower_packed.comp",
+        "spv.coopmatHW_lower_tile.comp",
+        "spv.coopvecHW_lower_tile.comp",
     })),
     FileNameAsCustomTestSuffix
 );

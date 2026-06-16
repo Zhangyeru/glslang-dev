@@ -1,0 +1,21 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+void main()
+{
+    coopvecHW<float, 8> x8;
+    coopvecHW<float, 8> y8;
+    coopvecHW<float, 8> bias8;
+    coopmatHW<float, 8, 8> w8;
+
+    coopVecMatMulHW(y8, x8, w8);
+    coopVecMatMulAddHW(y8, x8, w8, bias8);
+
+    coopvecHW<float, 8> xTail;
+    coopvecHW<float, 8> yTail;
+    coopmatHW<float, 8, 8> wTail;
+
+    coopVecMatMulHW(yTail, xTail, wTail);
+}

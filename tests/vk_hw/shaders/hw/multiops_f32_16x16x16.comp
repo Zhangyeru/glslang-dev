@@ -1,0 +1,40 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA { float data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float data[]; } B;
+layout(set = 0, binding = 2) buffer InputC { float data[]; } C;
+layout(set = 0, binding = 3) buffer OutputD { float data[]; } D;
+
+void main()
+{
+    const ivec2 shape = ivec2(16.0, 16.0);
+    const ivec2 zeroOffset = ivec2(0.0, 0.0);
+
+    coopmatHW<float, 16, 16> a;
+    coopmatHW<float, 16, 16> b;
+    coopmatHW<float, 16, 16> c;
+    coopmatHW<float, 16, 16> d0;
+    coopmatHW<float, 16, 16> d1;
+    coopvecHW<float, 16> x;
+    coopvecHW<float, 16> bias;
+    coopvecHW<float, 16> y0;
+    coopvecHW<float, 16> y1;
+
+    coopMatLoadHW(a, A.data, shape, zeroOffset, gl_RowMajorHW);
+    coopMatLoadHW(b, B.data, shape, zeroOffset, gl_RowMajorHW);
+    coopMatLoadHW(c, C.data, shape, zeroOffset, gl_RowMajorHW);
+    coopMatMulAddHW(d0, a, b, c);
+    coopMatMulAddHW(d1, a, b, d0);
+    coopMatStoreHW(d1, D.data, shape, zeroOffset, gl_RowMajorHW);
+
+    coopVecLoadHW(x, A.data, 0u);
+    coopVecLoadHW(bias, D.data, 0u);
+    coopVecMatMulAddHW(y0, x, b, bias);
+    coopVecStoreHW(y0, D.data, 0u);
+    coopVecLoadHW(bias, D.data, 0u);
+    coopVecMatMulAddHW(y1, x, b, bias);
+    coopVecStoreHW(y1, D.data, 0u);
+}
