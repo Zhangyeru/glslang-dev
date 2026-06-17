@@ -5,7 +5,7 @@
 
 void main()
 {
-    coopvecHW<float, 100> result;
+    coopvecHW<float, 20> result;
     coopvecHW<float16_t, 100> vInput;
     coopvecHW<float16_t, 99> badBias;
     coopmatHW<float16_t, 100, 20> matrix;

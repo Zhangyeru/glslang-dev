@@ -2,7 +2,7 @@ spv.coopvecHW.comp
 ; SPIR-V
 ; Version: 1.0
 ; Generator: Khronos Glslang Reference Front End; 11
-; Bound: 319
+; Bound: 320
 ; Schema: 0
                OpCapability Shader
                OpCapability Float16
@@ -92,31 +92,32 @@ spv.coopvecHW.comp
 %_ptr_Function_int = OpTypePointer Function %int
       %int_0 = OpConstant %int 0
       %int_4 = OpConstant %int 4
-   %uint_100 = OpConstant %uint 100
-         %88 = OpTypeCooperativeVectorHW %float %uint_100
-%_ptr_Function_88 = OpTypePointer Function %88
-         %91 = OpTypeCooperativeVectorHW %half %uint_100
-%_ptr_Function_91 = OpTypePointer Function %91
     %uint_20 = OpConstant %uint 20
+         %88 = OpTypeCooperativeVectorHW %float %uint_20
+%_ptr_Function_88 = OpTypePointer Function %88
+   %uint_100 = OpConstant %uint 100
+         %92 = OpTypeCooperativeVectorHW %half %uint_100
+%_ptr_Function_92 = OpTypePointer Function %92
          %96 = OpTypeCooperativeMatrixHW %half %uint_100 %uint_20 MatrixUseAHW
 %_ptr_Function_96 = OpTypePointer Function %96
-        %103 = OpTypeCooperativeVectorHW %int %uint_100
+        %103 = OpTypeCooperativeVectorHW %int %uint_20
 %_ptr_Function_103 = OpTypePointer Function %103
        %char = OpTypeInt 8 1
         %107 = OpTypeCooperativeVectorHW %char %uint_100
 %_ptr_Function_107 = OpTypePointer Function %107
         %111 = OpTypeCooperativeMatrixHW %char %uint_100 %uint_20 MatrixUseAHW
 %_ptr_Function_111 = OpTypePointer Function %111
+        %119 = OpTypeCooperativeVectorHW %float %uint_100
 %_ptr_Function_half = OpTypePointer Function %half
      %uint_7 = OpConstant %uint 7
-        %128 = OpTypeCooperativeVectorHW %half %uint_7
-%_ptr_Function_128 = OpTypePointer Function %128
+        %129 = OpTypeCooperativeVectorHW %half %uint_7
+%_ptr_Function_129 = OpTypePointer Function %129
       %short = OpTypeInt 16 1
-        %161 = OpTypeCooperativeVectorHW %short %uint_7
-%_ptr_Function_161 = OpTypePointer Function %161
+        %162 = OpTypeCooperativeVectorHW %short %uint_7
+%_ptr_Function_162 = OpTypePointer Function %162
      %ushort = OpTypeInt 16 0
-        %194 = OpTypeCooperativeVectorHW %ushort %uint_7
-%_ptr_Function_194 = OpTypePointer Function %194
+        %195 = OpTypeCooperativeVectorHW %ushort %uint_7
+%_ptr_Function_195 = OpTypePointer Function %195
      %v3uint = OpTypeVector %uint 3
     %uint_64 = OpConstant %uint 64
 %gl_WorkGroupSize = OpConstantComposite %v3uint %uint_64 %uint_1 %uint_1
@@ -131,7 +132,7 @@ spv.coopvecHW.comp
           %f = OpVariable %_ptr_Function_float Function
         %len = OpVariable %_ptr_Function_int Function
     %tempArg = OpVariable %_ptr_Function_88 Function
-        %v7h = OpVariable %_ptr_Function_91 Function
+        %v7h = OpVariable %_ptr_Function_92 Function
          %m8 = OpVariable %_ptr_Function_96 Function
          %v8 = OpVariable %_ptr_Function_88 Function
   %tempArg_0 = OpVariable %_ptr_Function_103 Function
@@ -141,14 +142,14 @@ spv.coopvecHW.comp
        %f162 = OpVariable %_ptr_Function_16 Function
        %f161 = OpVariable %_ptr_Function_9 Function
         %f16 = OpVariable %_ptr_Function_half Function
-        %v11 = OpVariable %_ptr_Function_128 Function
-        %v12 = OpVariable %_ptr_Function_128 Function
-        %v13 = OpVariable %_ptr_Function_128 Function
-        %s11 = OpVariable %_ptr_Function_161 Function
-        %s12 = OpVariable %_ptr_Function_161 Function
-        %u11 = OpVariable %_ptr_Function_194 Function
-        %u12 = OpVariable %_ptr_Function_194 Function
-        %u13 = OpVariable %_ptr_Function_194 Function
+        %v11 = OpVariable %_ptr_Function_129 Function
+        %v12 = OpVariable %_ptr_Function_129 Function
+        %v13 = OpVariable %_ptr_Function_129 Function
+        %s11 = OpVariable %_ptr_Function_162 Function
+        %s12 = OpVariable %_ptr_Function_162 Function
+        %u11 = OpVariable %_ptr_Function_195 Function
+        %u12 = OpVariable %_ptr_Function_195 Function
+        %u13 = OpVariable %_ptr_Function_195 Function
   %tempArg_1 = OpVariable %_ptr_Function_88 Function
      %v8bias = OpVariable %_ptr_Function_88 Function
   %tempArg_2 = OpVariable %_ptr_Function_103 Function
@@ -199,9 +200,9 @@ spv.coopvecHW.comp
                OpStore %84 %83
          %86 = OpAccessChain %_ptr_Function_float %v4 %int_4
                OpStore %86 %float_5
-         %94 = OpLoad %91 %v7h
+         %95 = OpLoad %92 %v7h
          %99 = OpLoad %96 %m8
-        %100 = OpCooperativeVectorMatrixMulHW %88 %94 %99
+        %100 = OpCooperativeVectorMatrixMulHW %88 %95 %99
                OpStore %tempArg %100
         %102 = OpLoad %88 %tempArg
                OpStore %v8 %102
@@ -211,239 +212,239 @@ spv.coopvecHW.comp
                OpStore %tempArg_0 %115
         %117 = OpLoad %103 %tempArg_0
                OpStore %v10 %117
-        %119 = OpBitcast %int %uint_100
-        %120 = OpConvertSToF %half %119
-        %121 = OpCompositeConstructReplicateEXT %16 %120
-               OpStore %f162 %121
-        %125 = OpLoad %half %f16
-        %126 = OpCompositeConstructReplicateEXT %9 %125
-               OpStore %f161 %126
-        %131 = OpLoad %128 %v11
-        %133 = OpLoad %128 %v12
-        %134 = OpExtInst %128 %1 FMax %131 %133
-               OpStore %v11 %134
-        %135 = OpLoad %128 %v11
-        %136 = OpLoad %128 %v12
-        %137 = OpExtInst %128 %1 FMin %135 %136
-               OpStore %v11 %137
-        %138 = OpLoad %128 %v11
-        %139 = OpLoad %128 %v12
-        %140 = OpExtInst %128 %1 Step %138 %139
-               OpStore %v11 %140
-        %141 = OpLoad %128 %v11
-        %142 = OpLoad %128 %v12
-        %144 = OpLoad %128 %v13
-        %145 = OpExtInst %128 %1 FClamp %141 %142 %144
-               OpStore %v11 %145
-        %146 = OpLoad %128 %v11
-        %147 = OpFNegate %128 %146
-               OpStore %v11 %147
-        %148 = OpLoad %128 %v11
-        %149 = OpExtInst %128 %1 Exp %148
-               OpStore %v11 %149
-        %150 = OpLoad %128 %v11
-        %151 = OpExtInst %128 %1 Log %150
-               OpStore %v11 %151
-        %152 = OpLoad %128 %v11
-        %153 = OpExtInst %128 %1 Tanh %152
-               OpStore %v11 %153
-        %154 = OpLoad %128 %v11
-        %155 = OpExtInst %128 %1 Atan %154
-               OpStore %v11 %155
-        %156 = OpLoad %128 %v11
-        %157 = OpLoad %128 %v12
-        %158 = OpLoad %128 %v13
-        %159 = OpExtInst %128 %1 Fma %156 %157 %158
-               OpStore %v11 %159
-        %164 = OpLoad %161 %s11
-        %165 = OpSNegate %161 %164
-               OpStore %s11 %165
-        %166 = OpLoad %161 %s11
-        %167 = OpNot %161 %166
-               OpStore %s11 %167
-        %168 = OpLoad %161 %s11
-        %170 = OpLoad %161 %s12
-        %171 = OpIAdd %161 %168 %170
-               OpStore %s11 %171
-        %172 = OpLoad %161 %s11
-        %173 = OpLoad %161 %s12
-        %174 = OpISub %161 %172 %173
-               OpStore %s11 %174
-        %175 = OpLoad %161 %s11
-        %176 = OpLoad %161 %s12
-        %177 = OpIMul %161 %175 %176
-               OpStore %s11 %177
-        %178 = OpLoad %161 %s11
-        %179 = OpLoad %161 %s12
-        %180 = OpSDiv %161 %178 %179
-               OpStore %s11 %180
-        %181 = OpLoad %161 %s12
-        %182 = OpLoad %161 %s11
-        %183 = OpIAdd %161 %182 %181
-               OpStore %s11 %183
-        %184 = OpLoad %161 %s12
-        %185 = OpLoad %161 %s11
-        %186 = OpISub %161 %185 %184
-               OpStore %s11 %186
-        %187 = OpLoad %161 %s12
-        %188 = OpLoad %161 %s11
-        %189 = OpIMul %161 %188 %187
-               OpStore %s11 %189
-        %190 = OpLoad %161 %s12
-        %191 = OpLoad %161 %s11
-        %192 = OpSDiv %161 %191 %190
-               OpStore %s11 %192
-        %197 = OpLoad %194 %u11
-        %199 = OpLoad %194 %u12
-        %200 = OpExtInst %194 %1 UMin %197 %199
-               OpStore %u11 %200
-        %201 = OpLoad %194 %u11
-        %202 = OpLoad %194 %u12
-        %203 = OpExtInst %194 %1 UMax %201 %202
-               OpStore %u11 %203
-        %204 = OpLoad %194 %u11
-        %205 = OpLoad %194 %u12
-        %207 = OpLoad %194 %u13
-        %208 = OpExtInst %194 %1 UClamp %204 %205 %207
-               OpStore %u11 %208
-        %209 = OpLoad %194 %u11
-        %210 = OpNot %194 %209
-               OpStore %u11 %210
-        %211 = OpLoad %194 %u11
-        %212 = OpLoad %194 %u12
-        %213 = OpShiftRightLogical %194 %211 %212
-               OpStore %u11 %213
-        %214 = OpLoad %194 %u11
-        %215 = OpLoad %194 %u12
-        %216 = OpShiftLeftLogical %194 %214 %215
-               OpStore %u11 %216
-        %217 = OpLoad %194 %u11
-        %218 = OpLoad %194 %u12
-        %219 = OpBitwiseOr %194 %217 %218
-               OpStore %u11 %219
-        %220 = OpLoad %194 %u11
-        %221 = OpLoad %194 %u12
-        %222 = OpBitwiseAnd %194 %220 %221
-               OpStore %u11 %222
-        %223 = OpLoad %194 %u11
-        %224 = OpLoad %194 %u12
-        %225 = OpBitwiseXor %194 %223 %224
-               OpStore %u11 %225
-        %226 = OpLoad %194 %u11
-        %227 = OpLoad %194 %u12
-        %228 = OpIAdd %194 %226 %227
-               OpStore %u11 %228
-        %229 = OpLoad %194 %u11
-        %230 = OpLoad %194 %u12
-        %231 = OpISub %194 %229 %230
-               OpStore %u11 %231
-        %232 = OpLoad %194 %u11
-        %233 = OpLoad %194 %u12
-        %234 = OpIMul %194 %232 %233
-               OpStore %u11 %234
-        %235 = OpLoad %194 %u11
-        %236 = OpLoad %194 %u12
-        %237 = OpUDiv %194 %235 %236
-               OpStore %u11 %237
-        %238 = OpLoad %194 %u12
-        %239 = OpLoad %194 %u11
-        %240 = OpShiftRightLogical %194 %239 %238
-               OpStore %u11 %240
-        %241 = OpLoad %194 %u12
-        %242 = OpLoad %194 %u11
-        %243 = OpShiftLeftLogical %194 %242 %241
-               OpStore %u11 %243
-        %244 = OpLoad %194 %u12
-        %245 = OpLoad %194 %u11
-        %246 = OpBitwiseOr %194 %245 %244
-               OpStore %u11 %246
-        %247 = OpLoad %194 %u12
-        %248 = OpLoad %194 %u11
-        %249 = OpBitwiseAnd %194 %248 %247
-               OpStore %u11 %249
-        %250 = OpLoad %194 %u12
-        %251 = OpLoad %194 %u11
-        %252 = OpBitwiseXor %194 %251 %250
-               OpStore %u11 %252
-        %253 = OpLoad %194 %u12
-        %254 = OpLoad %194 %u11
-        %255 = OpIAdd %194 %254 %253
-               OpStore %u11 %255
-        %256 = OpLoad %194 %u12
-        %257 = OpLoad %194 %u11
-        %258 = OpISub %194 %257 %256
-               OpStore %u11 %258
-        %259 = OpLoad %194 %u12
-        %260 = OpLoad %194 %u11
-        %261 = OpIMul %194 %260 %259
-               OpStore %u11 %261
-        %262 = OpLoad %194 %u12
-        %263 = OpLoad %194 %u11
-        %264 = OpUDiv %194 %263 %262
-               OpStore %u11 %264
-        %265 = OpLoad %161 %s11
-        %266 = OpLoad %161 %s12
-        %267 = OpShiftRightArithmetic %161 %265 %266
-               OpStore %s11 %267
-        %268 = OpLoad %161 %s11
-        %269 = OpLoad %161 %s12
-        %270 = OpShiftLeftLogical %161 %268 %269
-               OpStore %s11 %270
-        %271 = OpLoad %161 %s11
-        %272 = OpLoad %161 %s12
-        %273 = OpBitwiseOr %161 %271 %272
-               OpStore %s11 %273
-        %274 = OpLoad %161 %s11
-        %275 = OpLoad %161 %s12
-        %276 = OpBitwiseAnd %161 %274 %275
-               OpStore %s11 %276
-        %277 = OpLoad %161 %s11
-        %278 = OpLoad %161 %s12
-        %279 = OpBitwiseXor %161 %277 %278
-               OpStore %s11 %279
-        %280 = OpLoad %161 %s12
-        %281 = OpLoad %161 %s11
-        %282 = OpShiftRightArithmetic %161 %281 %280
-               OpStore %s11 %282
-        %283 = OpLoad %161 %s12
-        %284 = OpLoad %161 %s11
-        %285 = OpShiftLeftLogical %161 %284 %283
-               OpStore %s11 %285
-        %286 = OpLoad %161 %s12
-        %287 = OpLoad %161 %s11
-        %288 = OpBitwiseOr %161 %287 %286
-               OpStore %s11 %288
-        %289 = OpLoad %161 %s12
-        %290 = OpLoad %161 %s11
-        %291 = OpBitwiseAnd %161 %290 %289
-               OpStore %s11 %291
-        %292 = OpLoad %161 %s12
-        %293 = OpLoad %161 %s11
-        %294 = OpBitwiseXor %161 %293 %292
-               OpStore %s11 %294
-        %296 = OpLoad %91 %v7h
-        %297 = OpLoad %96 %m8
-        %299 = OpLoad %88 %v8bias
-        %300 = OpCooperativeVectorMatrixMulAddHW %88 %296 %297 %299
-               OpStore %tempArg_1 %300
-        %301 = OpLoad %88 %tempArg_1
-               OpStore %v8 %301
-        %303 = OpLoad %107 %v9
-        %304 = OpLoad %111 %m10
-        %306 = OpLoad %103 %v10bias
-        %307 = OpCooperativeVectorMatrixMulAddHW %103 %303 %304 %306
-               OpStore %tempArg_2 %307
-        %308 = OpLoad %103 %tempArg_2
-               OpStore %v10 %308
-        %309 = OpLoad %30 %v
+        %120 = OpBitcast %int %uint_100
+        %121 = OpConvertSToF %half %120
+        %122 = OpCompositeConstructReplicateEXT %16 %121
+               OpStore %f162 %122
+        %126 = OpLoad %half %f16
+        %127 = OpCompositeConstructReplicateEXT %9 %126
+               OpStore %f161 %127
+        %132 = OpLoad %129 %v11
+        %134 = OpLoad %129 %v12
+        %135 = OpExtInst %129 %1 FMax %132 %134
+               OpStore %v11 %135
+        %136 = OpLoad %129 %v11
+        %137 = OpLoad %129 %v12
+        %138 = OpExtInst %129 %1 FMin %136 %137
+               OpStore %v11 %138
+        %139 = OpLoad %129 %v11
+        %140 = OpLoad %129 %v12
+        %141 = OpExtInst %129 %1 Step %139 %140
+               OpStore %v11 %141
+        %142 = OpLoad %129 %v11
+        %143 = OpLoad %129 %v12
+        %145 = OpLoad %129 %v13
+        %146 = OpExtInst %129 %1 FClamp %142 %143 %145
+               OpStore %v11 %146
+        %147 = OpLoad %129 %v11
+        %148 = OpFNegate %129 %147
+               OpStore %v11 %148
+        %149 = OpLoad %129 %v11
+        %150 = OpExtInst %129 %1 Exp %149
+               OpStore %v11 %150
+        %151 = OpLoad %129 %v11
+        %152 = OpExtInst %129 %1 Log %151
+               OpStore %v11 %152
+        %153 = OpLoad %129 %v11
+        %154 = OpExtInst %129 %1 Tanh %153
+               OpStore %v11 %154
+        %155 = OpLoad %129 %v11
+        %156 = OpExtInst %129 %1 Atan %155
+               OpStore %v11 %156
+        %157 = OpLoad %129 %v11
+        %158 = OpLoad %129 %v12
+        %159 = OpLoad %129 %v13
+        %160 = OpExtInst %129 %1 Fma %157 %158 %159
+               OpStore %v11 %160
+        %165 = OpLoad %162 %s11
+        %166 = OpSNegate %162 %165
+               OpStore %s11 %166
+        %167 = OpLoad %162 %s11
+        %168 = OpNot %162 %167
+               OpStore %s11 %168
+        %169 = OpLoad %162 %s11
+        %171 = OpLoad %162 %s12
+        %172 = OpIAdd %162 %169 %171
+               OpStore %s11 %172
+        %173 = OpLoad %162 %s11
+        %174 = OpLoad %162 %s12
+        %175 = OpISub %162 %173 %174
+               OpStore %s11 %175
+        %176 = OpLoad %162 %s11
+        %177 = OpLoad %162 %s12
+        %178 = OpIMul %162 %176 %177
+               OpStore %s11 %178
+        %179 = OpLoad %162 %s11
+        %180 = OpLoad %162 %s12
+        %181 = OpSDiv %162 %179 %180
+               OpStore %s11 %181
+        %182 = OpLoad %162 %s12
+        %183 = OpLoad %162 %s11
+        %184 = OpIAdd %162 %183 %182
+               OpStore %s11 %184
+        %185 = OpLoad %162 %s12
+        %186 = OpLoad %162 %s11
+        %187 = OpISub %162 %186 %185
+               OpStore %s11 %187
+        %188 = OpLoad %162 %s12
+        %189 = OpLoad %162 %s11
+        %190 = OpIMul %162 %189 %188
+               OpStore %s11 %190
+        %191 = OpLoad %162 %s12
+        %192 = OpLoad %162 %s11
+        %193 = OpSDiv %162 %192 %191
+               OpStore %s11 %193
+        %198 = OpLoad %195 %u11
+        %200 = OpLoad %195 %u12
+        %201 = OpExtInst %195 %1 UMin %198 %200
+               OpStore %u11 %201
+        %202 = OpLoad %195 %u11
+        %203 = OpLoad %195 %u12
+        %204 = OpExtInst %195 %1 UMax %202 %203
+               OpStore %u11 %204
+        %205 = OpLoad %195 %u11
+        %206 = OpLoad %195 %u12
+        %208 = OpLoad %195 %u13
+        %209 = OpExtInst %195 %1 UClamp %205 %206 %208
+               OpStore %u11 %209
+        %210 = OpLoad %195 %u11
+        %211 = OpNot %195 %210
+               OpStore %u11 %211
+        %212 = OpLoad %195 %u11
+        %213 = OpLoad %195 %u12
+        %214 = OpShiftRightLogical %195 %212 %213
+               OpStore %u11 %214
+        %215 = OpLoad %195 %u11
+        %216 = OpLoad %195 %u12
+        %217 = OpShiftLeftLogical %195 %215 %216
+               OpStore %u11 %217
+        %218 = OpLoad %195 %u11
+        %219 = OpLoad %195 %u12
+        %220 = OpBitwiseOr %195 %218 %219
+               OpStore %u11 %220
+        %221 = OpLoad %195 %u11
+        %222 = OpLoad %195 %u12
+        %223 = OpBitwiseAnd %195 %221 %222
+               OpStore %u11 %223
+        %224 = OpLoad %195 %u11
+        %225 = OpLoad %195 %u12
+        %226 = OpBitwiseXor %195 %224 %225
+               OpStore %u11 %226
+        %227 = OpLoad %195 %u11
+        %228 = OpLoad %195 %u12
+        %229 = OpIAdd %195 %227 %228
+               OpStore %u11 %229
+        %230 = OpLoad %195 %u11
+        %231 = OpLoad %195 %u12
+        %232 = OpISub %195 %230 %231
+               OpStore %u11 %232
+        %233 = OpLoad %195 %u11
+        %234 = OpLoad %195 %u12
+        %235 = OpIMul %195 %233 %234
+               OpStore %u11 %235
+        %236 = OpLoad %195 %u11
+        %237 = OpLoad %195 %u12
+        %238 = OpUDiv %195 %236 %237
+               OpStore %u11 %238
+        %239 = OpLoad %195 %u12
+        %240 = OpLoad %195 %u11
+        %241 = OpShiftRightLogical %195 %240 %239
+               OpStore %u11 %241
+        %242 = OpLoad %195 %u12
+        %243 = OpLoad %195 %u11
+        %244 = OpShiftLeftLogical %195 %243 %242
+               OpStore %u11 %244
+        %245 = OpLoad %195 %u12
+        %246 = OpLoad %195 %u11
+        %247 = OpBitwiseOr %195 %246 %245
+               OpStore %u11 %247
+        %248 = OpLoad %195 %u12
+        %249 = OpLoad %195 %u11
+        %250 = OpBitwiseAnd %195 %249 %248
+               OpStore %u11 %250
+        %251 = OpLoad %195 %u12
+        %252 = OpLoad %195 %u11
+        %253 = OpBitwiseXor %195 %252 %251
+               OpStore %u11 %253
+        %254 = OpLoad %195 %u12
+        %255 = OpLoad %195 %u11
+        %256 = OpIAdd %195 %255 %254
+               OpStore %u11 %256
+        %257 = OpLoad %195 %u12
+        %258 = OpLoad %195 %u11
+        %259 = OpISub %195 %258 %257
+               OpStore %u11 %259
+        %260 = OpLoad %195 %u12
+        %261 = OpLoad %195 %u11
+        %262 = OpIMul %195 %261 %260
+               OpStore %u11 %262
+        %263 = OpLoad %195 %u12
+        %264 = OpLoad %195 %u11
+        %265 = OpUDiv %195 %264 %263
+               OpStore %u11 %265
+        %266 = OpLoad %162 %s11
+        %267 = OpLoad %162 %s12
+        %268 = OpShiftRightArithmetic %162 %266 %267
+               OpStore %s11 %268
+        %269 = OpLoad %162 %s11
+        %270 = OpLoad %162 %s12
+        %271 = OpShiftLeftLogical %162 %269 %270
+               OpStore %s11 %271
+        %272 = OpLoad %162 %s11
+        %273 = OpLoad %162 %s12
+        %274 = OpBitwiseOr %162 %272 %273
+               OpStore %s11 %274
+        %275 = OpLoad %162 %s11
+        %276 = OpLoad %162 %s12
+        %277 = OpBitwiseAnd %162 %275 %276
+               OpStore %s11 %277
+        %278 = OpLoad %162 %s11
+        %279 = OpLoad %162 %s12
+        %280 = OpBitwiseXor %162 %278 %279
+               OpStore %s11 %280
+        %281 = OpLoad %162 %s12
+        %282 = OpLoad %162 %s11
+        %283 = OpShiftRightArithmetic %162 %282 %281
+               OpStore %s11 %283
+        %284 = OpLoad %162 %s12
+        %285 = OpLoad %162 %s11
+        %286 = OpShiftLeftLogical %162 %285 %284
+               OpStore %s11 %286
+        %287 = OpLoad %162 %s12
+        %288 = OpLoad %162 %s11
+        %289 = OpBitwiseOr %162 %288 %287
+               OpStore %s11 %289
+        %290 = OpLoad %162 %s12
+        %291 = OpLoad %162 %s11
+        %292 = OpBitwiseAnd %162 %291 %290
+               OpStore %s11 %292
+        %293 = OpLoad %162 %s12
+        %294 = OpLoad %162 %s11
+        %295 = OpBitwiseXor %162 %294 %293
+               OpStore %s11 %295
+        %297 = OpLoad %92 %v7h
+        %298 = OpLoad %96 %m8
+        %300 = OpLoad %88 %v8bias
+        %301 = OpCooperativeVectorMatrixMulAddHW %88 %297 %298 %300
+               OpStore %tempArg_1 %301
+        %302 = OpLoad %88 %tempArg_1
+               OpStore %v8 %302
+        %304 = OpLoad %107 %v9
+        %305 = OpLoad %111 %m10
+        %307 = OpLoad %103 %v10bias
+        %308 = OpCooperativeVectorMatrixMulAddHW %103 %304 %305 %307
+               OpStore %tempArg_2 %308
+        %309 = OpLoad %103 %tempArg_2
+               OpStore %v10 %309
         %310 = OpLoad %30 %v
-        %311 = OpFAdd %30 %310 %309
-               OpStore %v %311
-        %312 = OpLoad %int %len
-        %313 = OpVectorExtractDynamic %float %311 %312
-        %314 = OpLoad %float %f
-        %315 = OpFAdd %float %314 %313
-               OpStore %f %315
+        %311 = OpLoad %30 %v
+        %312 = OpFAdd %30 %311 %310
+               OpStore %v %312
+        %313 = OpLoad %int %len
+        %314 = OpVectorExtractDynamic %float %312 %313
+        %315 = OpLoad %float %f
+        %316 = OpFAdd %float %315 %314
+               OpStore %f %316
                OpReturn
                OpFunctionEnd
 %foo_coopvecHWf161_1__ = OpFunction %9 None %11
