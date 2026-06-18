@@ -272,7 +272,7 @@ std::vector<float> ReferenceOutput(const CaseConfig& config, const std::vector<f
         for (uint32_t col = 0; col < config.n; ++col) {
             float vec = 0.0f;
             for (uint32_t inner = 0; inner < config.k; ++inner) {
-                vec += a[inner] * b[col * config.k + inner];
+                vec += a[inner] * b[inner * config.n + col];
             }
             out[col] = OutputQuantize(out[col] + vec, config.dtype);
             out[col] = OutputQuantize(out[col] + vec, config.dtype);
@@ -283,7 +283,7 @@ std::vector<float> ReferenceOutput(const CaseConfig& config, const std::vector<f
     for (uint32_t col = 0; col < config.n; ++col) {
         float acc = config.kind == CaseKind::kVecMatmulAdd ? c[col] : 0.0f;
         for (uint32_t inner = 0; inner < config.k; ++inner) {
-            acc += a[inner] * b[col * config.k + inner];
+            acc += a[inner] * b[inner * config.n + col];
         }
         out[col] = OutputQuantize(acc, config.dtype);
     }

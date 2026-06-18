@@ -14,7 +14,7 @@ void main()
     for (int col = 0; col < 3; ++col) {
         float16_t acc = float16_t(0.0);
         for (int k = 0; k < 5; ++k) {
-            acc += X.data[k] * W.data[col * 5 + k];
+            acc += X.data[k] * W.data[k * 3 + col];
         }
         Y.data[col] = acc;
     }

@@ -28,7 +28,7 @@ void main()
     for (int col = 0; col < 16; ++col) {
         float16_t vec = float16_t(0.0);
         for (int k = 0; k < 16; ++k) {
-            vec += A.data[k] * B.data[col * 16 + k];
+            vec += A.data[k] * B.data[k * 16 + col];
         }
         D.data[col] += vec;
         D.data[col] += vec;

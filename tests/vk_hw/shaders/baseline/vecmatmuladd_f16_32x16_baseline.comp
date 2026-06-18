@@ -23,22 +23,15 @@ f16vec4 loadBias(int col0)
 
 void tileWeight(int k0, int col0, out f16vec4 weight[4])
 {
-    weight[0] = f16vec4(W.data[(col0 + 0) * 32 + k0 + 0], W.data[(col0 + 0) * 32 + k0 + 1],
-                        W.data[(col0 + 0) * 32 + k0 + 2], W.data[(col0 + 0) * 32 + k0 + 3]);
-    weight[1] = f16vec4(W.data[(col0 + 1) * 32 + k0 + 0], W.data[(col0 + 1) * 32 + k0 + 1],
-                        W.data[(col0 + 1) * 32 + k0 + 2], W.data[(col0 + 1) * 32 + k0 + 3]);
-    weight[2] = f16vec4(W.data[(col0 + 2) * 32 + k0 + 0], W.data[(col0 + 2) * 32 + k0 + 1],
-                        W.data[(col0 + 2) * 32 + k0 + 2], W.data[(col0 + 2) * 32 + k0 + 3]);
-    weight[3] = f16vec4(W.data[(col0 + 3) * 32 + k0 + 0], W.data[(col0 + 3) * 32 + k0 + 1],
-                        W.data[(col0 + 3) * 32 + k0 + 2], W.data[(col0 + 3) * 32 + k0 + 3]);
+    weight[0] = f16vec4(W.data[(k0 + 0) * 16 + col0 + 0], W.data[(k0 + 1) * 16 + col0 + 0],
+                        W.data[(k0 + 2) * 16 + col0 + 0], W.data[(k0 + 3) * 16 + col0 + 0]);
+    weight[1] = f16vec4(W.data[(k0 + 0) * 16 + col0 + 1], W.data[(k0 + 1) * 16 + col0 + 1],
+                        W.data[(k0 + 2) * 16 + col0 + 1], W.data[(k0 + 3) * 16 + col0 + 1]);
+    weight[2] = f16vec4(W.data[(k0 + 0) * 16 + col0 + 2], W.data[(k0 + 1) * 16 + col0 + 2],
+                        W.data[(k0 + 2) * 16 + col0 + 2], W.data[(k0 + 3) * 16 + col0 + 2]);
+    weight[3] = f16vec4(W.data[(k0 + 0) * 16 + col0 + 3], W.data[(k0 + 1) * 16 + col0 + 3],
+                        W.data[(k0 + 2) * 16 + col0 + 3], W.data[(k0 + 3) * 16 + col0 + 3]);
 }
-
-#define MatMul_PATTERN(k4, col0) \
-    tileWeight(k4, col0, weight); \
-    rx += v * weight[0];           \
-    ry += v * weight[1];           \
-    rz += v * weight[2];           \
-    rw += v * weight[3];
 
 void storeOutput(int col0, f16vec4 value)
 {
@@ -56,30 +49,18 @@ void main()
         f16vec4 rz = f16vec4(0.0hf);
         f16vec4 rw = f16vec4(0.0hf);
         f16vec4 weight[4];
-        f16vec4 v;
-
-        v = loadInput(0);
-        MatMul_PATTERN(0, col0);
-        v = loadInput(4);
-        MatMul_PATTERN(4, col0);
-        v = loadInput(8);
-        MatMul_PATTERN(8, col0);
-        v = loadInput(12);
-        MatMul_PATTERN(12, col0);
-        v = loadInput(16);
-        MatMul_PATTERN(16, col0);
-        v = loadInput(20);
-        MatMul_PATTERN(20, col0);
-        v = loadInput(24);
-        MatMul_PATTERN(24, col0);
-        v = loadInput(28);
-        MatMul_PATTERN(28, col0);
-
+        for (int k0 = 0; k0 < 32; k0 += 4) {
+            f16vec4 v = loadInput(k0);
+            tileWeight(k0, col0, weight);
+            rx += v * weight[0];
+            ry += v * weight[1];
+            rz += v * weight[2];
+            rw += v * weight[3];
+        }
         storeOutput(col0, loadBias(col0) + f16vec4(
             rx.x + rx.y + rx.z + rx.w,
             ry.x + ry.y + ry.z + ry.w,
             rz.x + rz.y + rz.z + rz.w,
-            rw.x + rw.y + rw.z + rw.w
-        ));
+            rw.x + rw.y + rw.z + rw.w));
     }
 }

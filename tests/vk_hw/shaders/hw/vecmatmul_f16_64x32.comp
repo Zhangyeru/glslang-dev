@@ -11,12 +11,12 @@ layout(set = 0, binding = 3) buffer OutputY { float16_t data[]; } Y;
 
 void main()
 {
-    const ivec2 shapeW = ivec2(64.0, 64.0);
+    const ivec2 shapeW = ivec2(64.0, 32.0);
     const ivec2 zeroOffset = ivec2(0.0, 0.0);
 
     coopvecHW<float16_t, 64> x;
-    coopmatHW<float16_t, 64, 64> w;
-    coopvecHW<float16_t, 64> y;
+    coopmatHW<float16_t, 64, 32> w;
+    coopvecHW<float16_t, 32> y;
 
     coopVecLoadHW(x, X.data, 0u);
     coopMatLoadHW(w, W.data, shapeW, zeroOffset, gl_RowMajorHW);

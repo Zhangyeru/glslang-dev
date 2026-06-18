@@ -17,14 +17,14 @@ f16vec4 loadInput(int k0)
 
 void tileWeight(int k0, int col0, out f16vec4 weight[4])
 {
-    weight[0] = f16vec4(W.data[(col0 + 0) * 64 + k0 + 0], W.data[(col0 + 0) * 64 + k0 + 1],
-                        W.data[(col0 + 0) * 64 + k0 + 2], W.data[(col0 + 0) * 64 + k0 + 3]);
-    weight[1] = f16vec4(W.data[(col0 + 1) * 64 + k0 + 0], W.data[(col0 + 1) * 64 + k0 + 1],
-                        W.data[(col0 + 1) * 64 + k0 + 2], W.data[(col0 + 1) * 64 + k0 + 3]);
-    weight[2] = f16vec4(W.data[(col0 + 2) * 64 + k0 + 0], W.data[(col0 + 2) * 64 + k0 + 1],
-                        W.data[(col0 + 2) * 64 + k0 + 2], W.data[(col0 + 2) * 64 + k0 + 3]);
-    weight[3] = f16vec4(W.data[(col0 + 3) * 64 + k0 + 0], W.data[(col0 + 3) * 64 + k0 + 1],
-                        W.data[(col0 + 3) * 64 + k0 + 2], W.data[(col0 + 3) * 64 + k0 + 3]);
+    weight[0] = f16vec4(W.data[(k0 + 0) * 32 + col0 + 0], W.data[(k0 + 1) * 32 + col0 + 0],
+                        W.data[(k0 + 2) * 32 + col0 + 0], W.data[(k0 + 3) * 32 + col0 + 0]);
+    weight[1] = f16vec4(W.data[(k0 + 0) * 32 + col0 + 1], W.data[(k0 + 1) * 32 + col0 + 1],
+                        W.data[(k0 + 2) * 32 + col0 + 1], W.data[(k0 + 3) * 32 + col0 + 1]);
+    weight[2] = f16vec4(W.data[(k0 + 0) * 32 + col0 + 2], W.data[(k0 + 1) * 32 + col0 + 2],
+                        W.data[(k0 + 2) * 32 + col0 + 2], W.data[(k0 + 3) * 32 + col0 + 2]);
+    weight[3] = f16vec4(W.data[(k0 + 0) * 32 + col0 + 3], W.data[(k0 + 1) * 32 + col0 + 3],
+                        W.data[(k0 + 2) * 32 + col0 + 3], W.data[(k0 + 3) * 32 + col0 + 3]);
 }
 
 void storeOutput(int col0, f16vec4 value)

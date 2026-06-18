@@ -20,17 +20,19 @@ def parse_case(path):
     else:
         stem = path.stem
 
-    m = re.match(r"multiops_(f16|f32)(?:_scalar)?_(\d+)x(\d+)x(\d+)$", stem)
+    suffix = r"(?:_(?:scalar|ssbo_direct))?"
+
+    m = re.match(rf"multiops_(f16|f32){suffix}_(\d+)x(\d+)x(\d+)$", stem)
     if m:
         dtype, rows, cols, inner = m.groups()
         return {"case": "multiops", "dtype": dtype, "m": rows, "n": cols, "k": inner}
 
-    m = re.match(r"matmul_(f16|f32)(?:_scalar)?_(\d+)x(\d+)x(\d+)$", stem)
+    m = re.match(rf"matmul_(f16|f32){suffix}_(\d+)x(\d+)x(\d+)$", stem)
     if m:
         dtype, rows, cols, inner = m.groups()
         return {"case": "matmul", "dtype": dtype, "m": rows, "n": cols, "k": inner}
 
-    m = re.match(r"(vecmatmuladd|vecmatmul)_(f16|f32)(?:_scalar)?_(\d+)x(\d+)$", stem)
+    m = re.match(rf"(vecmatmuladd|vecmatmul)_(f16|f32){suffix}_(\d+)x(\d+)$", stem)
     if m:
         case, dtype, inner, cols = m.groups()
         return {"case": case, "dtype": dtype, "m": "1", "n": cols, "k": inner}

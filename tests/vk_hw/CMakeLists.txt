@@ -20,6 +20,22 @@ endif()
 
 find_package(Python3 COMPONENTS Interpreter QUIET)
 
+# spirv-cross is used to decompile SPIR-V back to readable GLSL after
+# building.  It is optional: when absent the build still succeeds, only
+# the .glsl mirror is skipped.
+find_program(SPIRV_CROSS_EXECUTABLE spirv-cross
+    HINTS
+        ${CMAKE_BINARY_DIR}/External/SPIRV-Cross
+        ${CMAKE_SOURCE_DIR}/External/SPIRV-Cross/build
+        /tmp/SPIRV-Cross/build
+    DOC "spirv-cross decompiler (optional, used to mirror SPIR-V to GLSL)"
+)
+if(SPIRV_CROSS_EXECUTABLE)
+    message(STATUS "Found spirv-cross: ${SPIRV_CROSS_EXECUTABLE}")
+else()
+    message(STATUS "spirv-cross not found; GLSL decompilation will be skipped")
+endif()
+
 add_executable(vk_hw_runner
     runner/main.cpp
     runner/vulkan_context.cpp
@@ -41,16 +57,24 @@ set_target_properties(vk_hw_runner PROPERTIES
 
 if(Python3_Interpreter_FOUND AND TARGET glslang-standalone AND TARGET spirv-opt
    AND TARGET spirv-val AND TARGET spirv-dis)
+    set(_build_shader_args
+        --glslang $<TARGET_FILE:glslang-standalone>
+        --spirv-opt $<TARGET_FILE:spirv-opt>
+        --spirv-val $<TARGET_FILE:spirv-val>
+        --spirv-dis $<TARGET_FILE:spirv-dis>
+        --shader-dir ${CMAKE_CURRENT_SOURCE_DIR}/shaders/hw
+        --baseline-dir ${CMAKE_CURRENT_SOURCE_DIR}/shaders/baseline
+        --out-dir ${CMAKE_BINARY_DIR}/tests/vk_hw/spv
+        --glsl-out-dir ${CMAKE_BINARY_DIR}/tests/vk_hw/glsl
+    )
+    if(SPIRV_CROSS_EXECUTABLE)
+        list(APPEND _build_shader_args --spirv-cross ${SPIRV_CROSS_EXECUTABLE})
+    endif()
+
     add_test(NAME vk_hw_build_shaders
         COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_CURRENT_SOURCE_DIR}/scripts/build_shaders.py
-            --glslang $<TARGET_FILE:glslang-standalone>
-            --spirv-opt $<TARGET_FILE:spirv-opt>
-            --spirv-val $<TARGET_FILE:spirv-val>
-            --spirv-dis $<TARGET_FILE:spirv-dis>
-            --shader-dir ${CMAKE_CURRENT_SOURCE_DIR}/shaders/hw
-            --baseline-dir ${CMAKE_CURRENT_SOURCE_DIR}/shaders/baseline
-            --out-dir ${CMAKE_BINARY_DIR}/tests/vk_hw/spv
+            ${_build_shader_args}
     )
 
     add_test(NAME vk_hw_function
