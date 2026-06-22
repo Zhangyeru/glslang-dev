@@ -128,6 +128,7 @@ def main():
     spirv_val = find_tool(args.spirv_val or "spirv-val")
     spirv_dis = find_tool(args.spirv_dis or "spirv-dis")
     spirv_cross = find_optional_tool(args.spirv_cross or "spirv-cross")
+    spirv_cross_explicit = bool(args.spirv_cross)
 
     shader_dir = pathlib.Path(args.shader_dir)
     baseline_dir = pathlib.Path(args.baseline_dir)
@@ -161,8 +162,22 @@ def main():
             msg += f" ({fail} failed)"
         print(msg)
     else:
-        print("spirv-cross not found; skipping GLSL decompilation "
-              "(pass --spirv-cross to enable)")
+        if spirv_cross_explicit:
+            print(f"WARNING: --spirv-cross '{args.spirv_cross}' was specified "
+                  f"but the binary was not found; GLSL decompilation skipped. "
+                  f"Stale .glsl files in {glsl_out_dir} will NOT be cleaned "
+                  f"automatically.", file=sys.stderr)
+        stale_glsl = sorted(glsl_out_dir.glob("*.glsl")) if glsl_out_dir.is_dir() else []
+        if stale_glsl:
+            if not spirv_cross_explicit:
+                print(f"WARNING: {len(stale_glsl)} stale .glsl file(s) remain in "
+                      f"{glsl_out_dir} (spirv-cross unavailable). Delete them "
+                      f"manually or install spirv-cross to regenerate.",
+                      file=sys.stderr)
+        else:
+            if not spirv_cross_explicit:
+                print("spirv-cross not found; skipping GLSL decompilation "
+                      "(pass --spirv-cross to enable)")
 
 
 if __name__ == "__main__":

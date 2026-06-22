@@ -66,6 +66,7 @@ def write_outputs(rows, out_json):
                 "ratio",
                 "gflops",
                 "verify",
+                "baseline_verify",
             ],
         )
         writer.writeheader()
@@ -76,14 +77,15 @@ def write_outputs(rows, out_json):
     lines = [
         "# HW Lowered Shader Vulkan Performance",
         "",
-        "| Shader | Case | DType | Shape | Lowered ns | Baseline ns | Ratio | GFLOPS | Verify |",
-        "|---|---|---|---:|---:|---:|---:|---:|---|",
+        "| Shader | Case | DType | Shape | Lowered ns | Baseline ns | Ratio | GFLOPS | Lowered Verify | Baseline Verify |",
+        "|---|---|---|---:|---:|---:|---:|---:|---|---|",
     ]
     for row in rows:
         shape = f"{row['m']}x{row['n']}x{row['k']}"
         lines.append(
             f"| {row['shader']} | {row['case']} | {row['dtype']} | {shape} | {row['lowered_ns']:.3f} | "
-            f"{row['baseline_ns']:.3f} | {row['ratio']:.4f} | {row['gflops']:.4f} | {row['verify']} |"
+            f"{row['baseline_ns']:.3f} | {row['ratio']:.4f} | {row['gflops']:.4f} | "
+            f"{row['verify']} | {row['baseline_verify']} |"
         )
     md_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -124,13 +126,16 @@ def main():
                 "ratio": lowered_ns / baseline_ns if baseline_ns > 0 else 0.0,
                 "gflops": float(lowered_result["gflops_avg"]),
                 "verify": lowered_result["verify"],
+                "baseline_verify": baseline_result["verify"],
             }
         )
 
     if not rows:
         raise RuntimeError(f"no lowered shaders found in {args.spv_dir}")
     write_outputs(rows, pathlib.Path(args.out))
-    return 0 if all(row["verify"] == "pass" for row in rows) else 1
+    return 0 if all(
+        row["verify"] == "pass" and row["baseline_verify"] == "pass" for row in rows
+    ) else 1
 
 
 if __name__ == "__main__":

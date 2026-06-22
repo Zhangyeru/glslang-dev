@@ -22,17 +22,26 @@ find_package(Python3 COMPONENTS Interpreter QUIET)
 
 # spirv-cross is used to decompile SPIR-V back to readable GLSL after
 # building.  It is optional: when absent the build still succeeds, only
-# the .glsl mirror is skipped.
+# the .glsl mirror is skipped.  HINTS are limited to in-tree locations
+# to avoid caching paths under /tmp or other volatile directories that
+# may disappear between cmake runs.
 find_program(SPIRV_CROSS_EXECUTABLE spirv-cross
     HINTS
         ${CMAKE_BINARY_DIR}/External/SPIRV-Cross
         ${CMAKE_SOURCE_DIR}/External/SPIRV-Cross/build
-        /tmp/SPIRV-Cross/build
     DOC "spirv-cross decompiler (optional, used to mirror SPIR-V to GLSL)"
 )
-if(SPIRV_CROSS_EXECUTABLE)
+if(SPIRV_CROSS_EXECUTABLE AND EXISTS "${SPIRV_CROSS_EXECUTABLE}")
     message(STATUS "Found spirv-cross: ${SPIRV_CROSS_EXECUTABLE}")
 else()
+    if(SPIRV_CROSS_EXECUTABLE AND NOT EXISTS "${SPIRV_CROSS_EXECUTABLE}")
+        message(WARNING "Cached spirv-cross path no longer exists: "
+                        "${SPIRV_CROSS_EXECUTABLE}. "
+                        "Re-run cmake with -DSPIRV_CROSS_EXECUTABLE=<path> "
+                        "or install spirv-cross on PATH.")
+        set(SPIRV_CROSS_EXECUTABLE "SPIRV_CROSS_EXECUTABLE-NOTFOUND"
+            CACHE FILEPATH "" FORCE)
+    endif()
     message(STATUS "spirv-cross not found; GLSL decompilation will be skipped")
 endif()
 

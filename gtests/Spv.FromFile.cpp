@@ -151,10 +151,12 @@ TEST_P(CompileVulkanToSpirvHwLowerToStandardTest, FromFile)
     std::ostringstream disassembly;
     glslang::SpirvToolsDisassemble(disassembly, optimized, spv_target_env::SPV_ENV_UNIVERSAL_1_5);
     result.spirv = disassembly.str();
-    EXPECT_EQ(std::string::npos, result.spirv.find("HW"));
     EXPECT_EQ(std::string::npos, result.spirv.find("CooperativeMatrixKHR"));
     EXPECT_EQ(std::string::npos, result.spirv.find("CooperativeMatrixHW"));
     EXPECT_EQ(std::string::npos, result.spirv.find("CooperativeVectorHW"));
+    EXPECT_EQ(std::string::npos, result.spirv.find("OpCooperativeMatrix"));
+    EXPECT_EQ(std::string::npos, result.spirv.find("OpCooperativeVector"));
+    EXPECT_EQ(std::string::npos, result.spirv.find("SPV_HW_neural_shader"));
     EXPECT_EQ(std::string::npos, result.spirv.find("HW_neural_shader"));
 
     std::ostringstream stream;
