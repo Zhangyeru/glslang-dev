@@ -54,6 +54,21 @@ std::string JsonEscape(const std::string& value)
     return escaped;
 }
 
+std::array<VkDescriptorType, 4> DescriptorTypesForShader(
+    const std::string& shader_path)
+{
+    std::array<VkDescriptorType, 4> descriptor_types = {
+        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+    };
+    if (shader_path.find("_ubo_") != std::string::npos) {
+        descriptor_types[1] = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    }
+    return descriptor_types;
+}
+
 CaseKind ParseCaseKind(const std::string& value)
 {
     if (value == "matmul")
@@ -270,6 +285,10 @@ int Run(int argc, char** argv)
         (!context.supports_shader_float16() || !context.supports_storage_buffer_16bit())) {
         throw std::runtime_error("f16 case requires shaderFloat16 and storageBuffer16BitAccess Vulkan features");
     }
+    if (config.shader_path.find("_ubo_") != std::string::npos &&
+        !context.supports_scalar_block_layout()) {
+        throw std::runtime_error("UBO case requires scalarBlockLayout Vulkan feature");
+    }
 
     Buffer buffer_a(&context, a_bytes.size());
     Buffer buffer_b(&context, b_bytes.size());
@@ -280,7 +299,8 @@ int Run(int argc, char** argv)
     buffer_c.Upload(c_bytes);
     buffer_d.Upload(d_init);
 
-    ComputePipeline pipeline(&context, spirv);
+    ComputePipeline pipeline(&context, spirv,
+                             DescriptorTypesForShader(config.shader_path));
     pipeline.UpdateDescriptors(
         {buffer_a.descriptor(), buffer_b.descriptor(), buffer_c.descriptor(), buffer_d.descriptor()});
 

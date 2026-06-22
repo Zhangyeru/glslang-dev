@@ -40,6 +40,13 @@ def find_optional_tool(path_or_name):
     return shutil.which(path_or_name)
 
 
+def validator_cmd(spirv_val, target_env, shader):
+    cmd = [spirv_val, "--target-env", target_env]
+    if "_ubo_" in shader.stem:
+        cmd.append("--scalar-block-layout")
+    return cmd
+
+
 def compile_hw_shader(glslang, spirv_opt, spirv_val, spirv_dis, shader, out_dir, target_env):
     stem = shader.stem
     hw_spv = out_dir / f"{stem}.hw.spv"
@@ -49,7 +56,7 @@ def compile_hw_shader(glslang, spirv_opt, spirv_val, spirv_dis, shader, out_dir,
 
     run([glslang, "-V", str(shader), "-o", str(hw_spv)])
     run([spirv_opt, lowering_pass, str(hw_spv), "-o", str(lowered_spv)])
-    run([spirv_val, "--target-env", target_env, str(lowered_spv)])
+    run([*validator_cmd(spirv_val, target_env, shader), str(lowered_spv)])
     run([spirv_dis, str(lowered_spv), "-o", str(lowered_asm)])
 
     asm_text = lowered_asm.read_text(encoding="utf-8")
@@ -63,7 +70,7 @@ def compile_baseline_shader(glslang, spirv_val, spirv_dis, shader, out_dir, targ
     asm = out_dir / f"{stem}.spvasm"
 
     run([glslang, "-V", str(shader), "-o", str(spv)])
-    run([spirv_val, "--target-env", target_env, str(spv)])
+    run([*validator_cmd(spirv_val, target_env, shader), str(spv)])
     run([spirv_dis, str(spv), "-o", str(asm)])
 
 

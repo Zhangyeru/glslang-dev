@@ -1,0 +1,25 @@
+#version 450 core
+#extension GL_EXT_scalar_block_layout : require
+#extension GL_HW_neural_shader : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputX { float data[]; } X;
+layout(scalar, set = 0, binding = 1) uniform InputW { float data[128]; } W;
+layout(set = 0, binding = 2) buffer InputC { float data[]; } C;
+layout(set = 0, binding = 3) buffer OutputY { float data[]; } Y;
+
+void main()
+{
+    const ivec2 shapeW = ivec2(16, 8);
+    const ivec2 zeroOffset = ivec2(0);
+
+    coopvecHW<float, 16> x;
+    coopmatHW<float, 16, 8> w;
+    coopvecHW<float, 8> y;
+
+    coopVecLoadHW(x, X.data, 0u);
+    coopMatLoadHW(w, W.data, shapeW, zeroOffset, gl_RowMajorHW);
+    coopVecMatMulHW(y, x, w);
+    coopVecStoreHW(y, Y.data, 0u);
+}

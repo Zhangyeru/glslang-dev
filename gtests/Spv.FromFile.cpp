@@ -768,6 +768,7 @@ INSTANTIATE_TEST_SUITE_P(
     Glsl, CompileVulkanToSpirvHwLowerToStandardTest,
     ::testing::ValuesIn(std::vector<std::string>({
         "spv.coopHW_lower_packed.comp",
+        "spv.coopHW_lower_ubo_const.comp",
         "spv.coopmatHW_lower_tile.comp",
         "spv.coopvecHW_lower_tile.comp",
     })),

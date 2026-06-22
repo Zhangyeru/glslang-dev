@@ -116,6 +116,10 @@ void VulkanContext::CreateDevice()
         HasExtension(extensions, VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME)) {
         enabled_extensions.push_back(VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME);
     }
+    if (!ApiAtLeast(properties.apiVersion, 1, 2) &&
+        HasExtension(extensions, VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME)) {
+        enabled_extensions.push_back(VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME);
+    }
 
     VkPhysicalDevice16BitStorageFeatures storage16 = {};
     storage16.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES;
@@ -124,15 +128,21 @@ void VulkanContext::CreateDevice()
     float16_int8.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
     float16_int8.pNext = &storage16;
 
+    VkPhysicalDeviceScalarBlockLayoutFeatures scalar_block = {};
+    scalar_block.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES;
+    scalar_block.pNext = &float16_int8;
+
     VkPhysicalDeviceFeatures2 features2 = {};
     features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-    features2.pNext = &float16_int8;
+    features2.pNext = &scalar_block;
     vkGetPhysicalDeviceFeatures2(physical_device_, &features2);
 
     supports_storage_buffer_16bit_ = storage16.storageBuffer16BitAccess == VK_TRUE;
     supports_shader_float16_ = float16_int8.shaderFloat16 == VK_TRUE;
+    supports_scalar_block_layout_ = scalar_block.scalarBlockLayout == VK_TRUE;
     storage16.storageBuffer16BitAccess = storage16.storageBuffer16BitAccess ? VK_TRUE : VK_FALSE;
     float16_int8.shaderFloat16 = float16_int8.shaderFloat16 ? VK_TRUE : VK_FALSE;
+    scalar_block.scalarBlockLayout = scalar_block.scalarBlockLayout ? VK_TRUE : VK_FALSE;
 
     const float queue_priority = 1.0f;
     VkDeviceQueueCreateInfo queue_info = {};

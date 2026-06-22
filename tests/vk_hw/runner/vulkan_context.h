@@ -30,6 +30,7 @@ public:
     float timestamp_period_ns() const { return timestamp_period_ns_; }
     bool supports_shader_float16() const { return supports_shader_float16_; }
     bool supports_storage_buffer_16bit() const { return supports_storage_buffer_16bit_; }
+    bool supports_scalar_block_layout() const { return supports_scalar_block_layout_; }
 
 private:
     void PickPhysicalDevice();
@@ -43,6 +44,7 @@ private:
     float timestamp_period_ns_ = 1.0f;
     bool supports_shader_float16_ = false;
     bool supports_storage_buffer_16bit_ = false;
+    bool supports_scalar_block_layout_ = false;
 };
 
 } // namespace vk_hw

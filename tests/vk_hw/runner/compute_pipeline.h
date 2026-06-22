@@ -17,7 +17,8 @@ namespace vk_hw {
 
 class ComputePipeline {
 public:
-    ComputePipeline(VulkanContext* context, const std::vector<uint32_t>& code);
+    ComputePipeline(VulkanContext* context, const std::vector<uint32_t>& code,
+                    const std::array<VkDescriptorType, 4>& descriptor_types);
     ~ComputePipeline();
 
     ComputePipeline(const ComputePipeline&) = delete;
@@ -37,6 +38,7 @@ private:
     VkPipeline pipeline_ = VK_NULL_HANDLE;
     VkDescriptorPool descriptor_pool_ = VK_NULL_HANDLE;
     VkDescriptorSet descriptor_set_ = VK_NULL_HANDLE;
+    std::array<VkDescriptorType, 4> descriptor_types_ = {};
 };
 
 } // namespace vk_hw

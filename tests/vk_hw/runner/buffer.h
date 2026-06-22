@@ -17,7 +17,8 @@ namespace vk_hw {
 
 class Buffer {
 public:
-    Buffer(VulkanContext* context, VkDeviceSize size, VkBufferUsageFlags usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    Buffer(VulkanContext* context, VkDeviceSize size,
+           VkBufferUsageFlags usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
     ~Buffer();
 
     Buffer(const Buffer&) = delete;

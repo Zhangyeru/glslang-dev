@@ -27,6 +27,18 @@ float OutputQuantize(float value, DType dtype)
     return HalfBitsToFloat(FloatToHalfBits(value));
 }
 
+bool HasConstBiasVariant(const CaseConfig& config)
+{
+    return config.shader_path.find("_constbias") != std::string::npos;
+}
+
+float ConstBiasValue(uint32_t index, DType dtype)
+{
+    const int signed_value = static_cast<int>(index % 7u) - 3;
+    const float value = static_cast<float>(signed_value) * 0.25f;
+    return QuantizeForDType(value, dtype);
+}
+
 } // namespace
 
 size_t ElementSize(DType dtype) { return dtype == DType::kF16 ? 2 : 4; }
@@ -281,7 +293,11 @@ std::vector<float> ReferenceOutput(const CaseConfig& config, const std::vector<f
     }
 
     for (uint32_t col = 0; col < config.n; ++col) {
-        float acc = config.kind == CaseKind::kVecMatmulAdd ? c[col] : 0.0f;
+        float acc = 0.0f;
+        if (config.kind == CaseKind::kVecMatmulAdd) {
+            acc = HasConstBiasVariant(config) ? ConstBiasValue(col, config.dtype)
+                                              : c[col];
+        }
         for (uint32_t inner = 0; inner < config.k; ++inner) {
             acc += a[inner] * b[inner * config.n + col];
         }
