@@ -20,7 +20,7 @@ def parse_case(path):
     else:
         stem = path.stem
 
-    suffix = r"(?:_(?:scalar|ssbo_direct|ubo|constbias))?"
+    suffix = r"(?:_(?:scalar|ssbo_direct|ubo|constbias|constw|constx))?"
 
     m = re.match(rf"multiops_(f16|f32){suffix}_(\d+)x(\d+)x(\d+)$", stem)
     if m:

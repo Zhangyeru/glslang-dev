@@ -32,10 +32,25 @@ bool HasConstBiasVariant(const CaseConfig& config)
     return config.shader_path.find("_constbias") != std::string::npos;
 }
 
+bool HasConstWeightVariant(const CaseConfig& config)
+{
+    return config.shader_path.find("_constw") != std::string::npos;
+}
+
 float ConstBiasValue(uint32_t index, DType dtype)
 {
     const int signed_value = static_cast<int>(index % 7u) - 3;
     const float value = static_cast<float>(signed_value) * 0.25f;
+    return QuantizeForDType(value, dtype);
+}
+
+float ConstWeightValue(uint32_t row, uint32_t col, DType dtype)
+{
+    // The coopmatHW scalar constructor fills all elements with the same value.
+    // Using 0.5 to match the test shader matmul_f32_constw_4x4x4.comp
+    (void)row;
+    (void)col;
+    const float value = 0.5f;
     return QuantizeForDType(value, dtype);
 }
 
@@ -256,7 +271,10 @@ std::vector<float> ReferenceOutput(const CaseConfig& config, const std::vector<f
             for (uint32_t col = 0; col < config.n; ++col) {
                 float acc = c[row * config.n + col];
                 for (uint32_t inner = 0; inner < config.k; ++inner) {
-                    acc += a[row * config.k + inner] * b[inner * config.n + col];
+                    const float b_value = HasConstWeightVariant(config)
+                                              ? ConstWeightValue(inner, col, config.dtype)
+                                              : b[inner * config.n + col];
+                    acc += a[row * config.k + inner] * b_value;
                 }
                 out[row * config.n + col] = OutputQuantize(acc, config.dtype);
             }
@@ -299,7 +317,10 @@ std::vector<float> ReferenceOutput(const CaseConfig& config, const std::vector<f
                                               : c[col];
         }
         for (uint32_t inner = 0; inner < config.k; ++inner) {
-            acc += a[inner] * b[inner * config.n + col];
+            const float w_value = HasConstWeightVariant(config)
+                                      ? ConstWeightValue(inner, col, config.dtype)
+                                      : b[inner * config.n + col];
+            acc += a[inner] * w_value;
         }
         out[col] = OutputQuantize(acc, config.dtype);
     }
