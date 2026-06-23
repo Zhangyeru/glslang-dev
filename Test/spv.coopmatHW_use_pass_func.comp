@@ -45,10 +45,10 @@ void main()
     coopmatHW<float16_t, 16, 16> A, B, C, X;
     coopmatHW<float16_t, 16, 16> R, S, T, D0;
 
-    coopMatLoadHW(A, buf.data, shape, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(B, buf.data, shape, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(C, buf.data, shape, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(X, buf.data, shape, zeroOffset, gl_RowMajorHW);
+    coopMatLoadHW(A, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(B, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(C, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(X, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
 
     R = makeAccumulator(A, B, C);
     useBothOperands(R, C);

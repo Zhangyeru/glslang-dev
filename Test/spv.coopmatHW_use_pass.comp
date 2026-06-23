@@ -24,9 +24,9 @@ void main()
     coopmatHW<float16_t, 16, 16> C;
     coopmatHW<float16_t, 16, 16> D;
 
-    coopMatLoadHW(A, bufA.a_data, shapeA, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(B, bufB.b_data, shapeB, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(C, bufC.c_data, shapeC, zeroOffset, gl_RowMajorHW);
+    coopMatLoadHW(A, bufA.a_data, shapeA, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(B, bufB.b_data, shapeB, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(C, bufC.c_data, shapeC, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
     coopMatMulAddHW(D, A, B, C);
-    coopMatStoreHW(D, bufD.d_data, shapeC, zeroOffset, gl_ColumnMajorHW);
+    coopMatStoreHW(D, bufD.d_data, shapeC, zeroOffset, gl_CooperativeMatrixLayoutColumnMajorHW);
 }

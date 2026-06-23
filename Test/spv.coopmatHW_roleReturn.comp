@@ -24,11 +24,11 @@ void main()
     coopmatHW<float16_t, 16, 16> A, B, C;
     coopmatHW<float16_t, 16, 16> B2, C2, D1;
 
-    coopMatLoadHW(A, buf.data, shape, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(B, buf.data, shape, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(C, buf.data, shape, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(B2, buf.data, shape, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(C2, buf.data, shape, zeroOffset, gl_RowMajorHW);
+    coopMatLoadHW(A, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(B, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(C, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(B2, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(C2, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
 
     coopMatMulAddHW(D1, makeAcc(A, B, C), B2, C2);
 }

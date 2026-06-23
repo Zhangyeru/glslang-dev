@@ -15,11 +15,11 @@ void main()
 
     coopmatHW<float16_t, 16, 16> A, B, C, X, Y, D0, D1, D2;
 
-    coopMatLoadHW(A, buf.data, shape, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(B, buf.data, shape, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(C, buf.data, shape, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(X, buf.data, shape, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(Y, buf.data, shape, zeroOffset, gl_RowMajorHW);
+    coopMatLoadHW(A, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(B, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(C, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(X, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(Y, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
 
     coopMatMulAddHW(D0, A, B, X);
     coopMatMulAddHW(D1, Y, B, C);

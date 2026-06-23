@@ -42,11 +42,11 @@ void main()
     coopmatHW<float16_t, 16, 16> A, B, C;
     coopmatHW<float16_t, 16, 16> D0, D1, D2, D3;
 
-    coopMatLoadHW(X, buf.data, shape, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(Y, buf.data, shape, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(A, buf.data, shape, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(B, buf.data, shape, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(C, buf.data, shape, zeroOffset, gl_RowMajorHW);
+    coopMatLoadHW(X, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(Y, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(A, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(B, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(C, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
 
     if (cond) {
         coopMatMulAddHW(D0, X, B, C);
@@ -56,7 +56,7 @@ void main()
 
     {
         coopmatHW<float16_t, 16, 16> X;
-        coopMatLoadHW(X, buf.data, shape, zeroOffset, gl_RowMajorHW);
+        coopMatLoadHW(X, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
         coopMatMulAddHW(D2, A, B, X);
     }
 

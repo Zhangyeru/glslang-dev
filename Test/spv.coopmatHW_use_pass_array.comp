@@ -23,13 +23,13 @@ void main()
     MatBox box;
     coopmatHW<float16_t, 16, 16> D0, D1, D2, D3;
 
-    coopMatLoadHW(lhs[0], buf.data, shape, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(lhs[1], buf.data, shape, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(rhs[0], buf.data, shape, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(rhs[1], buf.data, shape, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(acc[0], buf.data, shape, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(acc[1], buf.data, shape, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(box.value, buf.data, shape, zeroOffset, gl_RowMajorHW);
+    coopMatLoadHW(lhs[0], buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(lhs[1], buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(rhs[0], buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(rhs[1], buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(acc[0], buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(acc[1], buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(box.value, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
 
     coopMatMulAddHW(D0, lhs[0], rhs[0], acc[0]);
     coopMatMulAddHW(D1, rhs[1], lhs[1], acc[1]);

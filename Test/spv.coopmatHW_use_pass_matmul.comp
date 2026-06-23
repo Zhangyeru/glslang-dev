@@ -20,7 +20,7 @@ void main()
     coopmatHW<float16_t, 16, 16> B;
     coopmatHW<float16_t, 16, 16> D;
 
-    coopMatLoadHW(A, buf.data, shape16, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(B, buf.data, shape16, zeroOffset, gl_RowMajorHW);
+    coopMatLoadHW(A, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(B, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
     coopMatMulHW(D, A, B);
 }
