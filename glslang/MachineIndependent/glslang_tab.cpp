@@ -10781,6 +10781,7 @@ yyreduce:
   case 521: /* type_specifier_nonarray: TENSORMAP1D  */
 #line 3440 "MachineIndependent/glslang.y"
                   {
+        parseContext.tensorMapCheck((yyvsp[0].lex).loc, "tensorMap1D", parseContext.symbolTable.atBuiltInLevel());
         (yyval.interm.type).init((yyvsp[0].lex).loc, parseContext.symbolTable.atGlobalLevel());
         (yyval.interm.type).basicType = EbtSampler;
         (yyval.interm.type).sampler.setTensorMap(Esd1D);
@@ -10791,6 +10792,7 @@ yyreduce:
   case 522: /* type_specifier_nonarray: TENSORMAP2D  */
 #line 3445 "MachineIndependent/glslang.y"
                   {
+        parseContext.tensorMapCheck((yyvsp[0].lex).loc, "tensorMap2D", parseContext.symbolTable.atBuiltInLevel());
         (yyval.interm.type).init((yyvsp[0].lex).loc, parseContext.symbolTable.atGlobalLevel());
         (yyval.interm.type).basicType = EbtSampler;
         (yyval.interm.type).sampler.setTensorMap(Esd2D);
@@ -10801,6 +10803,7 @@ yyreduce:
   case 523: /* type_specifier_nonarray: TENSORMAP3D  */
 #line 3450 "MachineIndependent/glslang.y"
                   {
+        parseContext.tensorMapCheck((yyvsp[0].lex).loc, "tensorMap3D", parseContext.symbolTable.atBuiltInLevel());
         (yyval.interm.type).init((yyvsp[0].lex).loc, parseContext.symbolTable.atGlobalLevel());
         (yyval.interm.type).basicType = EbtSampler;
         (yyval.interm.type).sampler.setTensorMap(Esd3D);
@@ -10811,6 +10814,7 @@ yyreduce:
   case 524: /* type_specifier_nonarray: TENSORMAP4D  */
 #line 3455 "MachineIndependent/glslang.y"
                   {
+        parseContext.tensorMapCheck((yyvsp[0].lex).loc, "tensorMap4D", parseContext.symbolTable.atBuiltInLevel());
         (yyval.interm.type).init((yyvsp[0].lex).loc, parseContext.symbolTable.atGlobalLevel());
         (yyval.interm.type).basicType = EbtSampler;
         (yyval.interm.type).sampler.setTensorMap(Esd4D);
@@ -12886,4 +12890,3 @@ yyreturnlab:
 }
 
 #line 4522 "MachineIndependent/glslang.y"
-

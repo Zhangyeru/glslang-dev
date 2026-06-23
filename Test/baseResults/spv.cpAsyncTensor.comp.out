@@ -5,11 +5,13 @@ spv.cpAsyncTensor.comp
 ; Bound: 41
 ; Schema: 0
                OpCapability Shader
+               OpExtension "SPV_HW_neural_shader"
           %1 = OpExtInstImport "GLSL.std.450"
                OpMemoryModel Logical GLSL450
                OpEntryPoint GLCompute %main "main"
                OpExecutionMode %main LocalSize 1 1 1
                OpSource GLSL 450
+               OpSourceExtension "GL_HW_neural_shader"
                OpName %main "main"
                OpName %dstMem "dstMem"
                OpName %tm1 "tm1"

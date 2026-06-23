@@ -9543,6 +9543,11 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
             symbolTable.setFunctionExtensions("coopMatMulHW",    1, &E_GL_HW_neural_shader);
             symbolTable.setFunctionExtensions("coopMatMulAddHW", 1, &E_GL_HW_neural_shader);
             symbolTable.setFunctionExtensions("coopMatReduceHW", 1, &E_GL_HW_neural_shader);
+            symbolTable.setFunctionExtensions("cp_async_tensor_global_shared", 1, &E_GL_HW_neural_shader);
+            symbolTable.setFunctionExtensions("cp_async_commit_group",         1, &E_GL_HW_neural_shader);
+            symbolTable.setFunctionExtensions("cp_async_wait_group",           1, &E_GL_HW_neural_shader);
+            symbolTable.setFunctionExtensions("barrier_arrive",                1, &E_GL_HW_neural_shader);
+            symbolTable.setFunctionExtensions("barrier_wait",                  1, &E_GL_HW_neural_shader);
         }
 
         {
