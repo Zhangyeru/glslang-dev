@@ -6,8 +6,8 @@ spv.coopvecHW_lower_tile.comp
 ; Schema: 0
                OpCapability Shader
                OpCapability VulkanMemoryModel
-               OpCapability CooperativeVectorHW
                OpCapability CooperativeMatrixHW
+               OpCapability CooperativeVectorHW
                OpExtension "SPV_HW_neural_shader"
                OpExtension "SPV_KHR_vulkan_memory_model"
           %1 = OpExtInstImport "GLSL.std.450"
