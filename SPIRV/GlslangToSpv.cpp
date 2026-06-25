@@ -5247,6 +5247,7 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         result = 0;
     } else if (node->getOp() == glslang::EOpCpAsyncTensorGlobalShared) {
         std::vector<spv::IdImmediate> idImmOps;
+        builder.addExtension(spv::E_SPV_HW_neural_shader);
 
         unsigned dim = TranslateTensorMapDimensionality(
             glslangOperands[1]->getAsTyped()->getType().getSampler());
@@ -5257,10 +5258,12 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         builder.createNoResultOp(spv::OpCpAsyncTensorGlobalShared, idImmOps);
         result = 0;
     } else if (node->getOp() == glslang::EOpCpAsyncCommitGroup) {
+        builder.addExtension(spv::E_SPV_HW_neural_shader);
         builder.createNoResultOp(spv::OpCpAsyncCommitGroup);
         result = 0;
     } else if (node->getOp() == glslang::EOpCpAsyncWaitGroup) {
         std::vector<spv::IdImmediate> idImmOps;
+        builder.addExtension(spv::E_SPV_HW_neural_shader);
         const glslang::TIntermConstantUnion* waitCount = glslangOperands[0]->getAsConstantUnion();
         unsigned count = waitCount != nullptr ? waitCount->getConstArray()[0].getIConst() : 0;
         idImmOps.push_back(spv::IdImmediate(false, count)); // N
@@ -5268,12 +5271,14 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         result = 0;
     } else if (node->getOp() == glslang::EOpBarrierArrive) {
         std::vector<spv::IdImmediate> idImmOps;
+        builder.addExtension(spv::E_SPV_HW_neural_shader);
         idImmOps.push_back(spv::IdImmediate(true, operands[0])); // Id
         idImmOps.push_back(spv::IdImmediate(true, operands[1])); // N
         builder.createNoResultOp(spv::OpBarrierArrive, idImmOps);
         result = 0;
     } else if (node->getOp() == glslang::EOpBarrierWait) {
         std::vector<spv::IdImmediate> idImmOps;
+        builder.addExtension(spv::E_SPV_HW_neural_shader);
         idImmOps.push_back(spv::IdImmediate(true, operands[0])); // Id
         idImmOps.push_back(spv::IdImmediate(true, operands[1])); // N
         builder.createNoResultOp(spv::OpBarrierWait, idImmOps);
@@ -6081,6 +6086,7 @@ spv::Id TGlslangToSpvTraverser::convertGlslangToSpvType(const glslang::TType& ty
         {
             const glslang::TSampler& sampler = type.getSampler();
             if (sampler.isTensorMap()) {
+                builder.addExtension(spv::E_SPV_HW_neural_shader);
                 spvType = builder.makeTensorMapType(TranslateTensorMapDimensionality(sampler));
             } else if (sampler.isPureSampler()) {
                 spvType = builder.makeSamplerType();

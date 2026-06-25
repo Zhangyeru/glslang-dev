@@ -122,6 +122,7 @@ public:
     virtual void intcoopmatCheckNV(const TSourceLoc&, const char *op, bool builtIn = false);
     virtual void coopmatCheck(const TSourceLoc&, const char* op, bool builtIn = false);
     virtual void coopmatHWCheck(const TSourceLoc&, const char* op, bool builtIn = false);
+    virtual void tensorMapCheck(const TSourceLoc&, const char* op, bool builtIn = false);
     virtual void tensorLayoutViewCheck(const TSourceLoc&, const char* op, bool builtIn = false);
     virtual void coopvecCheck(const TSourceLoc&, const char* op, bool builtIn = false);
     virtual void coopvecHWCheck(const TSourceLoc&, const char* op, bool builtIn = false);

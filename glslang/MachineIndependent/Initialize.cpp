@@ -4698,13 +4698,13 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
         commonBuiltins.append(cooperativeMatrixFuncs.str().c_str());
 
         commonBuiltins.append(
-            "const int gl_RowMajorHW = 0;\n"
-            "const int gl_ColumnMajorHW = 1;\n"
-            "const int gl_ReduceRowHW = 0;\n"
-            "const int gl_ReduceColumnHW = 1;\n"
-            "const int gl_ReduceAddHW = 0;\n"
-            "const int gl_ReduceMinHW = 1;\n"
-            "const int gl_ReduceMaxHW = 2;\n"
+            "const int gl_CooperativeMatrixLayoutRowMajorHW = 0;\n"
+            "const int gl_CooperativeMatrixLayoutColumnMajorHW = 1;\n"
+            "const int gl_CooperativeMatrixReduceRowHW = 0;\n"
+            "const int gl_CooperativeMatrixReduceColumnHW = 1;\n"
+            "const int gl_CooperativeMatrixReduceAddHW = 0;\n"
+            "const int gl_CooperativeMatrixReduceMinHW = 1;\n"
+            "const int gl_CooperativeMatrixReduceMaxHW = 2;\n"
             "\n"
             );
 
@@ -9543,6 +9543,11 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
             symbolTable.setFunctionExtensions("coopMatMulHW",    1, &E_GL_HW_neural_shader);
             symbolTable.setFunctionExtensions("coopMatMulAddHW", 1, &E_GL_HW_neural_shader);
             symbolTable.setFunctionExtensions("coopMatReduceHW", 1, &E_GL_HW_neural_shader);
+            symbolTable.setFunctionExtensions("cp_async_tensor_global_shared", 1, &E_GL_HW_neural_shader);
+            symbolTable.setFunctionExtensions("cp_async_commit_group",         1, &E_GL_HW_neural_shader);
+            symbolTable.setFunctionExtensions("cp_async_wait_group",           1, &E_GL_HW_neural_shader);
+            symbolTable.setFunctionExtensions("barrier_arrive",                1, &E_GL_HW_neural_shader);
+            symbolTable.setFunctionExtensions("barrier_wait",                  1, &E_GL_HW_neural_shader);
         }
 
         {

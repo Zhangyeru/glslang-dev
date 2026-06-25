@@ -20,10 +20,10 @@ void main()
     coopmatHW<float16_t, 16, 16> A, B, C1;
     coopmatHW<float16_t, 16, 16> D0, D1;
 
-    coopMatLoadHW(X,  buf.data, shape16, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(A,  buf.data, shape16, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(B,  buf.data, shape16, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(C1, buf.data, shape16, zeroOffset, gl_RowMajorHW);
+    coopMatLoadHW(X,  buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(A,  buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(B,  buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(C1, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
 
     // X used as accumulator.
     coopMatMulAddHW(D0, A, B, X);

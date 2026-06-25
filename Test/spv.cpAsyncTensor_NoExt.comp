@@ -1,0 +1,12 @@
+#version 450
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+shared int dstMem[16];
+
+layout(set = 0, binding = 0) uniform tensorMap1D tm1;
+
+void main()
+{
+    cp_async_tensor_global_shared(dstMem, tm1, 0);
+}

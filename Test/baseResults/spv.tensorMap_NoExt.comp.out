@@ -1,0 +1,6 @@
+spv.tensorMap_NoExt.comp
+ERROR: 0:5: 'tensorMap1D' : required extension not requested: GL_HW_neural_shader
+ERROR: 1 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

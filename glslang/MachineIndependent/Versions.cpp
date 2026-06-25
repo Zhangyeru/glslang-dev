@@ -1433,6 +1433,14 @@ void TParseVersions::coopmatHWCheck(const TSourceLoc& loc, const char* op, bool 
     }
 }
 
+void TParseVersions::tensorMapCheck(const TSourceLoc& loc, const char* op, bool builtIn)
+{
+    if (!builtIn) {
+        const char* const extensions[] = {E_GL_HW_neural_shader};
+        requireExtensions(loc, sizeof(extensions)/sizeof(extensions[0]), extensions, op);
+    }
+}
+
 // Call for any operation removed because SPIR-V is in use.
 void TParseVersions::spvRemoved(const TSourceLoc& loc, const char* op)
 {

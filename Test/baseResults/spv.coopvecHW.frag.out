@@ -10,8 +10,8 @@ spv.coopvecHW.frag
                OpCapability Int8
                OpCapability VulkanMemoryModel
                OpCapability ReplicatedCompositesEXT
-               OpCapability CooperativeVectorHW
                OpCapability CooperativeMatrixHW
+               OpCapability CooperativeVectorHW
                OpExtension "SPV_EXT_replicated_composites"
                OpExtension "SPV_HW_neural_shader"
                OpExtension "SPV_KHR_vulkan_memory_model"

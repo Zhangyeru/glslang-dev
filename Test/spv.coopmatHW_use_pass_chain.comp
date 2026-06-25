@@ -20,11 +20,11 @@ void main()
     coopmatHW<float16_t, 16, 16> E, F;
     coopmatHW<float16_t, 16, 16> D0, D0_for_mul, D1;
 
-    coopMatLoadHW(A, buf.data, shape16, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(B, buf.data, shape16, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(C, buf.data, shape16, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(E, buf.data, shape16, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(F, buf.data, shape16, zeroOffset, gl_RowMajorHW);
+    coopMatLoadHW(A, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(B, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(C, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(E, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(F, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
 
     // D0 = A * B + C
     // A → left(useA), B → right(useB), C → acc, D0(result) → acc

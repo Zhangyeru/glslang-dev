@@ -3438,21 +3438,25 @@ type_specifier_nonarray
         $$.sampler.setImage(EbtUint64, Esd2D, true, false, true);
     }
     | TENSORMAP1D {
+        parseContext.tensorMapCheck($1.loc, "tensorMap1D", parseContext.symbolTable.atBuiltInLevel());
         $$.init($1.loc, parseContext.symbolTable.atGlobalLevel());
         $$.basicType = EbtSampler;
         $$.sampler.setTensorMap(Esd1D);
     }
     | TENSORMAP2D {
+        parseContext.tensorMapCheck($1.loc, "tensorMap2D", parseContext.symbolTable.atBuiltInLevel());
         $$.init($1.loc, parseContext.symbolTable.atGlobalLevel());
         $$.basicType = EbtSampler;
         $$.sampler.setTensorMap(Esd2D);
     }
     | TENSORMAP3D {
+        parseContext.tensorMapCheck($1.loc, "tensorMap3D", parseContext.symbolTable.atBuiltInLevel());
         $$.init($1.loc, parseContext.symbolTable.atGlobalLevel());
         $$.basicType = EbtSampler;
         $$.sampler.setTensorMap(Esd3D);
     }
     | TENSORMAP4D {
+        parseContext.tensorMapCheck($1.loc, "tensorMap4D", parseContext.symbolTable.atBuiltInLevel());
         $$.init($1.loc, parseContext.symbolTable.atGlobalLevel());
         $$.basicType = EbtSampler;
         $$.sampler.setTensorMap(Esd4D);

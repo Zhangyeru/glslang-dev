@@ -17,6 +17,6 @@ void main()
 
     coopmatHW<float16_t, 16, 16> value;
 
-    coopMatLoadHW(value, inBuf.data, shape, offset, gl_RowMajorHW);
-    coopMatStoreHW(value, outBuf.data, shape, offset, gl_ColumnMajorHW);
+    coopMatLoadHW(value, inBuf.data, shape, offset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatStoreHW(value, outBuf.data, shape, offset, gl_CooperativeMatrixLayoutColumnMajorHW);
 }

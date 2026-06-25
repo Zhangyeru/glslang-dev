@@ -19,10 +19,10 @@ void main()
     coopmatHW<float16_t, 16, 16> A, B, C;
     coopmatHW<float16_t, 16, 16> D0, D1, D2;
 
-    coopMatLoadHW(X, buf.data, shape16, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(A, buf.data, shape16, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(B, buf.data, shape16, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(C, buf.data, shape16, zeroOffset, gl_RowMajorHW);
+    coopMatLoadHW(X, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(A, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(B, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(C, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
 
     // X as left and right: left_count == right_count, so it resolves to useA.
     coopMatMulAddHW(D0, X, B, C);

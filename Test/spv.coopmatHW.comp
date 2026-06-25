@@ -23,12 +23,12 @@ void main()
     coopmatHW<float16_t, 16, 8> R0;
     coopmatHW<float16_t, 16, 8> R1;
 
-    coopMatLoadHW(C, buf.data, srcMatrixShape, srcMatrixOffset, gl_RowMajorHW);
+    coopMatLoadHW(C, buf.data, srcMatrixShape, srcMatrixOffset, gl_CooperativeMatrixLayoutRowMajorHW);
     coopMatMulHW(M, S, B);
     coopMatMulAddHW(C, A, B, C);
-    R0 = coopMatReduceHW(C, gl_ReduceRowHW, gl_ReduceAddHW);
-    R1 = coopMatReduceHW(C, gl_ReduceColumnHW, gl_ReduceMaxHW);
-    coopMatStoreHW(C, buf.data, srcMatrixShape, dstMatrixOffset, gl_ColumnMajorHW);
+    R0 = coopMatReduceHW(C, gl_CooperativeMatrixReduceRowHW, gl_CooperativeMatrixReduceAddHW);
+    R1 = coopMatReduceHW(C, gl_CooperativeMatrixReduceColumnHW, gl_CooperativeMatrixReduceMaxHW);
+    coopMatStoreHW(C, buf.data, srcMatrixShape, dstMatrixOffset, gl_CooperativeMatrixLayoutColumnMajorHW);
 
     int len = C.length() + M.length();
     coopmatHW<float16_t, 16, 8> D = coopmatHW<float16_t, 16, 8>(C);
