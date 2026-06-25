@@ -1657,11 +1657,11 @@ public:
     TIntermSelection(TIntermTyped* cond, TIntermNode* trueB, TIntermNode* falseB) :
         TIntermTyped(EbtVoid), condition(cond), trueBlock(trueB), falseBlock(falseB),
         shortCircuit(true),
-        flatten(false), dontFlatten(false) {}
+        flatten(false), dontFlatten(false), regControl(false) {}
     TIntermSelection(TIntermTyped* cond, TIntermNode* trueB, TIntermNode* falseB, const TType& type) :
         TIntermTyped(type), condition(cond), trueBlock(trueB), falseBlock(falseB),
         shortCircuit(true),
-        flatten(false), dontFlatten(false) {}
+        flatten(false), dontFlatten(false), regControl(false) {}
     virtual void traverse(TIntermTraverser*);
     virtual TIntermTyped* getCondition() const { return condition; }
     virtual void setCondition(TIntermTyped* c) { condition = c; }
@@ -1677,8 +1677,10 @@ public:
 
     void setFlatten()     { flatten = true; }
     void setDontFlatten() { dontFlatten = true; }
+    void setRegControl()  { regControl = true; }
     bool getFlatten()     const { return flatten; }
     bool getDontFlatten() const { return dontFlatten; }
+    bool getRegControl()  const { return regControl; }
 
 protected:
     TIntermTyped* condition;
@@ -1687,6 +1689,7 @@ protected:
     bool shortCircuit; // normally all if-then-else and all GLSL ?: short-circuit, but HLSL ?: does not
     bool flatten;      // true if flatten requested
     bool dontFlatten;  // true if requested to not flatten
+    bool regControl;   // true if relative-register reconvergence control requested
 };
 
 //

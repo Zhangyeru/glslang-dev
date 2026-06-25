@@ -2084,21 +2084,29 @@ spv::ImageFormat TGlslangToSpvTraverser::TranslateImageFormat(const glslang::TTy
 spv::SelectionControlMask TGlslangToSpvTraverser::TranslateSelectionControl(
     const glslang::TIntermSelection& selectionNode) const
 {
+    spv::SelectionControlMask control = spv::SelectionControlMaskNone;
+
     if (selectionNode.getFlatten())
-        return spv::SelectionControlFlattenMask;
+        control = control | spv::SelectionControlFlattenMask;
     if (selectionNode.getDontFlatten())
-        return spv::SelectionControlDontFlattenMask;
-    return spv::SelectionControlMaskNone;
+        control = control | spv::SelectionControlDontFlattenMask;
+    if (selectionNode.getRegControl())
+        control = control | spv::SelectionControlRelregMask;
+
+    return control;
 }
 
 spv::SelectionControlMask TGlslangToSpvTraverser::TranslateSwitchControl(const glslang::TIntermSwitch& switchNode)
     const
 {
+    spv::SelectionControlMask control = spv::SelectionControlMaskNone;
+
     if (switchNode.getFlatten())
-        return spv::SelectionControlFlattenMask;
+        control = control | spv::SelectionControlFlattenMask;
     if (switchNode.getDontFlatten())
-        return spv::SelectionControlDontFlattenMask;
-    return spv::SelectionControlMaskNone;
+        control = control | spv::SelectionControlDontFlattenMask;
+
+    return control;
 }
 
 // return a non-0 dependency if the dependency argument must be set
@@ -5507,6 +5515,8 @@ bool TGlslangToSpvTraverser::visitSelection(glslang::TVisit /* visit */, glslang
 
             // Selection control:
             const spv::SelectionControlMask control = TranslateSelectionControl(*node);
+            if (control & spv::SelectionControlRelregMask)
+                builder.addExtension(spv::E_SPV_HW_neural_shader);
 
             // make an "if" based on the value created by the condition
             spv::Builder::If ifBuilder(condition, control, builder);
@@ -5540,6 +5550,8 @@ bool TGlslangToSpvTraverser::visitSelection(glslang::TVisit /* visit */, glslang
 
         // Selection control:
         const spv::SelectionControlMask control = TranslateSelectionControl(*node);
+        if (control & spv::SelectionControlRelregMask)
+            builder.addExtension(spv::E_SPV_HW_neural_shader);
 
         // make an "if" based on the value created by the condition
         spv::Builder::If ifBuilder(condition, control, builder);

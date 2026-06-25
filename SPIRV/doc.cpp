@@ -726,13 +726,14 @@ const char* AccessQualifierString(int attr)
     }
 }
 
-const int SelectControlCeiling = 2;
+const int SelectControlCeiling = 3;
 
 const char* SelectControlString(int cont)
 {
     switch (cont) {
     case 0:  return "Flatten";
     case 1:  return "DontFlatten";
+    case 2:  return "Relreg";
 
     case SelectControlCeiling:
     default: return "Bad";

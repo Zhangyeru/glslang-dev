@@ -449,6 +449,10 @@ INSTANTIATE_TEST_SUITE_P(
         "spv.cpAsyncGroupBarrier_NoExt.comp",
         "spv.cpAsyncTensor_Error.comp",
         "spv.cpAsyncTensor_NoExt.comp",
+        "spv.regControl_ArgsError.comp",
+        "spv.regControl_LoopError.comp",
+        "spv.regControl_NoExt.comp",
+        "spv.regControl_SwitchError.comp",
         "spv.coopvec.comp",
         "spv.coopvec2.comp",
         "spv.coopvecHW.comp",
@@ -702,6 +706,7 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::ValuesIn(std::vector<std::string>({
         "spv.cpAsyncGroupBarrier.comp",
         "spv.cpAsyncTensor.comp",
+        "spv.regControl.comp",
         "spv.tensorMap.comp",
     })),
     FileNameAsCustomTestSuffix
