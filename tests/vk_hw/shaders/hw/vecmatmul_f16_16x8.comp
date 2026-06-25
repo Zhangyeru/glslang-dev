@@ -19,7 +19,7 @@ void main()
     coopvecHW<float16_t, 8> y;
 
     coopVecLoadHW(x, X.data, 0u);
-    coopMatLoadHW(w, W.data, shapeW, zeroOffset, gl_RowMajorHW);
+    coopMatLoadHW(w, W.data, shapeW, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
     coopVecMatMulHW(y, x, w);
     coopVecStoreHW(y, Y.data, 0u);
 }

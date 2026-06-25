@@ -39,10 +39,10 @@ void main()
     coopmatHW<float, 4, 4> d;
 
     coopVecLoadHW(x, inX.x, 0u);
-    coopMatLoadHW(w, inW.w, vecShape, zeroOffset, gl_RowMajorHW);
+    coopMatLoadHW(w, inW.w, vecShape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
     coopVecMatMulAddHW(y, x, w, bias);
     coopVecStoreHW(y, outY.y, 0u);
 
     coopMatMulAddHW(d, a, b, c);
-    coopMatStoreHW(d, outM.m, matShape, zeroOffset, gl_RowMajorHW);
+    coopMatStoreHW(d, outM.m, matShape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
 }

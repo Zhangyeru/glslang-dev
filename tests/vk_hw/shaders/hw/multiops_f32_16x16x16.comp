@@ -23,12 +23,12 @@ void main()
     coopvecHW<float, 16> y0;
     coopvecHW<float, 16> y1;
 
-    coopMatLoadHW(a, A.data, shape, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(b, B.data, shape, zeroOffset, gl_RowMajorHW);
-    coopMatLoadHW(c, C.data, shape, zeroOffset, gl_RowMajorHW);
+    coopMatLoadHW(a, A.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(b, B.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(c, C.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
     coopMatMulAddHW(d0, a, b, c);
     coopMatMulAddHW(d1, a, b, d0);
-    coopMatStoreHW(d1, D.data, shape, zeroOffset, gl_RowMajorHW);
+    coopMatStoreHW(d1, D.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
 
     coopVecLoadHW(x, A.data, 0u);
     coopVecLoadHW(bias, D.data, 0u);

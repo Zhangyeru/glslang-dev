@@ -15,6 +15,6 @@ void main()
     const ivec2 zeroOffset = ivec2(0.0, 0.0);
 
     coopmatHW<float16_t, 8, 8> value;
-    coopMatLoadHW(value, A.data, shape, zeroOffset, gl_RowMajorHW);
-    coopMatStoreHW(value, D.data, shape, zeroOffset, gl_RowMajorHW);
+    coopMatLoadHW(value, A.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatStoreHW(value, D.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
 }
