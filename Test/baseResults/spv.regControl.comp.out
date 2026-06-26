@@ -1,0 +1,88 @@
+spv.regControl.comp
+; SPIR-V
+; Version: 1.0
+; Generator: Khronos Glslang Reference Front End; 11
+; Bound: 47
+; Schema: 0
+               OpCapability Shader
+               OpExtension "SPV_HW_neural_shader"
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical GLSL450
+               OpEntryPoint GLCompute %main "main" %gl_LocalInvocationID
+               OpExecutionMode %main LocalSize 1 1 1
+               OpSource GLSL 450
+               OpSourceExtension "GL_EXT_control_flow_attributes"
+               OpSourceExtension "GL_HW_neural_shader"
+               OpName %main "main"
+               OpName %cond "cond"
+               OpName %gl_LocalInvocationID "gl_LocalInvocationID"
+               OpName %value "value"
+               OpDecorate %gl_LocalInvocationID BuiltIn LocalInvocationId
+               OpDecorate %gl_WorkGroupSize BuiltIn WorkgroupSize
+       %void = OpTypeVoid
+          %3 = OpTypeFunction %void
+       %bool = OpTypeBool
+%_ptr_Function_bool = OpTypePointer Function %bool
+       %uint = OpTypeInt 32 0
+     %v3uint = OpTypeVector %uint 3
+%_ptr_Input_v3uint = OpTypePointer Input %v3uint
+%gl_LocalInvocationID = OpVariable %_ptr_Input_v3uint Input
+     %uint_0 = OpConstant %uint 0
+%_ptr_Input_uint = OpTypePointer Input %uint
+        %int = OpTypeInt 32 1
+%_ptr_Function_int = OpTypePointer Function %int
+      %int_0 = OpConstant %int 0
+      %int_1 = OpConstant %int 1
+      %int_2 = OpConstant %int 2
+      %int_3 = OpConstant %int 3
+      %int_4 = OpConstant %int 4
+     %int_42 = OpConstant %int 42
+     %uint_1 = OpConstant %uint 1
+%gl_WorkGroupSize = OpConstantComposite %v3uint %uint_1 %uint_1 %uint_1
+       %main = OpFunction %void None %3
+          %5 = OpLabel
+       %cond = OpVariable %_ptr_Function_bool Function
+      %value = OpVariable %_ptr_Function_int Function
+         %15 = OpAccessChain %_ptr_Input_uint %gl_LocalInvocationID %uint_0
+         %16 = OpLoad %uint %15
+         %17 = OpIEqual %bool %16 %uint_0
+               OpStore %cond %17
+               OpStore %value %int_0
+         %22 = OpLoad %bool %cond
+               OpSelectionMerge %24 Relreg
+               OpBranchConditional %22 %23 %26
+         %23 = OpLabel
+               OpStore %value %int_1
+               OpBranch %24
+         %26 = OpLabel
+               OpStore %value %int_2
+               OpBranch %24
+         %24 = OpLabel
+         %28 = OpLoad %bool %cond
+               OpSelectionMerge %30 Flatten|Relreg
+               OpBranchConditional %28 %29 %30
+         %29 = OpLabel
+         %32 = OpLoad %int %value
+         %33 = OpIAdd %int %32 %int_3
+               OpStore %value %33
+               OpBranch %30
+         %30 = OpLabel
+         %34 = OpLoad %bool %cond
+               OpSelectionMerge %36 DontFlatten|Relreg
+               OpBranchConditional %34 %35 %36
+         %35 = OpLabel
+         %38 = OpLoad %int %value
+         %39 = OpIAdd %int %38 %int_4
+               OpStore %value %39
+               OpBranch %36
+         %36 = OpLabel
+         %40 = OpLoad %int %value
+         %42 = OpIEqual %bool %40 %int_42
+               OpSelectionMerge %44 None
+               OpBranchConditional %42 %43 %44
+         %43 = OpLabel
+               OpStore %value %int_0
+               OpBranch %44
+         %44 = OpLabel
+               OpReturn
+               OpFunctionEnd

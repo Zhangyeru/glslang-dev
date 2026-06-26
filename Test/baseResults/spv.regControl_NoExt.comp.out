@@ -1,0 +1,6 @@
+spv.regControl_NoExt.comp
+ERROR: 0:10: 'attribute' : required extension not requested: GL_HW_neural_shader
+ERROR: 1 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

@@ -1,0 +1,6 @@
+spv.regControl_LoopError.comp
+ERROR: 0:11: 'reg_control' : attribute does not apply to a loop 
+ERROR: 1 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

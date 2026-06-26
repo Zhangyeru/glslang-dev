@@ -800,6 +800,7 @@ enum BuiltIn {
 enum SelectionControlShift {
     SelectionControlFlattenShift = 0,
     SelectionControlDontFlattenShift = 1,
+    SelectionControlRelregShift = 2,
     SelectionControlMax = 0x7fffffff,
 };
 
@@ -807,6 +808,7 @@ enum SelectionControlMask : unsigned {
     SelectionControlMaskNone = 0,
     SelectionControlFlattenMask = 0x00000001,
     SelectionControlDontFlattenMask = 0x00000002,
+    SelectionControlRelregMask = 0x00000004,
 };
 
 enum LoopControlShift {
@@ -2351,15 +2353,15 @@ enum Op {
     OpGroupLogicalXorKHR = 6408,
     OpMaskedGatherINTEL = 6428,
     OpMaskedScatterINTEL = 6429,
-    OpTypeTensorMap = 6466,
-    OpCpAsyncTensorGlobalShared = 6470,
-    OpCpAsyncCommitGroup = 6474,
-    OpCpAsyncWaitGroup = 6475,
-    OpBarrierArrive = 6476,
-    OpBarrierWait = 6477,
-    OpShuffleIndex = 6478,
-    OpBytePermute = 6479,
-    OpShuffleFillDown = 6480,
+    OpTypeTensorMapHW = 6613,
+    OpCpAsyncTensorGlobalSharedHW = 6614,
+    OpCpAsyncCommitGroupHW = 6615,
+    OpCpAsyncWaitGroupHW = 6616,
+    OpBarrierArriveHW = 6617,
+    OpBarrierWaitHW = 6618,
+    OpShuffleIndexHW = 6619,
+    OpBytePermuteHW = 6620,
+    OpShuffleFillDownHW = 6621,
     OpMax = 0x7fffffff,
 };
 
@@ -2872,15 +2874,15 @@ inline void HasResultAndType(Op opcode, bool *hasResult, bool *hasResultType) {
     case OpCooperativeMatrixPerElementOpNV: *hasResult = true; *hasResultType = true; break;
     case OpTypeTensorLayoutNV: *hasResult = true; *hasResultType = false; break;
     case OpTypeTensorViewNV: *hasResult = true; *hasResultType = false; break;
-    case OpTypeTensorMap: *hasResult = true; *hasResultType = false; break;
-    case OpCpAsyncTensorGlobalShared: *hasResult = false; *hasResultType = false; break;
-    case OpCpAsyncCommitGroup: *hasResult = false; *hasResultType = false; break;
-    case OpCpAsyncWaitGroup: *hasResult = false; *hasResultType = false; break;
-    case OpBarrierArrive: *hasResult = false; *hasResultType = false; break;
-    case OpBarrierWait: *hasResult = false; *hasResultType = false; break;
-    case OpShuffleIndex: *hasResult = true; *hasResultType = true; break;
-    case OpBytePermute: *hasResult = true; *hasResultType = true; break;
-    case OpShuffleFillDown: *hasResult = true; *hasResultType = true; break;
+    case OpTypeTensorMapHW: *hasResult = true; *hasResultType = false; break;
+    case OpCpAsyncTensorGlobalSharedHW: *hasResult = false; *hasResultType = false; break;
+    case OpCpAsyncCommitGroupHW: *hasResult = false; *hasResultType = false; break;
+    case OpCpAsyncWaitGroupHW: *hasResult = false; *hasResultType = false; break;
+    case OpBarrierArriveHW: *hasResult = false; *hasResultType = false; break;
+    case OpBarrierWaitHW: *hasResult = false; *hasResultType = false; break;
+    case OpShuffleIndexHW: *hasResult = true; *hasResultType = true; break;
+    case OpBytePermuteHW: *hasResult = true; *hasResultType = true; break;
+    case OpShuffleFillDownHW: *hasResult = true; *hasResultType = true; break;
     case OpCreateTensorLayoutNV: *hasResult = true; *hasResultType = true; break;
     case OpTensorLayoutSetDimensionNV: *hasResult = true; *hasResultType = true; break;
     case OpTensorLayoutSetStrideNV: *hasResult = true; *hasResultType = true; break;
@@ -4813,15 +4815,15 @@ inline const char* OpToString(Op value) {
     case OpCooperativeMatrixPerElementOpNV: return "OpCooperativeMatrixPerElementOpNV";
     case OpTypeTensorLayoutNV: return "OpTypeTensorLayoutNV";
     case OpTypeTensorViewNV: return "OpTypeTensorViewNV";
-    case OpTypeTensorMap: return "OpTypeTensorMap";
-    case OpCpAsyncTensorGlobalShared: return "OpCpAsyncTensorGlobalShared";
-    case OpCpAsyncCommitGroup: return "OpCpAsyncCommitGroup";
-    case OpCpAsyncWaitGroup: return "OpCpAsyncWaitGroup";
-    case OpBarrierArrive: return "OpBarrierArrive";
-    case OpBarrierWait: return "OpBarrierWait";
-    case OpShuffleIndex: return "OpShuffleIndex";
-    case OpBytePermute: return "OpBytePermute";
-    case OpShuffleFillDown: return "OpShuffleFillDown";
+    case OpTypeTensorMapHW: return "OpTypeTensorMapHW";
+    case OpCpAsyncTensorGlobalSharedHW: return "OpCpAsyncTensorGlobalSharedHW";
+    case OpCpAsyncCommitGroupHW: return "OpCpAsyncCommitGroupHW";
+    case OpCpAsyncWaitGroupHW: return "OpCpAsyncWaitGroupHW";
+    case OpBarrierArriveHW: return "OpBarrierArriveHW";
+    case OpBarrierWaitHW: return "OpBarrierWaitHW";
+    case OpShuffleIndexHW: return "OpShuffleIndexHW";
+    case OpBytePermuteHW: return "OpBytePermuteHW";
+    case OpShuffleFillDownHW: return "OpShuffleFillDownHW";
     case OpCreateTensorLayoutNV: return "OpCreateTensorLayoutNV";
     case OpTensorLayoutSetDimensionNV: return "OpTensorLayoutSetDimensionNV";
     case OpTensorLayoutSetStrideNV: return "OpTensorLayoutSetStrideNV";

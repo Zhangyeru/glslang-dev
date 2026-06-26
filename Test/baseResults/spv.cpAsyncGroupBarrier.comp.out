@@ -25,9 +25,9 @@ spv.cpAsyncGroupBarrier.comp
 %gl_WorkGroupSize = OpConstantComposite %v3uint %uint_1 %uint_1 %uint_1
        %main = OpFunction %void None %3
           %5 = OpLabel
-               OpCpAsyncCommitGroup
-               OpCpAsyncWaitGroup 0
-               OpBarrierArrive %int_0 %int_1
-               OpBarrierWait %int_0 %int_1
+               OpCpAsyncCommitGroupHW
+               OpCpAsyncWaitGroupHW 0
+               OpBarrierArriveHW %int_0 %int_1
+               OpBarrierWaitHW %int_0 %int_1
                OpReturn
                OpFunctionEnd

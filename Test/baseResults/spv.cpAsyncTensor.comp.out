@@ -35,23 +35,23 @@ spv.cpAsyncTensor.comp
 %_arr_int_uint_16 = OpTypeArray %int %uint_16
 %_ptr_Workgroup__arr_int_uint_16 = OpTypePointer Workgroup %_arr_int_uint_16
      %dstMem = OpVariable %_ptr_Workgroup__arr_int_uint_16 Workgroup
-         %12 = OpTypeTensorMap 1
+         %12 = OpTypeTensorMapHW 1
 %_ptr_UniformConstant_12 = OpTypePointer UniformConstant %12
         %tm1 = OpVariable %_ptr_UniformConstant_12 UniformConstant
       %int_0 = OpConstant %int 0
-         %17 = OpTypeTensorMap 2
+         %17 = OpTypeTensorMapHW 2
 %_ptr_UniformConstant_17 = OpTypePointer UniformConstant %17
         %tm2 = OpVariable %_ptr_UniformConstant_17 UniformConstant
       %v2int = OpTypeVector %int 2
       %int_1 = OpConstant %int 1
          %23 = OpConstantComposite %v2int %int_0 %int_1
-         %24 = OpTypeTensorMap 3
+         %24 = OpTypeTensorMapHW 3
 %_ptr_UniformConstant_24 = OpTypePointer UniformConstant %24
         %tm3 = OpVariable %_ptr_UniformConstant_24 UniformConstant
       %v3int = OpTypeVector %int 3
       %int_2 = OpConstant %int 2
          %30 = OpConstantComposite %v3int %int_0 %int_1 %int_2
-         %31 = OpTypeTensorMap 4
+         %31 = OpTypeTensorMapHW 4
 %_ptr_UniformConstant_31 = OpTypePointer UniformConstant %31
         %tm4 = OpVariable %_ptr_UniformConstant_31 UniformConstant
       %v4int = OpTypeVector %int 4
@@ -63,12 +63,12 @@ spv.cpAsyncTensor.comp
        %main = OpFunction %void None %3
           %5 = OpLabel
          %15 = OpLoad %12 %tm1
-               OpCpAsyncTensorGlobalShared 1 %dstMem %15 %int_0
+               OpCpAsyncTensorGlobalSharedHW 1 %dstMem %15 %int_0
          %20 = OpLoad %17 %tm2
-               OpCpAsyncTensorGlobalShared 2 %dstMem %20 %23
+               OpCpAsyncTensorGlobalSharedHW 2 %dstMem %20 %23
          %27 = OpLoad %24 %tm3
-               OpCpAsyncTensorGlobalShared 3 %dstMem %27 %30
+               OpCpAsyncTensorGlobalSharedHW 3 %dstMem %27 %30
          %34 = OpLoad %31 %tm4
-               OpCpAsyncTensorGlobalShared 4 %dstMem %34 %37
+               OpCpAsyncTensorGlobalSharedHW 4 %dstMem %34 %37
                OpReturn
                OpFunctionEnd

@@ -103,6 +103,8 @@ TAttributeType TParseContext::attributeFromName(const TString& name) const
         return EatBranch;
     else if (name == "flatten")
         return EatFlatten;
+    else if (name == "reg_control")
+        return EatRegControl;
     else if (name == "unroll")
         return EatUnroll;
     else if (name == "loop" || name == "dont_unroll")
@@ -173,6 +175,17 @@ void TParseContext::handleSelectionAttributes(const TAttributes& attributes, TIn
         return;
 
     for (auto it = attributes.begin(); it != attributes.end(); ++it) {
+        if (it->name == EatRegControl) {
+            if (it->size() > 0) {
+                error(node->getLoc(), "attribute does not take arguments", "reg_control", "");
+                continue;
+            }
+
+            requireExtensions(node->getLoc(), 1, &E_GL_HW_neural_shader, "attribute");
+            selection->setRegControl();
+            continue;
+        }
+
         if (it->size() > 0) {
             warn(node->getLoc(), "attribute with arguments not recognized, skipping", "", "");
             continue;
@@ -202,6 +215,13 @@ void TParseContext::handleSwitchAttributes(const TAttributes& attributes, TInter
         return;
 
     for (auto it = attributes.begin(); it != attributes.end(); ++it) {
+        if (it->name == EatRegControl) {
+            if (it->size() > 0)
+                error(node->getLoc(), "attribute does not take arguments", "reg_control", "");
+            error(node->getLoc(), "attribute does not apply to a switch", "reg_control", "");
+            continue;
+        }
+
         if (it->size() > 0) {
             warn(node->getLoc(), "attribute with arguments not recognized, skipping", "", "");
             continue;
@@ -242,6 +262,12 @@ void TParseContext::handleLoopAttributes(const TAttributes& attributes, TIntermN
     }
 
     for (auto it = attributes.begin(); it != attributes.end(); ++it) {
+        if (it->name == EatRegControl) {
+            if (it->size() > 0)
+                error(node->getLoc(), "attribute does not take arguments", "reg_control", "");
+            error(node->getLoc(), "attribute does not apply to a loop", "reg_control", "");
+            continue;
+        }
 
         const auto noArgument = [&](const char* feature) {
             if (it->size() > 0) {
@@ -352,6 +378,13 @@ void TParseContext::handleLoopAttributes(const TAttributes& attributes, TIntermN
 void TParseContext::handleFunctionAttributes(const TSourceLoc& loc, const TAttributes& attributes)
 {
     for (auto it = attributes.begin(); it != attributes.end(); ++it) {
+        if (it->name == EatRegControl) {
+            if (it->size() > 0)
+                error(loc, "attribute does not take arguments", "reg_control", "");
+            error(loc, "attribute does not apply to a function", "reg_control", "");
+            continue;
+        }
+
         if (it->size() > 0) {
             warn(loc, "attribute with arguments not recognized, skipping", "", "");
             continue;

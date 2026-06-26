@@ -1077,6 +1077,8 @@ bool TOutputTraverser::visitSelection(TVisit /* visit */, TIntermSelection* node
         out.debug << ": Flatten";
     if (node->getDontFlatten())
         out.debug << ": DontFlatten";
+    if (node->getRegControl())
+        out.debug << ": RegControl";
     out.debug << "\n";
 
     ++depth;
