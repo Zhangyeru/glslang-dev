@@ -853,16 +853,16 @@ Id Builder::makeImageType(Id sampledType, Dim dim, bool depth, bool arrayed, boo
 Id Builder::makeTensorMapType(unsigned dim)
 {
     Instruction* type;
-    for (int t = 0; t < (int)groupedTypes[OpTypeTensorMap].size(); ++t) {
-        type = groupedTypes[OpTypeTensorMap][t];
+    for (int t = 0; t < (int)groupedTypes[OpTypeTensorMapHW].size(); ++t) {
+        type = groupedTypes[OpTypeTensorMapHW][t];
         if (type->getImmediateOperand(0) == dim)
             return type->getResultId();
     }
 
-    type = new Instruction(getUniqueId(), NoType, OpTypeTensorMap);
+    type = new Instruction(getUniqueId(), NoType, OpTypeTensorMapHW);
     type->addImmediateOperand(dim);
 
-    groupedTypes[OpTypeTensorMap].push_back(type);
+    groupedTypes[OpTypeTensorMapHW].push_back(type);
     constantsTypesGlobals.push_back(std::unique_ptr<Instruction>(type));
     module.mapInstruction(type);
 

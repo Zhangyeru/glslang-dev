@@ -80,19 +80,19 @@ spv.hwNeuralBuiltins.comp
                OpStore %fill %uint_4294967295
                OpStore %shift %int_4
          %34 = OpLoad %int %value
-         %36 = OpShuffleIndex %int %34 %int_31
+         %36 = OpShuffleIndexHW %int %34 %int_31
          %38 = OpAccessChain %_ptr_Uniform_int %outputBuffer %int_0
                OpStore %38 %36
          %40 = OpLoad %uint %src0
          %41 = OpLoad %uint %src1
          %42 = OpLoad %uint %mask
-         %43 = OpBytePermute %uint %40 %41 %42
+         %43 = OpBytePermuteHW %uint %40 %41 %42
          %45 = OpAccessChain %_ptr_Uniform_uint %outputBuffer %int_1
                OpStore %45 %43
          %47 = OpLoad %uint %src0
          %48 = OpLoad %uint %fill
          %49 = OpLoad %int %shift
-         %50 = OpShuffleFillDown %uint %47 %48 %49
+         %50 = OpShuffleFillDownHW %uint %47 %48 %49
          %51 = OpAccessChain %_ptr_Uniform_uint %outputBuffer %int_2
                OpStore %51 %50
                OpReturn

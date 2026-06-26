@@ -3726,7 +3726,7 @@ bool TGlslangToSpvTraverser::visitUnary(glslang::TVisit /* visit */, glslang::TI
             const glslang::TIntermConstantUnion* waitCount = node->getOperand()->getAsConstantUnion();
             unsigned count = waitCount != nullptr ? waitCount->getConstArray()[0].getIConst() : 0;
             idImmOps.push_back(spv::IdImmediate(false, count)); // N
-            builder.createNoResultOp(spv::OpCpAsyncWaitGroup, idImmOps);
+            builder.createNoResultOp(spv::OpCpAsyncWaitGroupHW, idImmOps);
             return false;
         }
 
@@ -5263,11 +5263,11 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         idImmOps.push_back(spv::IdImmediate(true, operands[0])); // DstMem
         idImmOps.push_back(spv::IdImmediate(true, operands[1])); // TensorMap
         idImmOps.push_back(spv::IdImmediate(true, operands[2])); // Coord
-        builder.createNoResultOp(spv::OpCpAsyncTensorGlobalShared, idImmOps);
+        builder.createNoResultOp(spv::OpCpAsyncTensorGlobalSharedHW, idImmOps);
         result = 0;
     } else if (node->getOp() == glslang::EOpCpAsyncCommitGroup) {
         builder.addExtension(spv::E_SPV_HW_neural_shader);
-        builder.createNoResultOp(spv::OpCpAsyncCommitGroup);
+        builder.createNoResultOp(spv::OpCpAsyncCommitGroupHW);
         result = 0;
     } else if (node->getOp() == glslang::EOpCpAsyncWaitGroup) {
         std::vector<spv::IdImmediate> idImmOps;
@@ -5275,21 +5275,21 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         const glslang::TIntermConstantUnion* waitCount = glslangOperands[0]->getAsConstantUnion();
         unsigned count = waitCount != nullptr ? waitCount->getConstArray()[0].getIConst() : 0;
         idImmOps.push_back(spv::IdImmediate(false, count)); // N
-        builder.createNoResultOp(spv::OpCpAsyncWaitGroup, idImmOps);
+        builder.createNoResultOp(spv::OpCpAsyncWaitGroupHW, idImmOps);
         result = 0;
     } else if (node->getOp() == glslang::EOpBarrierArrive) {
         std::vector<spv::IdImmediate> idImmOps;
         builder.addExtension(spv::E_SPV_HW_neural_shader);
         idImmOps.push_back(spv::IdImmediate(true, operands[0])); // Id
         idImmOps.push_back(spv::IdImmediate(true, operands[1])); // N
-        builder.createNoResultOp(spv::OpBarrierArrive, idImmOps);
+        builder.createNoResultOp(spv::OpBarrierArriveHW, idImmOps);
         result = 0;
     } else if (node->getOp() == glslang::EOpBarrierWait) {
         std::vector<spv::IdImmediate> idImmOps;
         builder.addExtension(spv::E_SPV_HW_neural_shader);
         idImmOps.push_back(spv::IdImmediate(true, operands[0])); // Id
         idImmOps.push_back(spv::IdImmediate(true, operands[1])); // N
-        builder.createNoResultOp(spv::OpBarrierWait, idImmOps);
+        builder.createNoResultOp(spv::OpBarrierWaitHW, idImmOps);
         result = 0;
     } else if (node->getOp() == glslang::EOpCooperativeMatrixMulHW) {
         spv::Id typeId = builder.getContainedTypeId(builder.getTypeId(operands[0]));
@@ -10493,15 +10493,15 @@ spv::Id TGlslangToSpvTraverser::createMiscOperation(glslang::TOperator op, spv::
         return createSubgroupOperation(op, typeId, operands, typeProxy);
     case glslang::EOpShuffleIndex:
         builder.addExtension(spv::E_SPV_HW_neural_shader);
-        opCode = spv::OpShuffleIndex;
+        opCode = spv::OpShuffleIndexHW;
         break;
     case glslang::EOpBytePermute:
         builder.addExtension(spv::E_SPV_HW_neural_shader);
-        opCode = spv::OpBytePermute;
+        opCode = spv::OpBytePermuteHW;
         break;
     case glslang::EOpShuffleFillDown:
         builder.addExtension(spv::E_SPV_HW_neural_shader);
-        opCode = spv::OpShuffleFillDown;
+        opCode = spv::OpShuffleFillDownHW;
         break;
 
     case glslang::EOpSwizzleInvocations:
