@@ -13,6 +13,7 @@ import sys
 
 from run_function_tests import parse_case
 from run_function_tests import select_shaders
+from run_function_tests import shape_string
 
 
 def run_shader(runner, shader, meta, warmup, repeat):
@@ -37,6 +38,9 @@ def run_shader(runner, shader, meta, warmup, repeat):
         "--verify",
         "1",
     ]
+    for dim in ("d0", "d1", "d2", "d3"):
+        if dim in meta:
+            cmd.extend([f"--{dim}", meta[dim]])
     proc = subprocess.run(cmd, check=True, text=True, capture_output=True)
     return json.loads(proc.stdout)
 
@@ -61,6 +65,7 @@ def write_outputs(rows, out_json):
                 "m",
                 "n",
                 "k",
+                "layer_dims",
                 "lowered_ns",
                 "baseline_ns",
                 "ratio",
@@ -81,9 +86,8 @@ def write_outputs(rows, out_json):
         "|---|---|---|---:|---:|---:|---:|---:|---|---|",
     ]
     for row in rows:
-        shape = f"{row['m']}x{row['n']}x{row['k']}"
         lines.append(
-            f"| {row['shader']} | {row['case']} | {row['dtype']} | {shape} | {row['lowered_ns']:.3f} | "
+            f"| {row['shader']} | {row['case']} | {row['dtype']} | {shape_string(row)} | {row['lowered_ns']:.3f} | "
             f"{row['baseline_ns']:.3f} | {row['ratio']:.4f} | {row['gflops']:.4f} | "
             f"{row['verify']} | {row['baseline_verify']} |"
         )
@@ -121,6 +125,7 @@ def main():
                 "m": lowered_result["m"],
                 "n": lowered_result["n"],
                 "k": lowered_result["k"],
+                "layer_dims": lowered_result.get("layer_dims", []),
                 "lowered_ns": lowered_ns,
                 "baseline_ns": baseline_ns,
                 "ratio": lowered_ns / baseline_ns if baseline_ns > 0 else 0.0,

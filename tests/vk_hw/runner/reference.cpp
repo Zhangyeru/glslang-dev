@@ -132,6 +132,8 @@ std::string CaseName(CaseKind kind)
         return "load_store";
     case CaseKind::kMultiOps:
         return "multiops";
+    case CaseKind::kMlp:
+        return "mlp";
     }
     return "unknown";
 }
@@ -148,6 +150,11 @@ uint64_t FlopCount(const CaseConfig& config)
     }
     if (config.kind == CaseKind::kMultiOps) {
         return 2ull * (2ull * config.m * config.n * config.k + 2ull * config.n * config.k);
+    }
+    if (config.kind == CaseKind::kMlp) {
+        return 2ull * (static_cast<uint64_t>(config.d0) * config.d1 +
+                       static_cast<uint64_t>(config.d1) * config.d2 +
+                       static_cast<uint64_t>(config.d2) * config.d3);
     }
     return 0;
 }
@@ -205,6 +212,8 @@ size_t ElementCountA(const CaseConfig& config)
         return config.k;
     case CaseKind::kLoadStore:
         return static_cast<size_t>(config.m) * config.n;
+    case CaseKind::kMlp:
+        return std::max({config.d0, config.d1, config.d2, config.d3});
     }
     return 0;
 }
@@ -220,6 +229,9 @@ size_t ElementCountB(const CaseConfig& config)
         return static_cast<size_t>(config.n) * config.k;
     case CaseKind::kLoadStore:
         return 1;
+    case CaseKind::kMlp:
+        return static_cast<size_t>(config.d0) * config.d1 + static_cast<size_t>(config.d1) * config.d2 +
+               static_cast<size_t>(config.d2) * config.d3;
     }
     return 0;
 }
@@ -235,6 +247,8 @@ size_t ElementCountC(const CaseConfig& config)
     case CaseKind::kVecMatmul:
     case CaseKind::kLoadStore:
         return 1;
+    case CaseKind::kMlp:
+        return config.d1 + config.d2 + config.d3;
     }
     return 0;
 }
@@ -250,6 +264,8 @@ size_t ElementCountD(const CaseConfig& config)
         return config.n;
     case CaseKind::kLoadStore:
         return static_cast<size_t>(config.m) * config.n;
+    case CaseKind::kMlp:
+        return config.d3;
     }
     return 0;
 }
@@ -308,6 +324,36 @@ std::vector<float> ReferenceOutput(const CaseConfig& config, const std::vector<f
             out[col] = OutputQuantize(out[col] + vec, config.dtype);
         }
         return out;
+    }
+
+    if (config.kind == CaseKind::kMlp) {
+        const size_t w1_offset = 0;
+        const size_t w2_offset = static_cast<size_t>(config.d0) * config.d1;
+        const size_t w3_offset = w2_offset + static_cast<size_t>(config.d1) * config.d2;
+        const size_t b1_offset = 0;
+        const size_t b2_offset = config.d1;
+        const size_t b3_offset = b2_offset + config.d2;
+
+        auto relu_quantized = [&](float value) {
+            return std::max(OutputQuantize(value, config.dtype), 0.0f);
+        };
+
+        auto run_layer = [&](const std::vector<float>& input, uint32_t input_width, uint32_t output_width,
+                             size_t weight_offset, size_t bias_offset) {
+            std::vector<float> layer(output_width, 0.0f);
+            for (uint32_t col = 0; col < output_width; ++col) {
+                float acc = c[bias_offset + col];
+                for (uint32_t inner = 0; inner < input_width; ++inner) {
+                    acc += input[inner] * b[weight_offset + inner * output_width + col];
+                }
+                layer[col] = relu_quantized(acc);
+            }
+            return layer;
+        };
+
+        const auto h1 = run_layer(a, config.d0, config.d1, w1_offset, b1_offset);
+        const auto h2 = run_layer(h1, config.d1, config.d2, w2_offset, b2_offset);
+        return run_layer(h2, config.d2, config.d3, w3_offset, b3_offset);
     }
 
     for (uint32_t col = 0; col < config.n; ++col) {

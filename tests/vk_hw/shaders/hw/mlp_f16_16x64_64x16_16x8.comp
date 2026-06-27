@@ -1,0 +1,79 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputX {
+    float16_t x[64];
+} InX;
+
+layout(set = 0, binding = 1) buffer PackedWeights {
+    float16_t w1[16 * 64];
+    float16_t w2[64 * 16];
+    float16_t w3[16 * 8];
+} Weights;
+
+layout(set = 0, binding = 2) buffer PackedBias {
+    float16_t b1[64];
+    float16_t b2[16];
+    float16_t b3[8];
+} Biases;
+
+layout(set = 0, binding = 3) buffer OutputY {
+    float16_t y[8];
+} OutY;
+
+void main()
+{
+    const ivec2 zeroOffset = ivec2(0, 0);
+    const ivec2 shapeW1 = ivec2(16, 64);
+    const ivec2 shapeW2 = ivec2(64, 16);
+    const ivec2 shapeW3 = ivec2(16, 8);
+
+    coopvecHW<float16_t, 16> x;
+    coopmatHW<float16_t, 16, 64> w1;
+    coopvecHW<float16_t, 64> bias1, h1;
+
+    coopvecHW<float16_t, 64> x2;
+    coopmatHW<float16_t, 64, 16> w2;
+    coopvecHW<float16_t, 16> bias2, h2;
+
+    coopvecHW<float16_t, 16> x3;
+    coopmatHW<float16_t, 16, 8> w3;
+    coopvecHW<float16_t, 8> bias3, y;
+
+    /* Layer 1: x(16) * w1(16x64) + b1(64) -> h1(64), ReLU */
+    coopVecLoadHW(x, InX.x, 0u);
+    coopMatLoadHW(w1, Weights.w1, shapeW1, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias1, Biases.b1, 0u);
+    coopVecMatMulAddHW(h1, x, w1, bias1);
+    coopVecStoreHW(h1, InX.x, 0u);
+
+    memoryBarrierBuffer();
+    for (uint i = 0u; i < 64u; ++i)
+        InX.x[i] = max(InX.x[i], float16_t(0));
+    memoryBarrierBuffer();
+
+    /* Layer 2: h1(64) * w2(64x16) + b2(16) -> h2(16), ReLU */
+    coopVecLoadHW(x2, InX.x, 0u);
+    coopMatLoadHW(w2, Weights.w2, shapeW2, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias2, Biases.b2, 0u);
+    coopVecMatMulAddHW(h2, x2, w2, bias2);
+    coopVecStoreHW(h2, InX.x, 0u);
+
+    memoryBarrierBuffer();
+    for (uint i = 0u; i < 16u; ++i)
+        InX.x[i] = max(InX.x[i], float16_t(0));
+    memoryBarrierBuffer();
+
+    /* Layer 3: h2(16) * w3(16x8) + b3(8) -> y(8), ReLU */
+    coopVecLoadHW(x3, InX.x, 0u);
+    coopMatLoadHW(w3, Weights.w3, shapeW3, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias3, Biases.b3, 0u);
+    coopVecMatMulAddHW(y, x3, w3, bias3);
+    coopVecStoreHW(y, OutY.y, 0u);
+    memoryBarrierBuffer();
+    for (uint i = 0u; i < 8u; ++i)
+        OutY.y[i] = max(OutY.y[i], float16_t(0));
+}

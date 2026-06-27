@@ -37,6 +37,23 @@ def parse_case(path):
         case, dtype, inner, cols = m.groups()
         return {"case": case, "dtype": dtype, "m": "1", "n": cols, "k": inner}
 
+    m = re.match(r"mlp_(f16|f32)_(\d+)x(\d+)_(\d+)x(\d+)_(\d+)x(\d+)$", stem)
+    if m:
+        dtype, d0, d1, d1_check, d2, d2_check, d3 = m.groups()
+        if d1 != d1_check or d2 != d2_check:
+            raise ValueError(f"inconsistent mlp dimensions in {path}")
+        return {
+            "case": "mlp",
+            "dtype": dtype,
+            "m": "1",
+            "n": d3,
+            "k": "0",
+            "d0": d0,
+            "d1": d1,
+            "d2": d2,
+            "d3": d3,
+        }
+
     m = re.match(r"load_store_(f16|f32)(?:_scalar)?(?:_(\d+)x(\d+))?$", stem)
     if m:
         dtype, rows, cols = m.groups()
@@ -68,17 +85,29 @@ def run_case(runner, shader, warmup, repeat):
         "--verify",
         "1",
     ]
+    for dim in ("d0", "d1", "d2", "d3"):
+        if dim in meta:
+            cmd.extend([f"--{dim}", meta[dim]])
     proc = subprocess.run(cmd, check=True, text=True, capture_output=True)
     return json.loads(proc.stdout)
 
 
 def case_work(meta):
+    if meta["case"] == "mlp":
+        return int(meta["d0"]) * int(meta["d1"]) + int(meta["d1"]) * int(meta["d2"]) + int(meta["d2"]) * int(meta["d3"])
     m = int(meta["m"])
     n = int(meta["n"])
     k = int(meta["k"])
     if meta["case"] == "load_store":
         return m * n
     return m * n * k
+
+
+def shape_string(result):
+    dims = result.get("layer_dims")
+    if isinstance(dims, list) and len(dims) == 4:
+        return f"{dims[0]}x{dims[1]}, {dims[1]}x{dims[2]}, {dims[2]}x{dims[3]}"
+    return f"{result.get('m', 0)}x{result.get('n', 0)}x{result.get('k', 0)}"
 
 
 def select_shaders(spv_dir, include, exclude, max_work):
@@ -108,10 +137,9 @@ def write_reports(results, out_dir):
         "|---|---|---|---:|---|---:|---:|",
     ]
     for result in results:
-        shape = f"{result.get('m', 0)}x{result.get('n', 0)}x{result.get('k', 0)}"
         lines.append(
             f"| {pathlib.Path(result['shader']).name} | {result['case']} | {result['dtype']} | "
-            f"{shape} | {result['verify']} | {result['max_abs_error']:.8g} | {result['max_rel_error']:.8g} |"
+            f"{shape_string(result)} | {result['verify']} | {result['max_abs_error']:.8g} | {result['max_rel_error']:.8g} |"
         )
     (out_dir / "functional.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 

@@ -1,0 +1,175 @@
+#version 450 core
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputX {
+    float16_t x[64];
+} InX;
+
+layout(set = 0, binding = 1) buffer PackedWeights {
+    float16_t w1[16 * 64];
+    float16_t w2[64 * 16];
+    float16_t w3[16 * 8];
+} Weights;
+
+layout(set = 0, binding = 2) buffer PackedBias {
+    float16_t b1[64];
+    float16_t b2[16];
+    float16_t b3[8];
+} Biases;
+
+layout(set = 0, binding = 3) buffer OutputY {
+    float16_t y[8];
+} OutY;
+
+f16vec4 relu4(f16vec4 value)
+{
+    return max(value, f16vec4(0.0hf));
+}
+
+f16vec4 loadInput(int k0)
+{
+    return f16vec4(InX.x[k0 + 0], InX.x[k0 + 1], InX.x[k0 + 2], InX.x[k0 + 3]);
+}
+
+f16vec4 loadBias1(int col0)
+{
+    return f16vec4(Biases.b1[col0 + 0], Biases.b1[col0 + 1], Biases.b1[col0 + 2], Biases.b1[col0 + 3]);
+}
+
+f16vec4 loadBias2(int col0)
+{
+    return f16vec4(Biases.b2[col0 + 0], Biases.b2[col0 + 1], Biases.b2[col0 + 2], Biases.b2[col0 + 3]);
+}
+
+f16vec4 loadBias3(int col0)
+{
+    return f16vec4(Biases.b3[col0 + 0], Biases.b3[col0 + 1], Biases.b3[col0 + 2], Biases.b3[col0 + 3]);
+}
+
+void tileWeight1(int k0, int col0, out f16vec4 weight[4])
+{
+    weight[0] = f16vec4(Weights.w1[(k0 + 0) * 64 + col0 + 0], Weights.w1[(k0 + 1) * 64 + col0 + 0],
+                        Weights.w1[(k0 + 2) * 64 + col0 + 0], Weights.w1[(k0 + 3) * 64 + col0 + 0]);
+    weight[1] = f16vec4(Weights.w1[(k0 + 0) * 64 + col0 + 1], Weights.w1[(k0 + 1) * 64 + col0 + 1],
+                        Weights.w1[(k0 + 2) * 64 + col0 + 1], Weights.w1[(k0 + 3) * 64 + col0 + 1]);
+    weight[2] = f16vec4(Weights.w1[(k0 + 0) * 64 + col0 + 2], Weights.w1[(k0 + 1) * 64 + col0 + 2],
+                        Weights.w1[(k0 + 2) * 64 + col0 + 2], Weights.w1[(k0 + 3) * 64 + col0 + 2]);
+    weight[3] = f16vec4(Weights.w1[(k0 + 0) * 64 + col0 + 3], Weights.w1[(k0 + 1) * 64 + col0 + 3],
+                        Weights.w1[(k0 + 2) * 64 + col0 + 3], Weights.w1[(k0 + 3) * 64 + col0 + 3]);
+}
+
+void tileWeight2(int k0, int col0, out f16vec4 weight[4])
+{
+    weight[0] = f16vec4(Weights.w2[(k0 + 0) * 16 + col0 + 0], Weights.w2[(k0 + 1) * 16 + col0 + 0],
+                        Weights.w2[(k0 + 2) * 16 + col0 + 0], Weights.w2[(k0 + 3) * 16 + col0 + 0]);
+    weight[1] = f16vec4(Weights.w2[(k0 + 0) * 16 + col0 + 1], Weights.w2[(k0 + 1) * 16 + col0 + 1],
+                        Weights.w2[(k0 + 2) * 16 + col0 + 1], Weights.w2[(k0 + 3) * 16 + col0 + 1]);
+    weight[2] = f16vec4(Weights.w2[(k0 + 0) * 16 + col0 + 2], Weights.w2[(k0 + 1) * 16 + col0 + 2],
+                        Weights.w2[(k0 + 2) * 16 + col0 + 2], Weights.w2[(k0 + 3) * 16 + col0 + 2]);
+    weight[3] = f16vec4(Weights.w2[(k0 + 0) * 16 + col0 + 3], Weights.w2[(k0 + 1) * 16 + col0 + 3],
+                        Weights.w2[(k0 + 2) * 16 + col0 + 3], Weights.w2[(k0 + 3) * 16 + col0 + 3]);
+}
+
+void tileWeight3(int k0, int col0, out f16vec4 weight[4])
+{
+    weight[0] = f16vec4(Weights.w3[(k0 + 0) * 8 + col0 + 0], Weights.w3[(k0 + 1) * 8 + col0 + 0],
+                        Weights.w3[(k0 + 2) * 8 + col0 + 0], Weights.w3[(k0 + 3) * 8 + col0 + 0]);
+    weight[1] = f16vec4(Weights.w3[(k0 + 0) * 8 + col0 + 1], Weights.w3[(k0 + 1) * 8 + col0 + 1],
+                        Weights.w3[(k0 + 2) * 8 + col0 + 1], Weights.w3[(k0 + 3) * 8 + col0 + 1]);
+    weight[2] = f16vec4(Weights.w3[(k0 + 0) * 8 + col0 + 2], Weights.w3[(k0 + 1) * 8 + col0 + 2],
+                        Weights.w3[(k0 + 2) * 8 + col0 + 2], Weights.w3[(k0 + 3) * 8 + col0 + 2]);
+    weight[3] = f16vec4(Weights.w3[(k0 + 0) * 8 + col0 + 3], Weights.w3[(k0 + 1) * 8 + col0 + 3],
+                        Weights.w3[(k0 + 2) * 8 + col0 + 3], Weights.w3[(k0 + 3) * 8 + col0 + 3]);
+}
+
+void storeOutput(int col0, f16vec4 value)
+{
+    OutY.y[col0 + 0] = value.x;
+    OutY.y[col0 + 1] = value.y;
+    OutY.y[col0 + 2] = value.z;
+    OutY.y[col0 + 3] = value.w;
+}
+
+void main()
+{
+    float16_t h1[64];
+
+    /* Layer 1: x(16) * w1(16x64) + b1(64) -> h1(64), ReLU */
+    for (int col0 = 0; col0 < 64; col0 += 4) {
+        f16vec4 rx = f16vec4(0.0hf);
+        f16vec4 ry = f16vec4(0.0hf);
+        f16vec4 rz = f16vec4(0.0hf);
+        f16vec4 rw = f16vec4(0.0hf);
+        f16vec4 weight[4];
+        for (int k0 = 0; k0 < 16; k0 += 4) {
+            f16vec4 v = loadInput(k0);
+            tileWeight1(k0, col0, weight);
+            rx += v * weight[0];
+            ry += v * weight[1];
+            rz += v * weight[2];
+            rw += v * weight[3];
+        }
+        f16vec4 value = relu4(loadBias1(col0) + f16vec4(
+            rx.x + rx.y + rx.z + rx.w,
+            ry.x + ry.y + ry.z + ry.w,
+            rz.x + rz.y + rz.z + rz.w,
+            rw.x + rw.y + rw.z + rw.w));
+        h1[col0 + 0] = value.x;
+        h1[col0 + 1] = value.y;
+        h1[col0 + 2] = value.z;
+        h1[col0 + 3] = value.w;
+    }
+
+    float16_t h2[16];
+
+    /* Layer 2: h1(64) * w2(64x16) + b2(16) -> h2(16), ReLU */
+    for (int col0 = 0; col0 < 16; col0 += 4) {
+        f16vec4 rx = f16vec4(0.0hf);
+        f16vec4 ry = f16vec4(0.0hf);
+        f16vec4 rz = f16vec4(0.0hf);
+        f16vec4 rw = f16vec4(0.0hf);
+        f16vec4 weight[4];
+        for (int k0 = 0; k0 < 64; k0 += 4) {
+            f16vec4 v = f16vec4(h1[k0 + 0], h1[k0 + 1], h1[k0 + 2], h1[k0 + 3]);
+            tileWeight2(k0, col0, weight);
+            rx += v * weight[0];
+            ry += v * weight[1];
+            rz += v * weight[2];
+            rw += v * weight[3];
+        }
+        f16vec4 value = relu4(loadBias2(col0) + f16vec4(
+            rx.x + rx.y + rx.z + rx.w,
+            ry.x + ry.y + ry.z + ry.w,
+            rz.x + rz.y + rz.z + rz.w,
+            rw.x + rw.y + rw.z + rw.w));
+        h2[col0 + 0] = value.x;
+        h2[col0 + 1] = value.y;
+        h2[col0 + 2] = value.z;
+        h2[col0 + 3] = value.w;
+    }
+
+    /* Layer 3: h2(16) * w3(16x8) + b3(8) -> y(8), ReLU */
+    for (int col0 = 0; col0 < 8; col0 += 4) {
+        f16vec4 rx = f16vec4(0.0hf);
+        f16vec4 ry = f16vec4(0.0hf);
+        f16vec4 rz = f16vec4(0.0hf);
+        f16vec4 rw = f16vec4(0.0hf);
+        f16vec4 weight[4];
+        for (int k0 = 0; k0 < 16; k0 += 4) {
+            f16vec4 v = f16vec4(h2[k0 + 0], h2[k0 + 1], h2[k0 + 2], h2[k0 + 3]);
+            tileWeight3(k0, col0, weight);
+            rx += v * weight[0];
+            ry += v * weight[1];
+            rz += v * weight[2];
+            rw += v * weight[3];
+        }
+        storeOutput(col0, relu4(loadBias3(col0) + f16vec4(
+            rx.x + rx.y + rx.z + rx.w,
+            ry.x + ry.y + ry.z + ry.w,
+            rz.x + rz.y + rz.z + rz.w,
+            rw.x + rw.y + rw.z + rw.w)));
+    }
+}

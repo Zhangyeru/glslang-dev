@@ -12,7 +12,7 @@
 
 namespace vk_hw {
 
-enum class CaseKind { kMatmul, kVecMatmul, kVecMatmulAdd, kLoadStore, kMultiOps };
+enum class CaseKind { kMatmul, kVecMatmul, kVecMatmulAdd, kLoadStore, kMultiOps, kMlp };
 enum class DType { kF16, kF32 };
 
 struct CaseConfig {
@@ -24,6 +24,10 @@ struct CaseConfig {
     uint32_t warmup = 20;
     uint32_t repeat = 200;
     bool verify = true;
+    uint32_t d0 = 0;
+    uint32_t d1 = 0;
+    uint32_t d2 = 0;
+    uint32_t d3 = 0;
     std::string shader_path;
 };
 

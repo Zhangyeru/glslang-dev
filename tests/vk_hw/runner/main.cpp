@@ -81,6 +81,8 @@ CaseKind ParseCaseKind(const std::string& value)
         return CaseKind::kLoadStore;
     if (value == "multiops")
         return CaseKind::kMultiOps;
+    if (value == "mlp")
+        return CaseKind::kMlp;
     throw std::runtime_error("unknown case: " + value);
 }
 
@@ -126,6 +128,14 @@ CaseConfig ParseArgs(int argc, char** argv)
             config.n = ParseU32(require_value("--n"), "--n");
         } else if (arg == "--k") {
             config.k = ParseU32(require_value("--k"), "--k");
+        } else if (arg == "--d0") {
+            config.d0 = ParseU32(require_value("--d0"), "--d0");
+        } else if (arg == "--d1") {
+            config.d1 = ParseU32(require_value("--d1"), "--d1");
+        } else if (arg == "--d2") {
+            config.d2 = ParseU32(require_value("--d2"), "--d2");
+        } else if (arg == "--d3") {
+            config.d3 = ParseU32(require_value("--d3"), "--d3");
         } else if (arg == "--warmup") {
             config.warmup = ParseU32(require_value("--warmup"), "--warmup");
         } else if (arg == "--repeat") {
@@ -144,6 +154,10 @@ CaseConfig ParseArgs(int argc, char** argv)
     }
     if (config.repeat == 0) {
         throw std::runtime_error("--repeat must be greater than zero");
+    }
+    if (config.kind == CaseKind::kMlp &&
+        (config.d0 == 0 || config.d1 == 0 || config.d2 == 0 || config.d3 == 0)) {
+        throw std::runtime_error("mlp case requires --d0 --d1 --d2 --d3");
     }
     return config;
 }
@@ -252,6 +266,10 @@ void PrintJson(const CaseConfig& config, const TimeStats& stats, const VerifyRes
     std::cout << "  \"m\": " << config.m << ",\n";
     std::cout << "  \"n\": " << config.n << ",\n";
     std::cout << "  \"k\": " << config.k << ",\n";
+    if (config.kind == CaseKind::kMlp) {
+        std::cout << "  \"layer_dims\": [" << config.d0 << ", " << config.d1 << ", " << config.d2 << ", "
+                  << config.d3 << "],\n";
+    }
     std::cout << "  \"warmup\": " << config.warmup << ",\n";
     std::cout << "  \"repeat\": " << config.repeat << ",\n";
     std::cout << "  \"gpu_time_ns_min\": " << stats.min << ",\n";
@@ -294,24 +312,29 @@ int Run(int argc, char** argv)
     Buffer buffer_b(&context, b_bytes.size());
     Buffer buffer_c(&context, c_bytes.size());
     Buffer buffer_d(&context, d_init.size());
-    buffer_a.Upload(a_bytes);
-    buffer_b.Upload(b_bytes);
-    buffer_c.Upload(c_bytes);
-    buffer_d.Upload(d_init);
 
     ComputePipeline pipeline(&context, spirv,
                              DescriptorTypesForShader(config.shader_path));
     pipeline.UpdateDescriptors(
         {buffer_a.descriptor(), buffer_b.descriptor(), buffer_c.descriptor(), buffer_d.descriptor()});
 
+    auto reset_buffers = [&]() {
+        buffer_a.Upload(a_bytes);
+        buffer_b.Upload(b_bytes);
+        buffer_c.Upload(c_bytes);
+        buffer_d.Upload(d_init);
+    };
+
     DispatchTimer timer(&context);
     for (uint32_t i = 0; i < config.warmup; ++i) {
+        reset_buffers();
         (void)timer.Run(pipeline);
     }
 
     std::vector<double> samples;
     samples.reserve(config.repeat);
     for (uint32_t i = 0; i < config.repeat; ++i) {
+        reset_buffers();
         samples.push_back(timer.Run(pipeline));
     }
 
