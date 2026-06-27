@@ -3808,7 +3808,7 @@ void Parameterize()
         InstructionDesc[OpCpAsyncTensorGlobalSharedHW].operands.push(OperandId, "'DstMem'");
         InstructionDesc[OpCpAsyncTensorGlobalSharedHW].operands.push(OperandId, "'TensorMap'");
         InstructionDesc[OpCpAsyncTensorGlobalSharedHW].operands.push(OperandId, "'Coord'");
-        InstructionDesc[OpCpAsyncWaitGroupHW].operands.push(OperandLiteralNumber, "'N'");
+        InstructionDesc[OpCpAsyncWaitGroupHW].operands.push(OperandId, "'N'");
         InstructionDesc[OpBarrierArriveHW].operands.push(OperandId, "'Id'");
         InstructionDesc[OpBarrierArriveHW].operands.push(OperandId, "'N'");
         InstructionDesc[OpBarrierWaitHW].operands.push(OperandId, "'Id'");

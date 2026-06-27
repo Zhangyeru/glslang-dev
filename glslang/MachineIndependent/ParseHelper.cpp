@@ -3422,11 +3422,15 @@ void TParseContext::builtInOpCheck(const TSourceLoc& loc, const TFunction& fnCan
     case EOpBarrierArrive:
     case EOpBarrierWait:
     {
-        const char* argNames[] = { "id", "n" };
-        for (int i = 0; i < 2; ++i) {
-            const TIntermConstantUnion* constant = (*argp)[i]->getAsTyped()->getAsConstantUnion();
-            if (constant != nullptr && constant->getConstArray()[0].getIConst() < 0)
-                error(loc, "argument must be non-negative", fnCandidate.getName().c_str(), argNames[i]);
+        const TIntermConstantUnion* barrierId = (*argp)[0]->getAsTyped()->getAsConstantUnion();
+        if (barrierId != nullptr && barrierId->getConstArray()[0].getIConst() < 0)
+            error(loc, "argument must be non-negative", fnCandidate.getName().c_str(), "id");
+
+        const TIntermConstantUnion* barrierCount = (*argp)[1]->getAsTyped()->getAsConstantUnion();
+        if (barrierCount == nullptr) {
+            error(loc, "argument must be a compile-time constant", fnCandidate.getName().c_str(), "n");
+        } else if (barrierCount->getConstArray()[0].getIConst() < 0) {
+            error(loc, "argument must be non-negative", fnCandidate.getName().c_str(), "n");
         }
         break;
     }

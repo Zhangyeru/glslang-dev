@@ -3723,9 +3723,7 @@ bool TGlslangToSpvTraverser::visitUnary(glslang::TVisit /* visit */, glslang::TI
     case glslang::EOpCpAsyncWaitGroup:
         {
             std::vector<spv::IdImmediate> idImmOps;
-            const glslang::TIntermConstantUnion* waitCount = node->getOperand()->getAsConstantUnion();
-            unsigned count = waitCount != nullptr ? waitCount->getConstArray()[0].getIConst() : 0;
-            idImmOps.push_back(spv::IdImmediate(false, count)); // N
+            idImmOps.push_back(spv::IdImmediate(true, operand)); // N
             builder.createNoResultOp(spv::OpCpAsyncWaitGroupHW, idImmOps);
             return false;
         }
@@ -5272,9 +5270,7 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
     } else if (node->getOp() == glslang::EOpCpAsyncWaitGroup) {
         std::vector<spv::IdImmediate> idImmOps;
         builder.addExtension(spv::E_SPV_HW_neural_shader);
-        const glslang::TIntermConstantUnion* waitCount = glslangOperands[0]->getAsConstantUnion();
-        unsigned count = waitCount != nullptr ? waitCount->getConstArray()[0].getIConst() : 0;
-        idImmOps.push_back(spv::IdImmediate(false, count)); // N
+        idImmOps.push_back(spv::IdImmediate(true, operands[0])); // N
         builder.createNoResultOp(spv::OpCpAsyncWaitGroupHW, idImmOps);
         result = 0;
     } else if (node->getOp() == glslang::EOpBarrierArrive) {

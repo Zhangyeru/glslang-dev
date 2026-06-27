@@ -26,7 +26,7 @@ spv.cpAsyncGroupBarrier.comp
        %main = OpFunction %void None %3
           %5 = OpLabel
                OpCpAsyncCommitGroupHW
-               OpCpAsyncWaitGroupHW 0
+               OpCpAsyncWaitGroupHW %int_0
                OpBarrierArriveHW %int_0 %int_1
                OpBarrierWaitHW %int_0 %int_1
                OpReturn
