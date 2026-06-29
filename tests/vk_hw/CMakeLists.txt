@@ -75,6 +75,7 @@ if(Python3_Interpreter_FOUND AND TARGET glslang-standalone AND TARGET spirv-opt
         --baseline-dir ${CMAKE_CURRENT_SOURCE_DIR}/shaders/baseline
         --out-dir ${CMAKE_BINARY_DIR}/tests/vk_hw/spv
         --glsl-out-dir ${CMAKE_BINARY_DIR}/tests/vk_hw/glsl
+        --golden-dir ${CMAKE_CURRENT_SOURCE_DIR}/glsl
     )
     if(SPIRV_CROSS_EXECUTABLE)
         list(APPEND _build_shader_args --spirv-cross ${SPIRV_CROSS_EXECUTABLE})
