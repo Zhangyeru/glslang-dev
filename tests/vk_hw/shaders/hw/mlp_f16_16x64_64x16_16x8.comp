@@ -35,45 +35,33 @@ void main()
     coopmatHW<float16_t, 16, 64> w1;
     coopvecHW<float16_t, 64> bias1, h1;
 
-    coopvecHW<float16_t, 64> x2;
     coopmatHW<float16_t, 64, 16> w2;
     coopvecHW<float16_t, 16> bias2, h2;
 
-    coopvecHW<float16_t, 16> x3;
     coopmatHW<float16_t, 16, 8> w3;
     coopvecHW<float16_t, 8> bias3, y;
+
+    const coopvecHW<float16_t, 64> zero64 = coopvecHW<float16_t, 64>(float16_t(0));
+    const coopvecHW<float16_t, 16> zero16 = coopvecHW<float16_t, 16>(float16_t(0));
+    const coopvecHW<float16_t, 8> zero8 = coopvecHW<float16_t, 8>(float16_t(0));
 
     /* Layer 1: x(16) * w1(16x64) + b1(64) -> h1(64), ReLU */
     coopVecLoadHW(x, InX.x, 0u);
     coopMatLoadHW(w1, Weights.w1, shapeW1, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
     coopVecLoadHW(bias1, Biases.b1, 0u);
     coopVecMatMulAddHW(h1, x, w1, bias1);
-    coopVecStoreHW(h1, InX.x, 0u);
-
-    memoryBarrierBuffer();
-    for (uint i = 0u; i < 64u; ++i)
-        InX.x[i] = max(InX.x[i], float16_t(0));
-    memoryBarrierBuffer();
+    h1 = max(h1, zero64);
 
     /* Layer 2: h1(64) * w2(64x16) + b2(16) -> h2(16), ReLU */
-    coopVecLoadHW(x2, InX.x, 0u);
     coopMatLoadHW(w2, Weights.w2, shapeW2, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
     coopVecLoadHW(bias2, Biases.b2, 0u);
-    coopVecMatMulAddHW(h2, x2, w2, bias2);
-    coopVecStoreHW(h2, InX.x, 0u);
-
-    memoryBarrierBuffer();
-    for (uint i = 0u; i < 16u; ++i)
-        InX.x[i] = max(InX.x[i], float16_t(0));
-    memoryBarrierBuffer();
+    coopVecMatMulAddHW(h2, h1, w2, bias2);
+    h2 = max(h2, zero16);
 
     /* Layer 3: h2(16) * w3(16x8) + b3(8) -> y(8), ReLU */
-    coopVecLoadHW(x3, InX.x, 0u);
     coopMatLoadHW(w3, Weights.w3, shapeW3, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
     coopVecLoadHW(bias3, Biases.b3, 0u);
-    coopVecMatMulAddHW(y, x3, w3, bias3);
+    coopVecMatMulAddHW(y, h2, w3, bias3);
+    y = max(y, zero8);
     coopVecStoreHW(y, OutY.y, 0u);
-    memoryBarrierBuffer();
-    for (uint i = 0u; i < 8u; ++i)
-        OutY.y[i] = max(OutY.y[i], float16_t(0));
 }
