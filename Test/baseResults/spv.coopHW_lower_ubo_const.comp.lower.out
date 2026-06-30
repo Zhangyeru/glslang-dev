@@ -19,22 +19,18 @@ spv.coopHW_lower_ubo_const.comp
                OpName %a "a"
                OpName %b "b"
                OpName %c "c"
-               OpName %tempArg "tempArg"
                OpName %InputX "InputX"
                OpMemberName %InputX 0 "x"
                OpName %inX "inX"
-               OpName %x "x"
-               OpName %tempArg_0 "tempArg"
                OpName %InputW "InputW"
                OpMemberName %InputW 0 "w"
                OpName %inW "inW"
-               OpName %w "w"
-               OpName %tempArg_1 "tempArg"
+               OpName %tempArg "tempArg"
                OpName %y "y"
                OpName %OutputY "OutputY"
                OpMemberName %OutputY 0 "y"
                OpName %outY "outY"
-               OpName %tempArg_2 "tempArg"
+               OpName %tempArg_0 "tempArg"
                OpName %d "d"
                OpName %OutputM "OutputM"
                OpMemberName %OutputM 0 "m"
@@ -151,13 +147,9 @@ spv.coopHW_lower_ubo_const.comp
           %a = OpVariable %_ptr_Function__arr_v4float_uint_4 Function
           %b = OpVariable %_ptr_Function__arr_v4float_uint_4_0 Function
           %c = OpVariable %_ptr_Function__arr_v4float_uint_4_1 Function
-    %tempArg = OpVariable %_ptr_Function__arr_v4float_uint_4_2 Function
-          %x = OpVariable %_ptr_Function__arr_v4float_uint_4_2 Function
-  %tempArg_0 = OpVariable %_ptr_Function__arr_v4float_uint_32 Function
-          %w = OpVariable %_ptr_Function__arr_v4float_uint_32 Function
-  %tempArg_1 = OpVariable %_ptr_Function__arr_v4float_uint_2 Function
+    %tempArg = OpVariable %_ptr_Function__arr_v4float_uint_2 Function
           %y = OpVariable %_ptr_Function__arr_v4float_uint_2 Function
-  %tempArg_2 = OpVariable %_ptr_Function__arr_v4float_uint_4_1 Function
+  %tempArg_0 = OpVariable %_ptr_Function__arr_v4float_uint_4_1 Function
           %d = OpVariable %_ptr_Function__arr_v4float_uint_4_1 Function
         %470 = OpVariable %_ptr_Function__arr_v4float_uint_2_0 Function
         %471 = OpVariable %_ptr_Function_uint Function
@@ -171,14 +163,11 @@ spv.coopHW_lower_ubo_const.comp
                OpStore %c %37
          %49 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %inX %int_0
          %63 = OpAccessChain %_ptr_Uniform__arr_float_uint_128 %inW %int_0
-         %75 = OpLoad %_arr_v4float_uint_2 %bias
          %76 = OpFunctionCall %_arr_v4float_uint_2 %153
-               OpStore %tempArg_1 %76
-         %78 = OpLoad %_arr_v4float_uint_2 %tempArg_1
-               OpStore %y %78
-         %79 = OpLoad %_arr_v4float_uint_2 %y
+               OpStore %tempArg %76
+               OpStore %y %76
          %85 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_0 %outY %int_0
-               OpStore %470 %79
+               OpStore %470 %76
                OpStore %471 %uint_0
                OpBranch %473
         %473 = OpLabel
@@ -197,16 +186,11 @@ spv.coopHW_lower_ubo_const.comp
                OpStore %471 %482
                OpBranch %473
         %472 = OpLabel
-         %87 = OpLoad %_arr_v4float_uint_4 %a
-         %88 = OpLoad %_arr_v4float_uint_4 %b
-         %89 = OpLoad %_arr_v4float_uint_4 %c
          %90 = OpFunctionCall %_arr_v4float_uint_4 %312
-               OpStore %tempArg_2 %90
-         %92 = OpLoad %_arr_v4float_uint_4 %tempArg_2
-               OpStore %d %92
-         %93 = OpLoad %_arr_v4float_uint_4 %d
+               OpStore %tempArg_0 %90
+               OpStore %d %90
          %99 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_1 %outM %int_0
-               OpStore %499 %93
+               OpStore %499 %90
                OpStore %500 %uint_0
                OpBranch %502
         %502 = OpLabel
