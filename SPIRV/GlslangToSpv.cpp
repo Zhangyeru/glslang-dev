@@ -268,10 +268,10 @@ public:
             constrain(sequence[3]->getAsTyped(), glslang::ECoopMatUseAccumulator, true);
         } else if (collectDirect && node->getOp() == glslang::EOpCooperativeVectorMatMulHW &&
                    sequence.size() == 3) {
-            constrain(sequence[2]->getAsTyped(), glslang::ECoopMatUseA, true);
+            constrain(sequence[2]->getAsTyped(), glslang::ECoopMatUseB, true);
         } else if (collectDirect && node->getOp() == glslang::EOpCooperativeVectorMatMulAddHW &&
                    sequence.size() == 4) {
-            constrain(sequence[2]->getAsTyped(), glslang::ECoopMatUseA, true);
+            constrain(sequence[2]->getAsTyped(), glslang::ECoopMatUseB, true);
         } else if (node->getOp() == glslang::EOpCooperativeMatrixReduceHW && sequence.size() >= 1) {
             propagateSameUse(node, node, sequence[0]->getAsTyped());
         } else if (node->getOp() == glslang::EOpConstructCooperativeMatrixHW && sequence.size() == 1 &&
@@ -810,11 +810,15 @@ const char* getCooperativeVectorHWExtension()
     return spv::E_SPV_HW_neural_shader;
 }
 
+spv::Id createCooperativeMatrixHWUseCast(spv::Builder& builder, spv::Id object, spv::CooperativeMatrixUseHW use);
+
 spv::Id createCooperativeVectorHWMatMul(spv::Builder& builder, spv::Id typeId, const std::vector<spv::Id>& operands)
 {
     std::vector<spv::IdImmediate> idImmOps;
+    spv::Id matrix = createCooperativeMatrixHWUseCast(builder, operands[2],
+        spv::CooperativeMatrixUseHWMatrixUseBHW);
     idImmOps.push_back(spv::IdImmediate(true, operands[1])); // Input
-    idImmOps.push_back(spv::IdImmediate(true, operands[2])); // Matrix
+    idImmOps.push_back(spv::IdImmediate(true, matrix)); // Matrix
 
     return builder.createOp(spv::OpCooperativeVectorMatrixMulHW, typeId, idImmOps);
 }
@@ -822,8 +826,10 @@ spv::Id createCooperativeVectorHWMatMul(spv::Builder& builder, spv::Id typeId, c
 spv::Id createCooperativeVectorHWMatMulAdd(spv::Builder& builder, spv::Id typeId, const std::vector<spv::Id>& operands)
 {
     std::vector<spv::IdImmediate> idImmOps;
+    spv::Id matrix = createCooperativeMatrixHWUseCast(builder, operands[2],
+        spv::CooperativeMatrixUseHWMatrixUseBHW);
     idImmOps.push_back(spv::IdImmediate(true, operands[1])); // Input
-    idImmOps.push_back(spv::IdImmediate(true, operands[2])); // Matrix
+    idImmOps.push_back(spv::IdImmediate(true, matrix)); // Matrix
     idImmOps.push_back(spv::IdImmediate(true, operands[3])); // Bias
 
     return builder.createOp(spv::OpCooperativeVectorMatrixMulAddHW, typeId, idImmOps);

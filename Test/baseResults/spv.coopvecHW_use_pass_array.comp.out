@@ -1,0 +1,84 @@
+spv.coopvecHW_use_pass_array.comp
+; SPIR-V
+; Version: 1.0
+; Generator: Khronos Glslang Reference Front End; 11
+; Bound: 47
+; Schema: 0
+               OpCapability Shader
+               OpCapability Float16
+               OpCapability VulkanMemoryModel
+               OpCapability CooperativeMatrixHW
+               OpCapability CooperativeVectorHW
+               OpExtension "SPV_HW_neural_shader"
+               OpExtension "SPV_KHR_vulkan_memory_model"
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint GLCompute %main "main"
+               OpExecutionMode %main LocalSize 1 1 1
+               OpSource GLSL 450
+               OpSourceExtension "GL_EXT_shader_explicit_arithmetic_types"
+               OpSourceExtension "GL_HW_neural_shader"
+               OpSourceExtension "GL_KHR_memory_scope_semantics"
+               OpName %main "main"
+               OpName %tempArg "tempArg"
+               OpName %v1 "v1"
+               OpName %mats "mats"
+               OpName %v0 "v0"
+               OpName %tempArg_0 "tempArg"
+               OpName %v2 "v2"
+               OpName %bias "bias"
+               OpName %tempArg_1 "tempArg"
+               OpDecorate %gl_WorkGroupSize BuiltIn WorkgroupSize
+       %void = OpTypeVoid
+          %3 = OpTypeFunction %void
+       %half = OpTypeFloat 16
+       %uint = OpTypeInt 32 0
+    %uint_16 = OpConstant %uint 16
+          %9 = OpTypeCooperativeVectorHW %half %uint_16
+%_ptr_Function_9 = OpTypePointer Function %9
+         %14 = OpTypeCooperativeMatrixHW %half %uint_16 %uint_16 MatrixUseBHW
+     %uint_3 = OpConstant %uint 3
+%_arr_14_uint_3 = OpTypeArray %14 %uint_3
+%_ptr_Function__arr_14_uint_3 = OpTypePointer Function %_arr_14_uint_3
+        %int = OpTypeInt 32 1
+      %int_0 = OpConstant %int 0
+%_ptr_Function_14 = OpTypePointer Function %14
+      %int_1 = OpConstant %int 1
+      %int_2 = OpConstant %int 2
+     %v3uint = OpTypeVector %uint 3
+     %uint_1 = OpConstant %uint 1
+%gl_WorkGroupSize = OpConstantComposite %v3uint %uint_1 %uint_1 %uint_1
+       %main = OpFunction %void None %3
+          %5 = OpLabel
+    %tempArg = OpVariable %_ptr_Function_9 Function
+         %v1 = OpVariable %_ptr_Function_9 Function
+       %mats = OpVariable %_ptr_Function__arr_14_uint_3 Function
+         %v0 = OpVariable %_ptr_Function_9 Function
+  %tempArg_0 = OpVariable %_ptr_Function_9 Function
+         %v2 = OpVariable %_ptr_Function_9 Function
+       %bias = OpVariable %_ptr_Function_9 Function
+  %tempArg_1 = OpVariable %_ptr_Function_9 Function
+         %13 = OpLoad %9 %v1
+         %22 = OpAccessChain %_ptr_Function_14 %mats %int_0
+         %23 = OpLoad %14 %22
+         %24 = OpCooperativeVectorMatrixMulHW %9 %13 %23
+               OpStore %tempArg %24
+         %26 = OpLoad %9 %tempArg
+               OpStore %v0 %26
+         %29 = OpLoad %9 %v2
+         %31 = OpAccessChain %_ptr_Function_14 %mats %int_1
+         %32 = OpLoad %14 %31
+         %34 = OpLoad %9 %bias
+         %35 = OpCooperativeVectorMatrixMulAddHW %9 %29 %32 %34
+               OpStore %tempArg_0 %35
+         %36 = OpLoad %9 %tempArg_0
+               OpStore %v1 %36
+         %38 = OpLoad %9 %v0
+         %40 = OpAccessChain %_ptr_Function_14 %mats %int_2
+         %41 = OpLoad %14 %40
+         %42 = OpCooperativeVectorMatrixMulHW %9 %38 %41
+               OpStore %tempArg_1 %42
+         %43 = OpLoad %9 %tempArg_1
+               OpStore %v2 %43
+               OpReturn
+               OpFunctionEnd
