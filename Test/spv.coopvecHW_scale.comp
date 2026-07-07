@@ -1,0 +1,22 @@
+#version 450 core
+#extension GL_KHR_memory_scope_semantics : enable
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+void main()
+{
+    coopvecHW<float, 8> f8;
+    coopvecHW<int, 8> i8;
+    coopvecHW<uint, 8> u8;
+
+    f8 = f8 * 2.0;
+    f8 *= 3.0;
+
+    i8 = i8 * 4;
+    i8 *= int(5);
+
+    u8 = u8 * 6u;
+    u8 *= uint(7);
+}

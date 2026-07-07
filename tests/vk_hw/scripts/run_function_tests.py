@@ -20,7 +20,7 @@ def parse_case(path):
     else:
         stem = path.stem
 
-    suffix = r"(?:_(?:scalar|ssbo_direct|ubo|constbias|constw|constx))?"
+    suffix = r"(?:_(?:scalar|ssbo_direct|ubo|constbias|constw|constx|convert|arith))?"
 
     m = re.match(rf"multiops_(f16|f32){suffix}_(\d+)x(\d+)x(\d+)$", stem)
     if m:
@@ -54,7 +54,7 @@ def parse_case(path):
             "d3": d3,
         }
 
-    m = re.match(r"load_store_(f16|f32)(?:_scalar)?(?:_(\d+)x(\d+))?$", stem)
+    m = re.match(r"load_store_(f16|f32)(?:_(?:scalar|convert|arith))?(?:_(\d+)x(\d+))?$", stem)
     if m:
         dtype, rows, cols = m.groups()
         return {"case": "load_store", "dtype": dtype, "m": rows or "8", "n": cols or "8", "k": "0"}

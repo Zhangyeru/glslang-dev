@@ -1,0 +1,76 @@
+spv.coopvecHW_scale.comp
+; SPIR-V
+; Version: 1.0
+; Generator: Khronos Glslang Reference Front End; 11
+; Bound: 44
+; Schema: 0
+               OpCapability Shader
+               OpCapability VulkanMemoryModel
+               OpCapability ReplicatedCompositesEXT
+               OpCapability CooperativeVectorHW
+               OpExtension "SPV_EXT_replicated_composites"
+               OpExtension "SPV_HW_neural_shader"
+               OpExtension "SPV_KHR_vulkan_memory_model"
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint GLCompute %main "main"
+               OpExecutionMode %main LocalSize 1 1 1
+               OpSource GLSL 450
+               OpSourceExtension "GL_EXT_shader_explicit_arithmetic_types"
+               OpSourceExtension "GL_HW_neural_shader"
+               OpSourceExtension "GL_KHR_memory_scope_semantics"
+               OpName %main "main"
+               OpName %f8 "f8"
+               OpName %i8 "i8"
+               OpName %u8 "u8"
+               OpDecorate %gl_WorkGroupSize BuiltIn WorkgroupSize
+       %void = OpTypeVoid
+          %3 = OpTypeFunction %void
+      %float = OpTypeFloat 32
+       %uint = OpTypeInt 32 0
+     %uint_8 = OpConstant %uint 8
+          %9 = OpTypeCooperativeVectorHW %float %uint_8
+%_ptr_Function_9 = OpTypePointer Function %9
+    %float_2 = OpConstant %float 2
+    %float_3 = OpConstant %float 3
+        %int = OpTypeInt 32 1
+         %19 = OpTypeCooperativeVectorHW %int %uint_8
+%_ptr_Function_19 = OpTypePointer Function %19
+      %int_4 = OpConstant %int 4
+      %int_5 = OpConstant %int 5
+         %30 = OpTypeCooperativeVectorHW %uint %uint_8
+%_ptr_Function_30 = OpTypePointer Function %30
+     %uint_6 = OpConstant %uint 6
+     %uint_7 = OpConstant %uint 7
+     %v3uint = OpTypeVector %uint 3
+     %uint_1 = OpConstant %uint 1
+%gl_WorkGroupSize = OpConstantComposite %v3uint %uint_1 %uint_1 %uint_1
+       %main = OpFunction %void None %3
+          %5 = OpLabel
+         %f8 = OpVariable %_ptr_Function_9 Function
+         %i8 = OpVariable %_ptr_Function_19 Function
+         %u8 = OpVariable %_ptr_Function_30 Function
+         %12 = OpLoad %9 %f8
+         %14 = OpVectorTimesScalar %9 %12 %float_2
+               OpStore %f8 %14
+         %16 = OpLoad %9 %f8
+         %17 = OpVectorTimesScalar %9 %16 %float_3
+               OpStore %f8 %17
+         %22 = OpLoad %19 %i8
+         %24 = OpCompositeConstructReplicateEXT %19 %int_4
+         %25 = OpIMul %19 %22 %24
+               OpStore %i8 %25
+         %27 = OpLoad %19 %i8
+         %28 = OpCompositeConstructReplicateEXT %19 %int_5
+         %29 = OpIMul %19 %27 %28
+               OpStore %i8 %29
+         %33 = OpLoad %30 %u8
+         %35 = OpCompositeConstructReplicateEXT %30 %uint_6
+         %36 = OpIMul %30 %33 %35
+               OpStore %u8 %36
+         %38 = OpLoad %30 %u8
+         %39 = OpCompositeConstructReplicateEXT %30 %uint_7
+         %40 = OpIMul %30 %38 %39
+               OpStore %u8 %40
+               OpReturn
+               OpFunctionEnd

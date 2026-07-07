@@ -515,6 +515,7 @@ INSTANTIATE_TEST_SUITE_P(
         "spv.coopvec.comp",
         "spv.coopvec2.comp",
         "spv.coopvecHW.comp",
+        "spv.coopvecHW_scale.comp",
         "spv.coopvecHW.vert",
         "spv.coopvecHW.frag",
         "spv.coopvecHW_bitcast.comp",
