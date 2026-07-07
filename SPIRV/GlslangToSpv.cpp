@@ -309,7 +309,7 @@ public:
         glslang::TIntermTyped* right = node->getRight();
         switch (node->getOp()) {
         case glslang::EOpAssign:
-            propagateGeneratedOutputTempUse(left, right);
+            propagateRoleNeutralAssignmentSourceUse(left, right);
             break;
         case glslang::EOpAddAssign:
         case glslang::EOpSubAssign:
@@ -566,11 +566,33 @@ private:
         return symbol && symbol->getName() == "tempArg";
     }
 
-    void propagateGeneratedOutputTempUse(glslang::TIntermTyped* left, glslang::TIntermTyped* right)
+    bool isConstructedFromNonCoopMatOperands(glslang::TIntermTyped* node) const
+    {
+        glslang::TIntermAggregate* aggregate = node ? node->getAsAggregate() : nullptr;
+        if (!aggregate || aggregate->getOp() != glslang::EOpConstructCooperativeMatrixHW)
+            return false;
+
+        for (auto* operand : aggregate->getSequence()) {
+            glslang::TIntermTyped* typedOperand = operand ? operand->getAsTyped() : nullptr;
+            if (isCoopMatHWTyped(typedOperand))
+                return false;
+        }
+
+        return true;
+    }
+
+    bool isRoleNeutralAssignmentSource(glslang::TIntermTyped* node) const
+    {
+        return isGeneratedOutputTempArg(node) ||
+               (node && node->getAsConstantUnion() != nullptr) ||
+               isConstructedFromNonCoopMatOperands(node);
+    }
+
+    void propagateRoleNeutralAssignmentSourceUse(glslang::TIntermTyped* left, glslang::TIntermTyped* right)
     {
         if (!isCoopMatHWTyped(left) || !isCoopMatHWTyped(right) ||
             !left->getType().sameCoopMatHWBaseType(right->getType()) ||
-            !isGeneratedOutputTempArg(right))
+            !isRoleNeutralAssignmentSource(right))
             return;
 
         glslang::TCoopMatUse leftUse = roleOf(left);

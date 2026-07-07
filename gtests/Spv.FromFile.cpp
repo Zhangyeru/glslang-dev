@@ -424,6 +424,7 @@ INSTANTIATE_TEST_SUITE_P(
         "spv.coopmatHW_use_pass.comp",
         "spv.coopmatHW_use_pass_matmul.comp",
         "spv.coopmatHW_use_pass_mixed.comp",
+        "spv.coopmatHW_use_pass_noncoopmat.comp",
         "spv.coopmatHW_arithmetic.comp",
         "spv.coopmatHW_arithmetic.vert",
         "spv.coopmatHW_arithmetic.frag",
