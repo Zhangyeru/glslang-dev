@@ -127,11 +127,26 @@ def decompile_spv_to_glsl(spirv_cross, spv_dir, glsl_dir):
     return success, fail, skipped
 
 
+def ensure_golden_comparison_ready(golden_dir, spirv_cross,
+                                   decompile_failures=0):
+    if golden_dir is None:
+        return
+    if spirv_cross is None:
+        raise RuntimeError(
+            "golden GLSL comparison requires spirv-cross, but no executable "
+            "was found")
+    if decompile_failures:
+        raise RuntimeError(
+            f"spirv-cross failed for {decompile_failures} SPIR-V "
+            "binary/binaries; golden comparison is incomplete")
+
+
 def compare_glsl_to_golden(generated_dir, golden_dir, update_golden=False):
     """Compare freshly decompiled GLSL files against golden references.
 
     Both directories are expected to contain ``hw/`` and ``baseline/``
-    subdirectories with ``.glsl`` files.
+    subdirectories with ``.glsl`` files. Files missing from either side are
+    reported; update mode removes golden files with no generated counterpart.
 
     Args:
         generated_dir: Directory containing freshly generated .glsl files.
@@ -149,22 +164,37 @@ def compare_glsl_to_golden(generated_dir, golden_dir, update_golden=False):
     for subdir in ("hw", "baseline"):
         gen_sub = generated_dir / subdir
         gold_sub = golden_dir / subdir
-        if not gen_sub.is_dir():
-            continue
         if update_golden:
             gold_sub.mkdir(parents=True, exist_ok=True)
 
-        for glsl in sorted(gen_sub.glob("*.glsl")):
-            golden = gold_sub / glsl.name
-            generated_text = glsl.read_text(encoding="utf-8")
+        generated_files = ({path.name: path for path in gen_sub.glob("*.glsl")}
+                           if gen_sub.is_dir() else {})
+        golden_files = ({path.name: path for path in gold_sub.glob("*.glsl")}
+                        if gold_sub.is_dir() else {})
 
-            if not golden.is_file():
+        for name in sorted(generated_files.keys() | golden_files.keys()):
+            glsl = generated_files.get(name)
+            golden = golden_files.get(name)
+
+            if glsl is None:
                 missing += 1
                 if update_golden:
-                    golden.write_text(generated_text, encoding="utf-8")
-                    print(f"  NEW golden: {subdir}/{golden.name}")
+                    golden.unlink()
+                    print(f"  REMOVED stale golden: {subdir}/{name}")
                 else:
-                    diffs.append(f"MISSING golden: {subdir}/{golden.name}")
+                    diffs.append(f"MISSING generated: {subdir}/{name}")
+                continue
+
+            generated_text = glsl.read_text(encoding="utf-8")
+
+            if golden is None:
+                missing += 1
+                if update_golden:
+                    golden = gold_sub / name
+                    golden.write_text(generated_text, encoding="utf-8")
+                    print(f"  NEW golden: {subdir}/{name}")
+                else:
+                    diffs.append(f"MISSING golden: {subdir}/{name}")
                 continue
 
             golden_text = golden.read_text(encoding="utf-8")
@@ -232,6 +262,7 @@ def main():
     glsl_out_dir = pathlib.Path(args.glsl_out_dir) if args.glsl_out_dir \
                    else out_dir.parent / "glsl"
     golden_dir = pathlib.Path(args.golden_dir) if args.golden_dir else None
+    ensure_golden_comparison_ready(golden_dir, spirv_cross)
     out_dir.mkdir(parents=True, exist_ok=True)
     for stale in out_dir.glob("*.spv*"):
         stale.unlink()
@@ -261,6 +292,7 @@ def main():
 
         # Compare freshly decompiled GLSL against golden references.
         if golden_dir is not None:
+            ensure_golden_comparison_ready(golden_dir, spirv_cross, fail)
             g_match, g_mismatch, g_missing, g_diffs = compare_glsl_to_golden(
                 glsl_out_dir, golden_dir, update_golden=args.update_golden)
             print(f"golden comparison: {g_match} match, "
@@ -298,10 +330,6 @@ def main():
             if not spirv_cross_explicit:
                 print("spirv-cross not found; skipping GLSL decompilation "
                       "(pass --spirv-cross to enable)")
-        if golden_dir is not None:
-            print("WARNING: golden GLSL comparison skipped because "
-                  "spirv-cross is not available", file=sys.stderr)
-
 
 if __name__ == "__main__":
     try:

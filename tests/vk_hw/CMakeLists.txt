@@ -12,19 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+find_package(Python3 COMPONENTS Interpreter QUIET)
+if(Python3_Interpreter_FOUND)
+    add_test(NAME vk_hw_build_shaders_script_tests
+        COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/scripts/test_build_shaders.py
+    )
+    set_tests_properties(vk_hw_build_shaders_script_tests PROPERTIES
+        LABELS "hw"
+    )
+endif()
+
 find_package(Vulkan QUIET)
 if(NOT Vulkan_FOUND)
     message(STATUS "Vulkan SDK not found; skipping vk_hw_runner")
     return()
 endif()
 
-find_package(Python3 COMPONENTS Interpreter QUIET)
-
 # spirv-cross is used to decompile SPIR-V back to readable GLSL after
-# building.  It is optional: when absent the build still succeeds, only
-# the .glsl mirror is skipped.  HINTS are limited to in-tree locations
-# to avoid caching paths under /tmp or other volatile directories that
-# may disappear between cmake runs.
+# building.  It is optional for standalone functional/perf runs, but the
+# golden comparison requires it.  HINTS are limited to in-tree locations
+# to avoid caching paths under /tmp or other volatile directories that may
+# disappear between cmake runs.
 find_program(SPIRV_CROSS_EXECUTABLE spirv-cross
     HINTS
         ${CMAKE_BINARY_DIR}/External/SPIRV-Cross
