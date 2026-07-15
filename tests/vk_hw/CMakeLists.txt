@@ -23,6 +23,14 @@ if(Python3_Interpreter_FOUND)
     )
 endif()
 
+add_executable(vk_hw_reference_tests
+    runner/reference_test.cpp
+    runner/reference.cpp
+)
+target_compile_features(vk_hw_reference_tests PRIVATE cxx_std_17)
+add_test(NAME vk_hw_reference_tests COMMAND vk_hw_reference_tests)
+set_tests_properties(vk_hw_reference_tests PROPERTIES LABELS "hw")
+
 find_package(Vulkan QUIET)
 if(NOT Vulkan_FOUND)
     message(STATUS "Vulkan SDK not found; skipping vk_hw_runner")
@@ -111,6 +119,7 @@ if(Python3_Interpreter_FOUND AND TARGET glslang-standalone AND TARGET spirv-opt
             --spv-dir ${CMAKE_BINARY_DIR}/tests/vk_hw/spv
             --repeat 200
             --warmup 20
+            --exclude *flow*.lowered.spv
             --out ${CMAKE_BINARY_DIR}/tests/vk_hw/results/perf/perf.json
     )
 

@@ -22,6 +22,25 @@ def parse_case(path):
 
     suffix = r"(?:_(?:scalar|ssbo_direct|ubo|constbias|constw|constx|convert|arith))?"
 
+    m = re.match(
+        r"reduce_(row|column)_(add|min|max)_(f16|f32)(?:_(scalar))?_(\d+)x(\d+)$",
+        stem,
+    )
+    if m:
+        axis, reduce_op, dtype, scalar, rows, cols = m.groups()
+        result = {
+            "case": "reduce",
+            "dtype": dtype,
+            "axis": axis,
+            "reduce_op": reduce_op,
+            "m": rows,
+            "n": cols,
+            "k": "0",
+        }
+        if scalar:
+            result["scalar"] = True
+        return result
+
     m = re.match(rf"multiops_(f16|f32){suffix}_(\d+)x(\d+)x(\d+)$", stem)
     if m:
         dtype, rows, cols, inner = m.groups()
@@ -54,7 +73,7 @@ def parse_case(path):
             "d3": d3,
         }
 
-    m = re.match(r"load_store_(f16|f32)(?:_(?:scalar|convert|arith))?(?:_(\d+)x(\d+))?$", stem)
+    m = re.match(r"load_store_(f16|f32)(?:_(?:scalar|convert|arith|flow))?(?:_(\d+)x(\d+))?$", stem)
     if m:
         dtype, rows, cols = m.groups()
         return {"case": "load_store", "dtype": dtype, "m": rows or "8", "n": cols or "8", "k": "0"}
@@ -88,6 +107,8 @@ def run_case(runner, shader, warmup, repeat):
     for dim in ("d0", "d1", "d2", "d3"):
         if dim in meta:
             cmd.extend([f"--{dim}", meta[dim]])
+    if meta["case"] == "reduce":
+        cmd.extend(["--axis", meta["axis"], "--reduce-op", meta["reduce_op"]])
     proc = subprocess.run(cmd, check=True, text=True, capture_output=True)
     return json.loads(proc.stdout)
 
@@ -100,6 +121,8 @@ def case_work(meta):
     k = int(meta["k"])
     if meta["case"] == "load_store":
         return m * n
+    if meta["case"] == "reduce":
+        return m * n
     return m * n * k
 
 
@@ -107,6 +130,8 @@ def shape_string(result):
     dims = result.get("layer_dims")
     if isinstance(dims, list) and len(dims) == 4:
         return f"{dims[0]}x{dims[1]}, {dims[1]}x{dims[2]}, {dims[2]}x{dims[3]}"
+    if result.get("case") == "reduce":
+        return f"{result.get('m', 0)}x{result.get('n', 0)}"
     return f"{result.get('m', 0)}x{result.get('n', 0)}x{result.get('k', 0)}"
 
 
@@ -133,12 +158,13 @@ def write_reports(results, out_dir):
     lines = [
         "# HW Vulkan Functional Results",
         "",
-        "| Shader | Case | DType | Shape | Verify | Max Abs Error | Max Rel Error |",
-        "|---|---|---|---:|---|---:|---:|",
+        "| Shader | Case | DType | Axis | Operation | Shape | Verify | Max Abs Error | Max Rel Error |",
+        "|---|---|---|---|---|---:|---|---:|---:|",
     ]
     for result in results:
         lines.append(
             f"| {pathlib.Path(result['shader']).name} | {result['case']} | {result['dtype']} | "
+            f"{result.get('axis', '')} | {result.get('reduce_op', '')} | "
             f"{shape_string(result)} | {result['verify']} | {result['max_abs_error']:.8g} | {result['max_rel_error']:.8g} |"
         )
     (out_dir / "functional.md").write_text("\n".join(lines) + "\n", encoding="utf-8")

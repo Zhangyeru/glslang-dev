@@ -1,0 +1,45 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA { float data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float data[]; } B;
+layout(set = 0, binding = 2) buffer InputC { float data[]; } C;
+layout(set = 0, binding = 3) buffer OutputD { float data[]; } D;
+
+struct MatrixBox {
+    coopmatHW<float, 5, 7> values[2];
+};
+
+MatrixBox duplicate(MatrixBox box)
+{
+    box.values[1] = box.values[0];
+    return box;
+}
+
+MatrixBox selectAndCarry(MatrixBox box, bool pickFirst)
+{
+    coopmatHW<float, 5, 7> current = pickFirst ? box.values[0] : box.values[1];
+    for (int iteration = 0; iteration < 3; ++iteration) {
+        bool keepCurrent = (iteration & 1) == 0;
+        current = keepCurrent ? current : box.values[1];
+    }
+    box.values[0] = current;
+    return box;
+}
+
+void main()
+{
+    const ivec2 shape = ivec2(5, 7);
+    const ivec2 zeroOffset = ivec2(0);
+
+    coopmatHW<float, 5, 7> value;
+    coopMatLoadHW(value, A.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    MatrixBox box;
+    box.values[0] = value;
+    box = duplicate(box);
+    box = selectAndCarry(box, gl_LocalInvocationIndex == 0u);
+    coopmatHW<float, 5, 7> result = box.values[0];
+    coopMatStoreHW(result, D.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+}

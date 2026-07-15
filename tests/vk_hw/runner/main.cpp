@@ -83,6 +83,8 @@ CaseKind ParseCaseKind(const std::string& value)
         return CaseKind::kMultiOps;
     if (value == "mlp")
         return CaseKind::kMlp;
+    if (value == "reduce")
+        return CaseKind::kReduce;
     throw std::runtime_error("unknown case: " + value);
 }
 
@@ -93,6 +95,26 @@ DType ParseDType(const std::string& value)
     if (value == "f32")
         return DType::kF32;
     throw std::runtime_error("unknown dtype: " + value);
+}
+
+ReduceAxis ParseReduceAxis(const std::string& value)
+{
+    if (value == "row")
+        return ReduceAxis::kRow;
+    if (value == "column")
+        return ReduceAxis::kColumn;
+    throw std::runtime_error("unknown reduce axis: " + value);
+}
+
+ReduceOp ParseReduceOp(const std::string& value)
+{
+    if (value == "add")
+        return ReduceOp::kAdd;
+    if (value == "min")
+        return ReduceOp::kMin;
+    if (value == "max")
+        return ReduceOp::kMax;
+    throw std::runtime_error("unknown reduce operation: " + value);
 }
 
 uint32_t ParseU32(const std::string& value, const char* name)
@@ -136,6 +158,10 @@ CaseConfig ParseArgs(int argc, char** argv)
             config.d2 = ParseU32(require_value("--d2"), "--d2");
         } else if (arg == "--d3") {
             config.d3 = ParseU32(require_value("--d3"), "--d3");
+        } else if (arg == "--axis") {
+            config.reduce_axis = ParseReduceAxis(require_value("--axis"));
+        } else if (arg == "--reduce-op") {
+            config.reduce_op = ParseReduceOp(require_value("--reduce-op"));
         } else if (arg == "--warmup") {
             config.warmup = ParseU32(require_value("--warmup"), "--warmup");
         } else if (arg == "--repeat") {
@@ -158,6 +184,9 @@ CaseConfig ParseArgs(int argc, char** argv)
     if (config.kind == CaseKind::kMlp &&
         (config.d0 == 0 || config.d1 == 0 || config.d2 == 0 || config.d3 == 0)) {
         throw std::runtime_error("mlp case requires --d0 --d1 --d2 --d3");
+    }
+    if (config.kind == CaseKind::kReduce && (config.m == 0 || config.n == 0)) {
+        throw std::runtime_error("reduce case requires non-zero --m and --n");
     }
     return config;
 }
@@ -269,6 +298,10 @@ void PrintJson(const CaseConfig& config, const TimeStats& stats, const VerifyRes
     if (config.kind == CaseKind::kMlp) {
         std::cout << "  \"layer_dims\": [" << config.d0 << ", " << config.d1 << ", " << config.d2 << ", "
                   << config.d3 << "],\n";
+    }
+    if (config.kind == CaseKind::kReduce) {
+        std::cout << "  \"axis\": \"" << ReduceAxisName(config.reduce_axis) << "\",\n";
+        std::cout << "  \"reduce_op\": \"" << ReduceOpName(config.reduce_op) << "\",\n";
     }
     std::cout << "  \"warmup\": " << config.warmup << ",\n";
     std::cout << "  \"repeat\": " << config.repeat << ",\n";

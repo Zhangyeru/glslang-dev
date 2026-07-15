@@ -12,8 +12,10 @@
 
 namespace vk_hw {
 
-enum class CaseKind { kMatmul, kVecMatmul, kVecMatmulAdd, kLoadStore, kMultiOps, kMlp };
+enum class CaseKind { kMatmul, kVecMatmul, kVecMatmulAdd, kLoadStore, kMultiOps, kMlp, kReduce };
 enum class DType { kF16, kF32 };
+enum class ReduceAxis { kRow, kColumn };
+enum class ReduceOp { kAdd, kMin, kMax };
 
 struct CaseConfig {
     CaseKind kind = CaseKind::kMatmul;
@@ -28,6 +30,8 @@ struct CaseConfig {
     uint32_t d1 = 0;
     uint32_t d2 = 0;
     uint32_t d3 = 0;
+    ReduceAxis reduce_axis = ReduceAxis::kRow;
+    ReduceOp reduce_op = ReduceOp::kAdd;
     std::string shader_path;
 };
 
@@ -42,6 +46,8 @@ uint16_t FloatToHalfBits(float value);
 float HalfBitsToFloat(uint16_t value);
 std::string CaseName(CaseKind kind);
 std::string DTypeName(DType dtype);
+std::string ReduceAxisName(ReduceAxis axis);
+std::string ReduceOpName(ReduceOp op);
 uint64_t FlopCount(const CaseConfig& config);
 
 std::vector<float> MakeInput(size_t count, int seed, DType dtype);

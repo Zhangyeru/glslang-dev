@@ -48,12 +48,20 @@ def validator_cmd(spirv_val, target_env, shader):
     return cmd
 
 
+def lowering_pass_for_stem(stem):
+    return (
+        "--hw-lower-to-standard-extension-free=scalar"
+        if "_scalar_" in stem
+        else "--hw-lower-to-standard-extension-free"
+    )
+
+
 def compile_hw_shader(glslang, spirv_opt, spirv_val, spirv_dis, shader, out_dir, target_env):
     stem = shader.stem
     hw_spv = out_dir / f"{stem}.hw.spv"
     lowered_spv = out_dir / f"{stem}.lowered.spv"
     lowered_asm = out_dir / f"{stem}.lowered.spvasm"
-    lowering_pass = "--hw-lower-to-standard=scalar" if "_scalar_" in stem else "--hw-lower-to-standard"
+    lowering_pass = lowering_pass_for_stem(stem)
 
     run([glslang, "-V", str(shader), "-o", str(hw_spv)])
     run([spirv_opt, lowering_pass, str(hw_spv), "-o", str(lowered_spv)])

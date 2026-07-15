@@ -54,6 +54,25 @@ float ConstWeightValue(uint32_t row, uint32_t col, DType dtype)
     return QuantizeForDType(value, dtype);
 }
 
+float ReducePair(float lhs, float rhs, ReduceOp op, DType dtype)
+{
+    float result = 0.0f;
+    switch (op) {
+    case ReduceOp::kAdd:
+        result = lhs + rhs;
+        break;
+    case ReduceOp::kMin:
+        result = std::fmin(lhs, rhs);
+        break;
+    case ReduceOp::kMax:
+        result = std::fmax(lhs, rhs);
+        break;
+    }
+    // The lowered f16 path stores every fold step in a float16_t lane. Match
+    // that behavior instead of accumulating in f32 and quantizing only once.
+    return QuantizeForDType(result, dtype);
+}
+
 } // namespace
 
 size_t ElementSize(DType dtype) { return dtype == DType::kF16 ? 2 : 4; }
@@ -65,7 +84,12 @@ uint16_t FloatToHalfBits(float value)
 
     const uint32_t sign = (bits >> 16) & 0x8000u;
     uint32_t mantissa = bits & 0x007fffffu;
-    int32_t exponent = static_cast<int32_t>((bits >> 23) & 0xffu) - 127 + 15;
+    const uint32_t float_exponent = (bits >> 23) & 0xffu;
+    int32_t exponent = static_cast<int32_t>(float_exponent) - 127 + 15;
+
+    if (float_exponent == 0xffu) {
+        return static_cast<uint16_t>(sign | (mantissa == 0 ? 0x7c00u : 0x7e00u));
+    }
 
     if (exponent <= 0) {
         if (exponent < -10)
@@ -73,7 +97,9 @@ uint16_t FloatToHalfBits(float value)
         mantissa |= 0x00800000u;
         const uint32_t shift = static_cast<uint32_t>(14 - exponent);
         uint32_t half_mantissa = mantissa >> shift;
-        if ((mantissa >> (shift - 1)) & 1u)
+        const uint32_t remainder = mantissa & ((1u << shift) - 1u);
+        const uint32_t halfway = 1u << (shift - 1u);
+        if (remainder > halfway || (remainder == halfway && (half_mantissa & 1u)))
             ++half_mantissa;
         return static_cast<uint16_t>(sign | half_mantissa);
     }
@@ -82,10 +108,17 @@ uint16_t FloatToHalfBits(float value)
         return static_cast<uint16_t>(sign | 0x7c00u);
     }
 
-    uint32_t half = sign | (static_cast<uint32_t>(exponent) << 10) | (mantissa >> 13);
-    if (mantissa & 0x00001000u)
-        ++half;
-    return static_cast<uint16_t>(half);
+    uint32_t half_mantissa = mantissa >> 13;
+    const uint32_t remainder = mantissa & 0x1fffu;
+    if (remainder > 0x1000u || (remainder == 0x1000u && (half_mantissa & 1u))) {
+        ++half_mantissa;
+        if (half_mantissa == 0x400u) {
+            half_mantissa = 0;
+            if (++exponent >= 31)
+                return static_cast<uint16_t>(sign | 0x7c00u);
+        }
+    }
+    return static_cast<uint16_t>(sign | (static_cast<uint32_t>(exponent) << 10) | half_mantissa);
 }
 
 float HalfBitsToFloat(uint16_t value)
@@ -134,11 +167,28 @@ std::string CaseName(CaseKind kind)
         return "multiops";
     case CaseKind::kMlp:
         return "mlp";
+    case CaseKind::kReduce:
+        return "reduce";
     }
     return "unknown";
 }
 
 std::string DTypeName(DType dtype) { return dtype == DType::kF16 ? "f16" : "f32"; }
+
+std::string ReduceAxisName(ReduceAxis axis) { return axis == ReduceAxis::kRow ? "row" : "column"; }
+
+std::string ReduceOpName(ReduceOp op)
+{
+    switch (op) {
+    case ReduceOp::kAdd:
+        return "add";
+    case ReduceOp::kMin:
+        return "min";
+    case ReduceOp::kMax:
+        return "max";
+    }
+    return "unknown";
+}
 
 uint64_t FlopCount(const CaseConfig& config)
 {
@@ -155,6 +205,12 @@ uint64_t FlopCount(const CaseConfig& config)
         return 2ull * (static_cast<uint64_t>(config.d0) * config.d1 +
                        static_cast<uint64_t>(config.d1) * config.d2 +
                        static_cast<uint64_t>(config.d2) * config.d3);
+    }
+    if (config.kind == CaseKind::kReduce) {
+        if (config.reduce_axis == ReduceAxis::kRow) {
+            return static_cast<uint64_t>(config.m) * (config.n - 1u);
+        }
+        return static_cast<uint64_t>(config.n) * (config.m - 1u);
     }
     return 0;
 }
@@ -211,6 +267,7 @@ size_t ElementCountA(const CaseConfig& config)
     case CaseKind::kVecMatmulAdd:
         return config.k;
     case CaseKind::kLoadStore:
+    case CaseKind::kReduce:
         return static_cast<size_t>(config.m) * config.n;
     case CaseKind::kMlp:
         return std::max({config.d0, config.d1, config.d2, config.d3});
@@ -228,6 +285,7 @@ size_t ElementCountB(const CaseConfig& config)
     case CaseKind::kVecMatmulAdd:
         return static_cast<size_t>(config.n) * config.k;
     case CaseKind::kLoadStore:
+    case CaseKind::kReduce:
         return 1;
     case CaseKind::kMlp:
         return static_cast<size_t>(config.d0) * config.d1 + static_cast<size_t>(config.d1) * config.d2 +
@@ -246,6 +304,7 @@ size_t ElementCountC(const CaseConfig& config)
         return config.n;
     case CaseKind::kVecMatmul:
     case CaseKind::kLoadStore:
+    case CaseKind::kReduce:
         return 1;
     case CaseKind::kMlp:
         return config.d1 + config.d2 + config.d3;
@@ -263,6 +322,7 @@ size_t ElementCountD(const CaseConfig& config)
     case CaseKind::kVecMatmulAdd:
         return config.n;
     case CaseKind::kLoadStore:
+    case CaseKind::kReduce:
         return static_cast<size_t>(config.m) * config.n;
     case CaseKind::kMlp:
         return config.d3;
@@ -278,6 +338,31 @@ std::vector<float> ReferenceOutput(const CaseConfig& config, const std::vector<f
     if (config.kind == CaseKind::kLoadStore) {
         for (size_t i = 0; i < out.size(); ++i) {
             out[i] = OutputQuantize(a[i], config.dtype);
+        }
+        return out;
+    }
+
+    if (config.kind == CaseKind::kReduce) {
+        if (config.reduce_axis == ReduceAxis::kRow) {
+            for (uint32_t row = 0; row < config.m; ++row) {
+                float reduced = a[row * config.n];
+                for (uint32_t col = 1; col < config.n; ++col) {
+                    reduced = ReducePair(reduced, a[row * config.n + col], config.reduce_op, config.dtype);
+                }
+                for (uint32_t col = 0; col < config.n; ++col) {
+                    out[row * config.n + col] = reduced;
+                }
+            }
+        } else {
+            for (uint32_t col = 0; col < config.n; ++col) {
+                float reduced = a[col];
+                for (uint32_t row = 1; row < config.m; ++row) {
+                    reduced = ReducePair(reduced, a[row * config.n + col], config.reduce_op, config.dtype);
+                }
+                for (uint32_t row = 0; row < config.m; ++row) {
+                    out[row * config.n + col] = reduced;
+                }
+            }
         }
         return out;
     }

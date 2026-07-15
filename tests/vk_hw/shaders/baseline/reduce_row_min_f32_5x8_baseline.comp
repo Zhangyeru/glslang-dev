@@ -1,0 +1,26 @@
+#version 450 core
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA { float data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float data[]; } B;
+layout(set = 0, binding = 2) buffer InputC { float data[]; } C;
+layout(set = 0, binding = 3) buffer OutputD { float data[]; } D;
+
+float reducePair(float lhs, float rhs)
+{
+    return min(lhs, rhs);
+}
+
+void main()
+{
+    for (int row = 0; row < 5; ++row) {
+        float reduced = A.data[row * 8];
+        for (int col = 1; col < 8; ++col) {
+            reduced = reducePair(reduced, A.data[row * 8 + col]);
+        }
+        for (int col = 0; col < 8; ++col) {
+            D.data[row * 8 + col] = reduced;
+        }
+    }
+}

@@ -41,6 +41,8 @@ def run_shader(runner, shader, meta, warmup, repeat):
     for dim in ("d0", "d1", "d2", "d3"):
         if dim in meta:
             cmd.extend([f"--{dim}", meta[dim]])
+    if meta["case"] == "reduce":
+        cmd.extend(["--axis", meta["axis"], "--reduce-op", meta["reduce_op"]])
     proc = subprocess.run(cmd, check=True, text=True, capture_output=True)
     return json.loads(proc.stdout)
 
@@ -62,6 +64,8 @@ def write_outputs(rows, out_json):
                 "shader",
                 "case",
                 "dtype",
+                "axis",
+                "reduce_op",
                 "m",
                 "n",
                 "k",
@@ -82,12 +86,13 @@ def write_outputs(rows, out_json):
     lines = [
         "# HW Lowered Shader Vulkan Performance",
         "",
-        "| Shader | Case | DType | Shape | Lowered ns | Baseline ns | Ratio | GFLOPS | Lowered Verify | Baseline Verify |",
-        "|---|---|---|---:|---:|---:|---:|---:|---|---|",
+        "| Shader | Case | DType | Axis | Operation | Shape | Lowered ns | Baseline ns | Ratio | GFLOPS | Lowered Verify | Baseline Verify |",
+        "|---|---|---|---|---|---:|---:|---:|---:|---:|---|---|",
     ]
     for row in rows:
         lines.append(
-            f"| {row['shader']} | {row['case']} | {row['dtype']} | {shape_string(row)} | {row['lowered_ns']:.3f} | "
+            f"| {row['shader']} | {row['case']} | {row['dtype']} | {row.get('axis', '')} | "
+            f"{row.get('reduce_op', '')} | {shape_string(row)} | {row['lowered_ns']:.3f} | "
             f"{row['baseline_ns']:.3f} | {row['ratio']:.4f} | {row['gflops']:.4f} | "
             f"{row['verify']} | {row['baseline_verify']} |"
         )
@@ -122,6 +127,8 @@ def main():
                 "shader": lowered.name,
                 "case": lowered_result["case"],
                 "dtype": lowered_result["dtype"],
+                "axis": lowered_result.get("axis", ""),
+                "reduce_op": lowered_result.get("reduce_op", ""),
                 "m": lowered_result["m"],
                 "n": lowered_result["n"],
                 "k": lowered_result["k"],
