@@ -1,0 +1,6 @@
+spv.coopmatHW_matmulTypesError.comp
+ERROR: 0:15: 'coopMatMulAddHW' : result and C component types must match exactly 
+ERROR: 1 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

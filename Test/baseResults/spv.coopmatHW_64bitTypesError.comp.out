@@ -1,0 +1,11 @@
+spv.coopmatHW_64bitTypesError.comp
+ERROR: 0:6: 'double' : coopmatHW invalid basic type 
+ERROR: 0:7: 'int64_t' : coopmatHW invalid basic type 
+ERROR: 0:8: 'uint64_t' : coopmatHW invalid basic type 
+ERROR: 0:9: 'double' : coopvecHW invalid basic type 
+ERROR: 0:10: 'int64_t' : coopvecHW invalid basic type 
+ERROR: 0:11: 'uint64_t' : coopvecHW invalid basic type 
+ERROR: 6 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

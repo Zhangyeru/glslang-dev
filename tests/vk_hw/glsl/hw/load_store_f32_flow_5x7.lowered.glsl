@@ -72,7 +72,7 @@ void main()
     MatrixBox param = box;
     MatrixBox _97 = duplicate(param);
     box = _97;
-    MatrixBox param_1 = _97;
+    MatrixBox param_1 = box;
     bool param_2 = gl_LocalInvocationIndex == 0u;
     MatrixBox _106 = selectAndCarry(param_1, param_2);
     box = _106;

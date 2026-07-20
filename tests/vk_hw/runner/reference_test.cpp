@@ -6,6 +6,7 @@
 #include "reference.h"
 
 #include <cmath>
+#include <cstring>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -97,12 +98,109 @@ bool TestF16FiniteRoundTrip()
     return true;
 }
 
+uint64_t FloatRaw(float value)
+{
+    uint32_t raw = 0;
+    std::memcpy(&raw, &value, sizeof(raw));
+    return raw;
+}
+
+bool TestAllTypedBufferRoundTrips()
+{
+    const vk_hw::DType types[] = {
+        vk_hw::DType::kF16, vk_hw::DType::kF32, vk_hw::DType::kI8,  vk_hw::DType::kU8,
+        vk_hw::DType::kI16, vk_hw::DType::kU16, vk_hw::DType::kI32, vk_hw::DType::kU32,
+    };
+    for (vk_hw::DType dtype : types) {
+        const vk_hw::RawValues input = vk_hw::MakeRawInput(37, 9, dtype);
+        const vk_hw::RawValues output = vk_hw::DecodeRawBuffer(vk_hw::EncodeRawBuffer(input, dtype), dtype);
+        if (input != output) {
+            std::cerr << "typed codec round-trip failed for " << vk_hw::DTypeName(dtype) << "\n";
+            return false;
+        }
+    }
+    return true;
+}
+
+bool TestMixedSignedUnsignedIntegerMatmul()
+{
+    vk_hw::CaseConfig config;
+    config.kind = vk_hw::CaseKind::kMatmul;
+    config.a_dtype = vk_hw::DType::kI8;
+    config.b_dtype = vk_hw::DType::kU8;
+    config.accum_dtype = vk_hw::DType::kI32;
+    config.m = config.n = config.k = 1;
+    const vk_hw::RawValues output = vk_hw::ReferenceOutputRaw(config, {0xffu}, {2u}, {3u});
+    if (output != vk_hw::RawValues{1u}) {
+        std::cerr << "mixed i8/u8 to i32 conversion is incorrect\n";
+        return false;
+    }
+
+    return true;
+}
+
+bool TestIntegerMatmulWrapsAt32Bits()
+{
+    vk_hw::CaseConfig config;
+    config.kind = vk_hw::CaseKind::kMatmul;
+    config.a_dtype = vk_hw::DType::kI32;
+    config.b_dtype = vk_hw::DType::kI32;
+    config.accum_dtype = vk_hw::DType::kI32;
+    config.m = config.n = config.k = 1;
+    const vk_hw::RawValues output = vk_hw::ReferenceOutputRaw(config, {0x7fffffffu}, {2u}, {3u});
+    return output == vk_hw::RawValues{1u};
+}
+
+bool TestMixedFloatUsesAccumulatorFma()
+{
+    vk_hw::CaseConfig config;
+    config.kind = vk_hw::CaseKind::kMatmul;
+    config.a_dtype = vk_hw::DType::kF16;
+    config.b_dtype = vk_hw::DType::kF32;
+    config.accum_dtype = vk_hw::DType::kF32;
+    config.m = config.n = config.k = 1;
+    const uint16_t a = vk_hw::FloatToHalfBits(1.25f);
+    const uint64_t b = FloatRaw(0.75f);
+    const uint64_t c = FloatRaw(-0.5f);
+    const vk_hw::RawValues output = vk_hw::ReferenceOutputRaw(config, {a}, {b}, {c});
+    return output == vk_hw::RawValues{FloatRaw(std::fma(1.25f, 0.75f, -0.5f))};
+}
+
+bool TestIntegerReduceUsesOperandSignedness()
+{
+    vk_hw::CaseConfig config;
+    config.kind = vk_hw::CaseKind::kReduce;
+    config.reduce_axis = vk_hw::ReduceAxis::kRow;
+    config.reduce_op = vk_hw::ReduceOp::kMin;
+    config.m = 1;
+    config.n = 2;
+
+    config.a_dtype = config.accum_dtype = vk_hw::DType::kI8;
+    if (vk_hw::ReferenceOutputRaw(config, {0x80u, 0x7fu}, {}, {}) != vk_hw::RawValues({0x80u, 0x80u}))
+        return false;
+
+    config.a_dtype = config.accum_dtype = vk_hw::DType::kU8;
+    return vk_hw::ReferenceOutputRaw(config, {0x80u, 0x7fu}, {}, {}) == vk_hw::RawValues({0x7fu, 0x7fu});
+}
+
+bool TestFloatCompareDistinguishesSignedZeroAndAcceptsNaN()
+{
+    vk_hw::CaseConfig config;
+    config.accum_dtype = vk_hw::DType::kF32;
+    if (vk_hw::CompareOutputRaw(config, {FloatRaw(-0.0f)}, {FloatRaw(0.0f)}).pass)
+        return false;
+    return vk_hw::CompareOutputRaw(config, {FloatRaw(NAN)}, {FloatRaw(-NAN)}).pass;
+}
+
 } // namespace
 
 int main()
 {
     return TestRowAddBroadcast() && TestColumnMinBroadcast() && TestF16QuantizesEveryFoldStep() &&
-                   TestF16UsesRoundToNearestEven() && TestF16FiniteRoundTrip()
+                   TestF16UsesRoundToNearestEven() && TestF16FiniteRoundTrip() && TestAllTypedBufferRoundTrips() &&
+                   TestMixedSignedUnsignedIntegerMatmul() && TestIntegerMatmulWrapsAt32Bits() &&
+                   TestMixedFloatUsesAccumulatorFma() && TestIntegerReduceUsesOperandSignedness() &&
+                   TestFloatCompareDistinguishesSignedZeroAndAcceptsNaN()
                ? 0
                : 1;
 }

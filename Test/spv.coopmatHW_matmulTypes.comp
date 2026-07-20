@@ -1,0 +1,27 @@
+#version 450 core
+#extension GL_KHR_memory_scope_semantics : enable
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+void main()
+{
+    coopmatHW<float16_t, 2, 3> floatA;
+    coopmatHW<float, 3, 4> floatB;
+    coopmatHW<float, 2, 4> floatAccumulator;
+    coopMatMulAddHW(floatAccumulator, floatA, floatB, floatAccumulator);
+
+    coopmatHW<int8_t, 2, 3> integerA;
+    coopmatHW<uint16_t, 3, 4> integerB;
+    coopmatHW<uint32_t, 2, 4> integerAccumulator;
+    coopMatMulAddHW(integerAccumulator, integerA, integerB, integerAccumulator);
+
+    coopvecHW<float16_t, 3> floatInput;
+    coopvecHW<float, 4> floatResult;
+    coopVecMatMulAddHW(floatResult, floatInput, floatB, floatResult);
+
+    coopvecHW<int8_t, 3> integerInput;
+    coopvecHW<uint32_t, 4> integerResult;
+    coopVecMatMulAddHW(integerResult, integerInput, integerB, integerResult);
+}

@@ -1,0 +1,17 @@
+#version 450 core
+#extension GL_KHR_memory_scope_semantics : enable
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+coopmatHW<double, 2, 2> f64Matrix;
+coopmatHW<int64_t, 2, 2> i64Matrix;
+coopmatHW<uint64_t, 2, 2> u64Matrix;
+coopvecHW<double, 2> f64Vector;
+coopvecHW<int64_t, 2> i64Vector;
+coopvecHW<uint64_t, 2> u64Vector;
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+void main()
+{
+}

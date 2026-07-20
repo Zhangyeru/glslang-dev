@@ -109,6 +109,9 @@ void VulkanContext::CreateDevice()
           "vkEnumerateDeviceExtensionProperties");
 
     std::vector<const char*> enabled_extensions;
+    if (!ApiAtLeast(properties.apiVersion, 1, 2) && HasExtension(extensions, VK_KHR_8BIT_STORAGE_EXTENSION_NAME)) {
+        enabled_extensions.push_back(VK_KHR_8BIT_STORAGE_EXTENSION_NAME);
+    }
     if (!ApiAtLeast(properties.apiVersion, 1, 1) && HasExtension(extensions, VK_KHR_16BIT_STORAGE_EXTENSION_NAME)) {
         enabled_extensions.push_back(VK_KHR_16BIT_STORAGE_EXTENSION_NAME);
     }
@@ -121,8 +124,12 @@ void VulkanContext::CreateDevice()
         enabled_extensions.push_back(VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME);
     }
 
+    VkPhysicalDevice8BitStorageFeatures storage8 = {};
+    storage8.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES;
+
     VkPhysicalDevice16BitStorageFeatures storage16 = {};
     storage16.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES;
+    storage16.pNext = &storage8;
 
     VkPhysicalDeviceShaderFloat16Int8Features float16_int8 = {};
     float16_int8.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES;
@@ -138,11 +145,18 @@ void VulkanContext::CreateDevice()
     vkGetPhysicalDeviceFeatures2(physical_device_, &features2);
 
     supports_storage_buffer_16bit_ = storage16.storageBuffer16BitAccess == VK_TRUE;
+    supports_storage_buffer_8bit_ = storage8.storageBuffer8BitAccess == VK_TRUE;
     supports_shader_float16_ = float16_int8.shaderFloat16 == VK_TRUE;
+    supports_shader_int8_ = float16_int8.shaderInt8 == VK_TRUE;
+    supports_shader_int16_ = features2.features.shaderInt16 == VK_TRUE;
     supports_scalar_block_layout_ = scalar_block.scalarBlockLayout == VK_TRUE;
     storage16.storageBuffer16BitAccess = storage16.storageBuffer16BitAccess ? VK_TRUE : VK_FALSE;
+    storage8.storageBuffer8BitAccess = storage8.storageBuffer8BitAccess ? VK_TRUE : VK_FALSE;
     float16_int8.shaderFloat16 = float16_int8.shaderFloat16 ? VK_TRUE : VK_FALSE;
+    float16_int8.shaderInt8 = float16_int8.shaderInt8 ? VK_TRUE : VK_FALSE;
     scalar_block.scalarBlockLayout = scalar_block.scalarBlockLayout ? VK_TRUE : VK_FALSE;
+    features2.features.shaderFloat64 = VK_FALSE;
+    features2.features.shaderInt64 = VK_FALSE;
 
     const float queue_priority = 1.0f;
     VkDeviceQueueCreateInfo queue_info = {};

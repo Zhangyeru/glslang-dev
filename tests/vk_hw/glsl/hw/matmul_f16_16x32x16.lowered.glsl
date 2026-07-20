@@ -34,87 +34,36 @@ f16vec4 _77(uint _78)
     return f16vec4(A.data[_78], A.data[_78 + 1u], A.data[_78 + 2u], A.data[_78 + 3u]);
 }
 
-f16vec4 _97(uint _98)
+f16vec4 _128(uint _129)
 {
-    return f16vec4(B.data[_98], B.data[_98 + 1u], B.data[_98 + 2u], B.data[_98 + 3u]);
+    return f16vec4(B.data[_129], B.data[_129 + 1u], B.data[_129 + 2u], B.data[_129 + 3u]);
 }
 
-f16vec4 _113(uint _114)
+f16vec4 _171(uint _172)
 {
-    return f16vec4(C.data[_114], C.data[_114 + 1u], C.data[_114 + 2u], C.data[_114 + 3u]);
+    return f16vec4(C.data[_172], C.data[_172 + 1u], C.data[_172 + 2u], C.data[_172 + 3u]);
 }
 
-void _130(uint _131, f16vec4 _132)
+void _265(uint _266, f16vec4 _267)
 {
-    D.data[_131] = _132.x;
-    D.data[_131 + 1u] = _132.y;
-    D.data[_131 + 2u] = _132.z;
-    D.data[_131 + 3u] = _132.w;
+    D.data[_266] = _267.x;
+    D.data[_266 + 1u] = _267.y;
+    D.data[_266 + 2u] = _267.z;
+    D.data[_266 + 3u] = _267.w;
 }
 
-void _152()
+void main()
 {
-    uint _166 = 0u;
-    uint _173;
+    uint _104 = 0u;
+    f16vec4 _103[64];
+    uint _109;
     for (;;)
     {
-        _173 = _166;
-        if (_173 < 16u)
+        _109 = _104;
+        if (_109 < 256u)
         {
-            uint _167 = 0u;
-            uint _175;
-            for (;;)
-            {
-                _175 = _167;
-                if (_175 < 8u)
-                {
-                    f16vec4 _169 = f16vec4(float16_t(0.0));
-                    f16vec4 _170 = f16vec4(float16_t(0.0));
-                    f16vec4 _171 = f16vec4(float16_t(0.0));
-                    f16vec4 _172 = f16vec4(float16_t(0.0));
-                    uint _168 = 0u;
-                    uint _177;
-                    for (;;)
-                    {
-                        _177 = _168;
-                        if (_177 < 4u)
-                        {
-                            uint _179 = _177 * 4u;
-                            uint _181 = (_173 * 16u) + _179;
-                            f16vec4 _194 = _77(((uint(0) + (_181 / 16u)) * uint(16)) + (uint(0) + (_181 % 16u)));
-                            uint _198 = ((_179 + 0u) * 32u) + (_175 * 4u);
-                            f16vec4 _211 = _97(((uint(0) + (_198 / 32u)) * uint(32)) + (uint(0) + (_198 % 32u)));
-                            uint _215 = ((_179 + 1u) * 32u) + (_175 * 4u);
-                            f16vec4 _228 = _97(((uint(0) + (_215 / 32u)) * uint(32)) + (uint(0) + (_215 % 32u)));
-                            uint _232 = ((_179 + 2u) * 32u) + (_175 * 4u);
-                            f16vec4 _245 = _97(((uint(0) + (_232 / 32u)) * uint(32)) + (uint(0) + (_232 % 32u)));
-                            uint _249 = ((_179 + 3u) * 32u) + (_175 * 4u);
-                            f16vec4 _262 = _97(((uint(0) + (_249 / 32u)) * uint(32)) + (uint(0) + (_249 % 32u)));
-                            _169 = fma(_194, f16vec4(_211.x, _228.x, _245.x, _262.x), _169);
-                            _170 = fma(_194, f16vec4(_211.y, _228.y, _245.y, _262.y), _170);
-                            _171 = fma(_194, f16vec4(_211.z, _228.z, _245.z, _262.z), _171);
-                            _172 = fma(_194, f16vec4(_211.w, _228.w, _245.w, _262.w), _172);
-                            _168 = _177 + 1u;
-                            continue;
-                        }
-                        else
-                        {
-                            break;
-                        }
-                    }
-                    uint _294 = (_173 * 32u) + (_175 * 4u);
-                    f16vec4 _307 = _113(((uint(0) + (_294 / 32u)) * uint(32)) + (uint(0) + (_294 % 32u)));
-                    uint _351 = (_173 * 32u) + (_175 * 4u);
-                    _130(((uint(0) + (_351 / 32u)) * uint(32)) + (uint(0) + (_351 % 32u)), f16vec4(_307.x + (((_169.x + _169.y) + _169.z) + _169.w), _307.y + (((_170.x + _170.y) + _170.z) + _170.w), _307.z + (((_171.x + _171.y) + _171.z) + _171.w), _307.w + (((_172.x + _172.y) + _172.z) + _172.w)));
-                    _167 = _175 + 1u;
-                    continue;
-                }
-                else
-                {
-                    break;
-                }
-            }
-            _166 = _173 + 1u;
+            _103[_109 / 4u] = _77(((uint(0) + (_109 / 16u)) * uint(16)) + (uint(0) + (_109 % 16u)));
+            _104 = _109 + 4u;
             continue;
         }
         else
@@ -122,10 +71,109 @@ void _152()
             break;
         }
     }
-}
-
-void main()
-{
-    _152();
+    f16vec4 _24[64] = _103;
+    f16vec4 tempArg[64] = _24;
+    f16vec4 a[64] = _24;
+    uint _147 = 0u;
+    f16vec4 _146[128];
+    uint _152;
+    for (;;)
+    {
+        _152 = _147;
+        if (_152 < 512u)
+        {
+            _146[_152 / 4u] = _128(((uint(0) + (_152 / 32u)) * uint(32)) + (uint(0) + (_152 % 32u)));
+            _147 = _152 + 4u;
+            continue;
+        }
+        else
+        {
+            break;
+        }
+    }
+    f16vec4 _39[128] = _146;
+    f16vec4 tempArg_1[128] = _39;
+    f16vec4 b[128] = _39;
+    uint _188 = 0u;
+    f16vec4 _187[128];
+    uint _193;
+    for (;;)
+    {
+        _193 = _188;
+        if (_193 < 512u)
+        {
+            _187[_193 / 4u] = _171(((uint(0) + (_193 / 32u)) * uint(32)) + (uint(0) + (_193 % 32u)));
+            _188 = _193 + 4u;
+            continue;
+        }
+        else
+        {
+            break;
+        }
+    }
+    f16vec4 _51[128] = _187;
+    f16vec4 tempArg_2[128] = _51;
+    f16vec4 c[128] = _51;
+    f16vec4 _214[64] = _24;
+    f16vec4 _215[128] = _39;
+    f16vec4 _216[128] = _51;
+    f16vec4 _217[128] = f16vec4[](f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)), f16vec4(float16_t(0.0)));
+    uint _218 = 0u;
+    uint _229;
+    for (;;)
+    {
+        _229 = _218;
+        if (_229 < 512u)
+        {
+            float16_t _220 = _216[_229 / 4u][_229 % 4u];
+            uint _219 = 0u;
+            uint _236;
+            for (;;)
+            {
+                _236 = _219;
+                if (_236 < 16u)
+                {
+                    uint _241 = ((_229 / 32u) * 16u) + _236;
+                    uint _243 = (_236 * 32u) + (_229 % 32u);
+                    _220 = fma(_214[_241 / 4u][_241 % 4u], _215[_243 / 4u][_243 % 4u], _220);
+                    _219 = _236 + 1u;
+                    continue;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            uint _258 = _229 / 4u;
+            f16vec4 _262 = _217[_258];
+            _262[_229 % 4u] = _220;
+            _217[_258] = _262;
+            _218 = _229 + 1u;
+            continue;
+        }
+        else
+        {
+            break;
+        }
+    }
+    f16vec4 tempArg_3[128] = _217;
+    f16vec4 d[128] = _217;
+    f16vec4 _281[128] = _217;
+    uint _282 = 0u;
+    uint _287;
+    for (;;)
+    {
+        _287 = _282;
+        if (_287 < 512u)
+        {
+            _265(((uint(0) + (_287 / 32u)) * uint(32)) + (uint(0) + (_287 % 32u)), _281[_287 / 4u]);
+            _282 = _287 + 4u;
+            continue;
+        }
+        else
+        {
+            break;
+        }
+    }
 }
 

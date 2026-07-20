@@ -283,6 +283,76 @@ int getCoopMatHWColumns(const TType& type)
     return getCoopHWTypeParameterDim(type, 1);
 }
 
+enum class HwMatMulNumericDomain {
+    Invalid,
+    FloatingPoint,
+    Integer,
+};
+
+HwMatMulNumericDomain getHwMatMulNumericDomain(TBasicType type)
+{
+    switch (type) {
+    case EbtFloat16:
+    case EbtFloat:
+        return HwMatMulNumericDomain::FloatingPoint;
+    case EbtInt8:
+    case EbtUint8:
+    case EbtInt16:
+    case EbtUint16:
+    case EbtInt:
+    case EbtUint:
+        return HwMatMulNumericDomain::Integer;
+    default:
+        return HwMatMulNumericDomain::Invalid;
+    }
+}
+
+int getHwMatMulBitWidth(TBasicType type)
+{
+    switch (type) {
+    case EbtInt8:
+    case EbtUint8:
+        return 8;
+    case EbtFloat16:
+    case EbtInt16:
+    case EbtUint16:
+        return 16;
+    case EbtFloat:
+    case EbtInt:
+    case EbtUint:
+        return 32;
+    default:
+        return 0;
+    }
+}
+
+void checkHwMatMulNumericTypes(TParseContext& parseContext, const TSourceLoc& loc, const char* builtin,
+                               const TType& aType, const TType& bType, const TType& accumulatorType)
+{
+    const HwMatMulNumericDomain aDomain = getHwMatMulNumericDomain(aType.getBasicType());
+    const HwMatMulNumericDomain bDomain = getHwMatMulNumericDomain(bType.getBasicType());
+    const HwMatMulNumericDomain accumulatorDomain = getHwMatMulNumericDomain(accumulatorType.getBasicType());
+
+    if (aDomain == HwMatMulNumericDomain::Invalid || bDomain == HwMatMulNumericDomain::Invalid ||
+        accumulatorDomain == HwMatMulNumericDomain::Invalid) {
+        parseContext.error(loc, "component types must be 16/32-bit floating-point or 8/16/32-bit integer types",
+                           builtin, "");
+        return;
+    }
+
+    if (aDomain != bDomain || aDomain != accumulatorDomain) {
+        parseContext.error(loc, "A, B, and accumulator component types must all be floating-point or all be integer",
+                           builtin, "");
+        return;
+    }
+
+    const int accumulatorWidth = getHwMatMulBitWidth(accumulatorType.getBasicType());
+    if (accumulatorWidth < getHwMatMulBitWidth(aType.getBasicType()) ||
+        accumulatorWidth < getHwMatMulBitWidth(bType.getBasicType())) {
+        parseContext.error(loc, "accumulator component type must not be narrower than A or B", builtin, "");
+    }
+}
+
 bool getConstantIntValue(TIntermNode* node, int& value)
 {
     const TConstUnionArray* constArray = nullptr;
@@ -309,8 +379,7 @@ bool handleCoopVecHWMatMulBuiltin(TParseContext& parseContext, const TSourceLoc&
         if (!resultType.isCoopVecHW() || !inputType.isCoopVecHW() || !matrixType.isCoopMatHW())
             parseContext.error(loc, "requires coopVecMatMulHW(out coopvecHW, coopvecHW, coopmatHW)", "coopVecMatMulHW", "");
         else {
-            if (inputType.getBasicType() != matrixType.getBasicType())
-                parseContext.error(loc, "input vector and matrix component types must match", "coopVecMatMulHW", "");
+            checkHwMatMulNumericTypes(parseContext, loc, "coopVecMatMulHW", inputType, matrixType, resultType);
             if (getCoopVecHWComponents(resultType) != getCoopMatHWColumns(matrixType))
                 parseContext.error(loc, "result vector component count must match matrix column count", "coopVecMatMulHW", "");
             if (getCoopVecHWComponents(inputType) != getCoopMatHWRows(matrixType))
@@ -334,8 +403,7 @@ bool handleCoopVecHWMatMulBuiltin(TParseContext& parseContext, const TSourceLoc&
             if (getCoopVecHWComponents(resultType) != getCoopVecHWComponents(biasType))
                 parseContext.error(loc, "result and bias component counts must match", "coopVecMatMulAddHW", "");
 
-            if (inputType.getBasicType() != matrixType.getBasicType())
-                parseContext.error(loc, "input vector and matrix component types must match", "coopVecMatMulAddHW", "");
+            checkHwMatMulNumericTypes(parseContext, loc, "coopVecMatMulAddHW", inputType, matrixType, resultType);
             if (getCoopVecHWComponents(resultType) != getCoopMatHWColumns(matrixType))
                 parseContext.error(loc, "result vector component count must match matrix column count", "coopVecMatMulAddHW", "");
             if (getCoopVecHWComponents(inputType) != getCoopMatHWRows(matrixType))
@@ -359,6 +427,7 @@ bool handleCoopMatHWMultiplyBuiltin(TParseContext& parseContext, const TSourceLo
         if (!resultType.isCoopMatHW() || !aType.isCoopMatHW() || !bType.isCoopMatHW())
             parseContext.error(loc, "requires coopMatMulHW(out coopmatHW, coopmatHW, coopmatHW)", "coopMatMulHW", "");
         else {
+            checkHwMatMulNumericTypes(parseContext, loc, "coopMatMulHW", aType, bType, resultType);
             if (getCoopMatHWRows(aType) != getCoopMatHWRows(resultType))
                 parseContext.error(loc, "A row count must match result row count", "coopMatMulHW", "");
             if (getCoopMatHWColumns(bType) != getCoopMatHWColumns(resultType))
@@ -383,6 +452,9 @@ bool handleCoopMatHWMultiplyBuiltin(TParseContext& parseContext, const TSourceLo
         if (!resultType.isCoopMatHW() || !aType.isCoopMatHW() || !bType.isCoopMatHW() || !cType.isCoopMatHW())
             parseContext.error(loc, "requires coopMatMulAddHW(out coopmatHW, coopmatHW, coopmatHW, coopmatHW)", "coopMatMulAddHW", "");
         else {
+            if (resultType.getBasicType() != cType.getBasicType())
+                parseContext.error(loc, "result and C component types must match exactly", "coopMatMulAddHW", "");
+            checkHwMatMulNumericTypes(parseContext, loc, "coopMatMulAddHW", aType, bType, resultType);
             if (getCoopMatHWRows(aType) != getCoopMatHWRows(cType) ||
                 getCoopMatHWRows(aType) != getCoopMatHWRows(resultType))
                 parseContext.error(loc, "A, C, and result row counts must match", "coopMatMulAddHW", "");
@@ -8444,6 +8516,22 @@ void TParseContext::typeParametersCheck(const TSourceLoc& loc, const TPublicType
         if (publicType.typeParameters->arraySizes->getNumDims() != 2) {
             error(loc, "coopmatHW incorrect number of type parameters", "", "");
             return;
+        }
+    }
+    if (publicType.isCoopvecHW() && publicType.typeParameters != nullptr) {
+        switch (publicType.typeParameters->basicType) {
+        case EbtFloat:
+        case EbtFloat16:
+        case EbtInt:
+        case EbtInt8:
+        case EbtInt16:
+        case EbtUint:
+        case EbtUint8:
+        case EbtUint16:
+            break;
+        default:
+            error(loc, "coopvecHW invalid basic type", TType::getBasicString(publicType.typeParameters->basicType), "");
+            break;
         }
     }
     if (publicType.isCoopmatKHR()) {

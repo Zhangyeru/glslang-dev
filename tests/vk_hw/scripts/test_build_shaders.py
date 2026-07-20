@@ -26,6 +26,9 @@ class ParseReduceCaseTest(unittest.TestCase):
             {
                 "case": "reduce",
                 "dtype": "f16",
+                "a_dtype": "f16",
+                "b_dtype": "f16",
+                "accum_dtype": "f16",
                 "axis": "column",
                 "reduce_op": "min",
                 "m": "5",
@@ -33,12 +36,16 @@ class ParseReduceCaseTest(unittest.TestCase):
                 "k": "0",
             },
         )
+
     def test_parses_scalar_reduce_metadata(self):
         self.assertEqual(
             parse_case(pathlib.Path("reduce_row_add_f32_scalar_5x7.lowered.spv")),
             {
                 "case": "reduce",
                 "dtype": "f32",
+                "a_dtype": "f32",
+                "b_dtype": "f32",
+                "accum_dtype": "f32",
                 "axis": "row",
                 "reduce_op": "add",
                 "m": "5",
@@ -67,11 +74,15 @@ class ParseReduceCaseTest(unittest.TestCase):
             {
                 "case": "load_store",
                 "dtype": "f32",
+                "a_dtype": "f32",
+                "b_dtype": "f32",
+                "accum_dtype": "f32",
                 "m": "5",
                 "n": "7",
                 "k": "0",
             },
         )
+        self.assertEqual(shape_string(parse_case(pathlib.Path("load_store_f32_flow_5x7.lowered.spv"))), "5x7")
 
     def test_perf_exclusion_pattern_keeps_reduce_and_drops_flow(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -93,6 +104,16 @@ class ParseReduceCaseTest(unittest.TestCase):
         command = run.call_args.args[0]
         self.assertEqual(command[command.index("--axis") + 1], "column")
         self.assertEqual(command[command.index("--reduce-op") + 1], "max")
+
+    def test_mixed_runner_receives_all_operand_types(self):
+        shader = pathlib.Path("matmul_i8xu8_to_i32_4x4x4.lowered.spv")
+        with mock.patch("run_function_tests.subprocess.run") as run:
+            run.return_value = mock.Mock(stdout="{}")
+            run_case("vk_hw_runner", shader, 1, 2)
+        command = run.call_args.args[0]
+        self.assertEqual(command[command.index("--a-dtype") + 1], "i8")
+        self.assertEqual(command[command.index("--b-dtype") + 1], "u8")
+        self.assertEqual(command[command.index("--accum-dtype") + 1], "i32")
 
 
 class ExtensionFreeLoweringModeTest(unittest.TestCase):

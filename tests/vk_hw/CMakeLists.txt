@@ -21,6 +21,13 @@ if(Python3_Interpreter_FOUND)
     set_tests_properties(vk_hw_build_shaders_script_tests PROPERTIES
         LABELS "hw"
     )
+    add_test(NAME vk_hw_case_parsing_tests
+        COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/scripts/test_case_parsing.py
+    )
+    set_tests_properties(vk_hw_case_parsing_tests PROPERTIES
+        LABELS "hw"
+    )
 endif()
 
 add_executable(vk_hw_reference_tests

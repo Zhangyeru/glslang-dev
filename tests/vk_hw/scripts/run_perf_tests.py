@@ -25,6 +25,12 @@ def run_shader(runner, shader, meta, warmup, repeat):
         meta["case"],
         "--dtype",
         meta["dtype"],
+        "--a-dtype",
+        meta["a_dtype"],
+        "--b-dtype",
+        meta["b_dtype"],
+        "--accum-dtype",
+        meta["accum_dtype"],
         "--m",
         meta["m"],
         "--n",
@@ -64,6 +70,9 @@ def write_outputs(rows, out_json):
                 "shader",
                 "case",
                 "dtype",
+                "a_dtype",
+                "b_dtype",
+                "accum_dtype",
                 "axis",
                 "reduce_op",
                 "m",
@@ -74,6 +83,9 @@ def write_outputs(rows, out_json):
                 "baseline_ns",
                 "ratio",
                 "gflops",
+                "gops_avg",
+                "status",
+                "skip_reason",
                 "verify",
                 "baseline_verify",
             ],
@@ -86,15 +98,19 @@ def write_outputs(rows, out_json):
     lines = [
         "# HW Lowered Shader Vulkan Performance",
         "",
-        "| Shader | Case | DType | Axis | Operation | Shape | Lowered ns | Baseline ns | Ratio | GFLOPS | Lowered Verify | Baseline Verify |",
-        "|---|---|---|---|---|---:|---:|---:|---:|---:|---|---|",
+        "| Shader | Case | A | B | Accum | Axis | Operation | Shape | Lowered ns | Baseline ns | Ratio | GOPS | Status | Verify | Baseline Verify | Skip Reason |",
+        "|---|---|---|---|---|---|---|---:|---:|---:|---:|---:|---|---|---|---|",
     ]
+    def number(value, digits):
+        return "" if value is None else f"{value:.{digits}f}"
+
     for row in rows:
         lines.append(
-            f"| {row['shader']} | {row['case']} | {row['dtype']} | {row.get('axis', '')} | "
-            f"{row.get('reduce_op', '')} | {shape_string(row)} | {row['lowered_ns']:.3f} | "
-            f"{row['baseline_ns']:.3f} | {row['ratio']:.4f} | {row['gflops']:.4f} | "
-            f"{row['verify']} | {row['baseline_verify']} |"
+            f"| {row['shader']} | {row['case']} | {row['a_dtype']} | {row['b_dtype']} | "
+            f"{row['accum_dtype']} | {row.get('axis', '')} | "
+            f"{row.get('reduce_op', '')} | {shape_string(row)} | {number(row['lowered_ns'], 3)} | "
+            f"{number(row['baseline_ns'], 3)} | {number(row['ratio'], 4)} | {number(row['gops_avg'], 4)} | "
+            f"{row['status']} | {row['verify']} | {row['baseline_verify']} | {row['skip_reason']} |"
         )
     md_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -120,13 +136,22 @@ def main():
         lowered_result = run_shader(args.runner, lowered, meta, args.warmup, args.repeat)
         baseline_result = run_shader(args.runner, baseline, meta, args.warmup, args.repeat)
 
-        lowered_ns = float(lowered_result["gpu_time_ns_avg"])
-        baseline_ns = float(baseline_result["gpu_time_ns_avg"])
+        skipped = lowered_result.get("status") == "skip" or baseline_result.get("status") == "skip"
+        lowered_ns = None if skipped else float(lowered_result["gpu_time_ns_avg"])
+        baseline_ns = None if skipped else float(baseline_result["gpu_time_ns_avg"])
+        skip_reasons = [
+            result.get("skip_reason", "")
+            for result in (lowered_result, baseline_result)
+            if result.get("status") == "skip"
+        ]
         rows.append(
             {
                 "shader": lowered.name,
                 "case": lowered_result["case"],
                 "dtype": lowered_result["dtype"],
+                "a_dtype": lowered_result["a_dtype"],
+                "b_dtype": lowered_result["b_dtype"],
+                "accum_dtype": lowered_result["accum_dtype"],
                 "axis": lowered_result.get("axis", ""),
                 "reduce_op": lowered_result.get("reduce_op", ""),
                 "m": lowered_result["m"],
@@ -135,8 +160,11 @@ def main():
                 "layer_dims": lowered_result.get("layer_dims", []),
                 "lowered_ns": lowered_ns,
                 "baseline_ns": baseline_ns,
-                "ratio": lowered_ns / baseline_ns if baseline_ns > 0 else 0.0,
-                "gflops": float(lowered_result["gflops_avg"]),
+                "ratio": lowered_ns / baseline_ns if baseline_ns and baseline_ns > 0 else None,
+                "gflops": None if skipped else float(lowered_result["gflops_avg"]),
+                "gops_avg": None if skipped else float(lowered_result["gops_avg"]),
+                "status": "skip" if skipped else lowered_result.get("status", "pass"),
+                "skip_reason": "; ".join(dict.fromkeys(skip_reasons)),
                 "verify": lowered_result["verify"],
                 "baseline_verify": baseline_result["verify"],
             }
@@ -146,7 +174,8 @@ def main():
         raise RuntimeError(f"no lowered shaders found in {args.spv_dir}")
     write_outputs(rows, pathlib.Path(args.out))
     return 0 if all(
-        row["verify"] == "pass" and row["baseline_verify"] == "pass" for row in rows
+        row["status"] == "skip" or (row["verify"] == "pass" and row["baseline_verify"] == "pass")
+        for row in rows
     ) else 1
 
 

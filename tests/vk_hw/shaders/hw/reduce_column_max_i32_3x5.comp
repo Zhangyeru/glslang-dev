@@ -1,0 +1,18 @@
+#version 460 core
+#extension GL_HW_neural_shader : require
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA { int data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { int data[]; } B;
+layout(set = 0, binding = 2) buffer InputC { int data[]; } C;
+layout(set = 0, binding = 3) buffer OutputD { int data[]; } D;
+
+void main()
+{
+    coopmatHW<int, 3, 5> value;
+    coopmatHW<int, 3, 5> reduced;
+    coopMatLoadHW(value, A.data, ivec2(3, 5), ivec2(0), gl_CooperativeMatrixLayoutRowMajorHW);
+    reduced = coopMatReduceHW(value, gl_CooperativeMatrixReduceColumnHW, gl_CooperativeMatrixReduceMaxHW);
+    coopMatStoreHW(reduced, D.data, ivec2(3, 5), ivec2(0), gl_CooperativeMatrixLayoutRowMajorHW);
+}

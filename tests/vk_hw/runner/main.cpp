@@ -16,6 +16,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -54,8 +55,7 @@ std::string JsonEscape(const std::string& value)
     return escaped;
 }
 
-std::array<VkDescriptorType, 4> DescriptorTypesForShader(
-    const std::string& shader_path)
+std::array<VkDescriptorType, 4> DescriptorTypesForShader(const std::string& shader_path)
 {
     std::array<VkDescriptorType, 4> descriptor_types = {
         VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -94,6 +94,18 @@ DType ParseDType(const std::string& value)
         return DType::kF16;
     if (value == "f32")
         return DType::kF32;
+    if (value == "i8")
+        return DType::kI8;
+    if (value == "u8")
+        return DType::kU8;
+    if (value == "i16")
+        return DType::kI16;
+    if (value == "u16")
+        return DType::kU16;
+    if (value == "i32")
+        return DType::kI32;
+    if (value == "u32")
+        return DType::kU32;
     throw std::runtime_error("unknown dtype: " + value);
 }
 
@@ -129,6 +141,10 @@ uint32_t ParseU32(const std::string& value, const char* name)
 CaseConfig ParseArgs(int argc, char** argv)
 {
     CaseConfig config;
+    std::optional<DType> legacy_dtype;
+    std::optional<DType> a_dtype;
+    std::optional<DType> b_dtype;
+    std::optional<DType> accum_dtype;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         auto require_value = [&](const char* option) -> std::string {
@@ -143,7 +159,13 @@ CaseConfig ParseArgs(int argc, char** argv)
         } else if (arg == "--case") {
             config.kind = ParseCaseKind(require_value("--case"));
         } else if (arg == "--dtype") {
-            config.dtype = ParseDType(require_value("--dtype"));
+            legacy_dtype = ParseDType(require_value("--dtype"));
+        } else if (arg == "--a-dtype") {
+            a_dtype = ParseDType(require_value("--a-dtype"));
+        } else if (arg == "--b-dtype") {
+            b_dtype = ParseDType(require_value("--b-dtype"));
+        } else if (arg == "--accum-dtype") {
+            accum_dtype = ParseDType(require_value("--accum-dtype"));
         } else if (arg == "--m") {
             config.m = ParseU32(require_value("--m"), "--m");
         } else if (arg == "--n") {
@@ -181,12 +203,27 @@ CaseConfig ParseArgs(int argc, char** argv)
     if (config.repeat == 0) {
         throw std::runtime_error("--repeat must be greater than zero");
     }
-    if (config.kind == CaseKind::kMlp &&
-        (config.d0 == 0 || config.d1 == 0 || config.d2 == 0 || config.d3 == 0)) {
+    if (config.kind == CaseKind::kMlp && (config.d0 == 0 || config.d1 == 0 || config.d2 == 0 || config.d3 == 0)) {
         throw std::runtime_error("mlp case requires --d0 --d1 --d2 --d3");
     }
     if (config.kind == CaseKind::kReduce && (config.m == 0 || config.n == 0)) {
         throw std::runtime_error("reduce case requires non-zero --m and --n");
+    }
+    const DType shorthand = legacy_dtype.value_or(DType::kF32);
+    config.a_dtype = a_dtype.value_or(shorthand);
+    config.b_dtype = b_dtype.value_or(shorthand);
+    config.accum_dtype = accum_dtype.value_or(shorthand);
+    config.dtype = config.accum_dtype;
+
+    const bool float_inputs =
+        IsFloatDType(config.a_dtype) && IsFloatDType(config.b_dtype) && IsFloatDType(config.accum_dtype);
+    const bool integer_inputs =
+        !IsFloatDType(config.a_dtype) && !IsFloatDType(config.b_dtype) && !IsFloatDType(config.accum_dtype);
+    if (!float_inputs && !integer_inputs)
+        throw std::runtime_error("A, B, and accumulator types must all be floating-point or all be integer");
+    if (ElementBitWidth(config.accum_dtype) < ElementBitWidth(config.a_dtype) ||
+        ElementBitWidth(config.accum_dtype) < ElementBitWidth(config.b_dtype)) {
+        throw std::runtime_error("accumulator type must not be narrower than A or B");
     }
     return config;
 }
@@ -292,12 +329,17 @@ void PrintJson(const CaseConfig& config, const TimeStats& stats, const VerifyRes
     std::cout << "  \"case\": \"" << CaseName(config.kind) << "\",\n";
     std::cout << "  \"shader\": \"" << JsonEscape(config.shader_path) << "\",\n";
     std::cout << "  \"dtype\": \"" << DTypeName(config.dtype) << "\",\n";
+    std::cout << "  \"a_dtype\": \"" << DTypeName(config.a_dtype) << "\",\n";
+    std::cout << "  \"b_dtype\": \"" << DTypeName(config.b_dtype) << "\",\n";
+    std::cout << "  \"accum_dtype\": \"" << DTypeName(config.accum_dtype) << "\",\n";
+    std::cout << "  \"status\": \"" << (verify.pass ? "pass" : "fail") << "\",\n";
+    std::cout << "  \"skip_reason\": \"\",\n";
     std::cout << "  \"m\": " << config.m << ",\n";
     std::cout << "  \"n\": " << config.n << ",\n";
     std::cout << "  \"k\": " << config.k << ",\n";
     if (config.kind == CaseKind::kMlp) {
-        std::cout << "  \"layer_dims\": [" << config.d0 << ", " << config.d1 << ", " << config.d2 << ", "
-                  << config.d3 << "],\n";
+        std::cout << "  \"layer_dims\": [" << config.d0 << ", " << config.d1 << ", " << config.d2 << ", " << config.d3
+                  << "],\n";
     }
     if (config.kind == CaseKind::kReduce) {
         std::cout << "  \"axis\": \"" << ReduceAxisName(config.reduce_axis) << "\",\n";
@@ -311,10 +353,75 @@ void PrintJson(const CaseConfig& config, const TimeStats& stats, const VerifyRes
     std::cout << "  \"gpu_time_ns_p90\": " << stats.p90 << ",\n";
     std::cout << "  \"gpu_time_ns_max\": " << stats.max << ",\n";
     std::cout << "  \"gflops_avg\": " << gflops << ",\n";
+    std::cout << "  \"gops_avg\": " << gflops << ",\n";
     std::cout << "  \"verify\": \"" << (verify.pass ? "pass" : "fail") << "\",\n";
     std::cout << "  \"max_abs_error\": " << verify.max_abs_error << ",\n";
     std::cout << "  \"max_rel_error\": " << verify.max_rel_error << "\n";
     std::cout << "}\n";
+}
+
+void PrintSkipJson(const CaseConfig& config, const std::string& reason)
+{
+    std::cout << "{\n";
+    std::cout << "  \"case\": \"" << CaseName(config.kind) << "\",\n";
+    std::cout << "  \"shader\": \"" << JsonEscape(config.shader_path) << "\",\n";
+    std::cout << "  \"dtype\": \"" << DTypeName(config.dtype) << "\",\n";
+    std::cout << "  \"a_dtype\": \"" << DTypeName(config.a_dtype) << "\",\n";
+    std::cout << "  \"b_dtype\": \"" << DTypeName(config.b_dtype) << "\",\n";
+    std::cout << "  \"accum_dtype\": \"" << DTypeName(config.accum_dtype) << "\",\n";
+    std::cout << "  \"status\": \"skip\",\n";
+    std::cout << "  \"skip_reason\": \"" << JsonEscape(reason) << "\",\n";
+    std::cout << "  \"m\": " << config.m << ",\n";
+    std::cout << "  \"n\": " << config.n << ",\n";
+    std::cout << "  \"k\": " << config.k << ",\n";
+    if (config.kind == CaseKind::kMlp) {
+        std::cout << "  \"layer_dims\": [" << config.d0 << ", " << config.d1 << ", " << config.d2 << ", " << config.d3
+                  << "],\n";
+    }
+    if (config.kind == CaseKind::kReduce) {
+        std::cout << "  \"axis\": \"" << ReduceAxisName(config.reduce_axis) << "\",\n";
+        std::cout << "  \"reduce_op\": \"" << ReduceOpName(config.reduce_op) << "\",\n";
+    }
+    std::cout << "  \"warmup\": " << config.warmup << ",\n";
+    std::cout << "  \"repeat\": " << config.repeat << ",\n";
+    std::cout << "  \"gpu_time_ns_avg\": null,\n";
+    std::cout << "  \"gflops_avg\": null,\n";
+    std::cout << "  \"gops_avg\": null,\n";
+    std::cout << "  \"verify\": \"skip\",\n";
+    std::cout << "  \"max_abs_error\": 0.0,\n";
+    std::cout << "  \"max_rel_error\": 0.0\n";
+    std::cout << "}\n";
+}
+
+std::string MissingFeature(const VulkanContext& context, DType dtype)
+{
+    switch (dtype) {
+    case DType::kF16:
+        if (!context.supports_shader_float16())
+            return "shaderFloat16";
+        if (!context.supports_storage_buffer_16bit())
+            return "storageBuffer16BitAccess";
+        break;
+    case DType::kI8:
+    case DType::kU8:
+        if (!context.supports_shader_int8())
+            return "shaderInt8";
+        if (!context.supports_storage_buffer_8bit())
+            return "storageBuffer8BitAccess";
+        break;
+    case DType::kI16:
+    case DType::kU16:
+        if (!context.supports_shader_int16())
+            return "shaderInt16";
+        if (!context.supports_storage_buffer_16bit())
+            return "storageBuffer16BitAccess";
+        break;
+    case DType::kF32:
+    case DType::kI32:
+    case DType::kU32:
+        break;
+    }
+    return {};
 }
 
 int Run(int argc, char** argv)
@@ -322,23 +429,26 @@ int Run(int argc, char** argv)
     const CaseConfig config = ParseArgs(argc, argv);
     const std::vector<uint32_t> spirv = ReadSpirv(config.shader_path);
 
-    const std::vector<float> a = MakeInput(ElementCountA(config), 1, config.dtype);
-    const std::vector<float> b = MakeInput(ElementCountB(config), 2, config.dtype);
-    const std::vector<float> c = MakeInput(ElementCountC(config), 3, config.dtype);
-    const std::vector<uint8_t> a_bytes = EncodeBuffer(a, config.dtype);
-    const std::vector<uint8_t> b_bytes = EncodeBuffer(b, config.dtype);
-    const std::vector<uint8_t> c_bytes = EncodeBuffer(c, config.dtype);
-    const size_t d_bytes_size = ElementCountD(config) * ElementSize(config.dtype);
+    const RawValues a = MakeRawInput(ElementCountA(config), 1, config.a_dtype);
+    const RawValues b = MakeRawInput(ElementCountB(config), 2, config.b_dtype);
+    const RawValues c = MakeRawInput(ElementCountC(config), 3, config.accum_dtype);
+    const std::vector<uint8_t> a_bytes = EncodeRawBuffer(a, config.a_dtype);
+    const std::vector<uint8_t> b_bytes = EncodeRawBuffer(b, config.b_dtype);
+    const std::vector<uint8_t> c_bytes = EncodeRawBuffer(c, config.accum_dtype);
+    const size_t d_bytes_size = ElementCountD(config) * ElementSize(config.accum_dtype);
     const std::vector<uint8_t> d_init(d_bytes_size, 0);
 
     VulkanContext context;
-    if (config.dtype == DType::kF16 &&
-        (!context.supports_shader_float16() || !context.supports_storage_buffer_16bit())) {
-        throw std::runtime_error("f16 case requires shaderFloat16 and storageBuffer16BitAccess Vulkan features");
+    for (DType dtype : {config.a_dtype, config.b_dtype, config.accum_dtype}) {
+        const std::string missing = MissingFeature(context, dtype);
+        if (!missing.empty()) {
+            PrintSkipJson(config, DTypeName(dtype) + " case requires Vulkan feature " + missing);
+            return 0;
+        }
     }
-    if (config.shader_path.find("_ubo_") != std::string::npos &&
-        !context.supports_scalar_block_layout()) {
-        throw std::runtime_error("UBO case requires scalarBlockLayout Vulkan feature");
+    if (config.shader_path.find("_ubo_") != std::string::npos && !context.supports_scalar_block_layout()) {
+        PrintSkipJson(config, "UBO case requires Vulkan feature scalarBlockLayout");
+        return 0;
     }
 
     Buffer buffer_a(&context, a_bytes.size());
@@ -346,8 +456,7 @@ int Run(int argc, char** argv)
     Buffer buffer_c(&context, c_bytes.size());
     Buffer buffer_d(&context, d_init.size());
 
-    ComputePipeline pipeline(&context, spirv,
-                             DescriptorTypesForShader(config.shader_path));
+    ComputePipeline pipeline(&context, spirv, DescriptorTypesForShader(config.shader_path));
     pipeline.UpdateDescriptors(
         {buffer_a.descriptor(), buffer_b.descriptor(), buffer_c.descriptor(), buffer_d.descriptor()});
 
@@ -373,9 +482,9 @@ int Run(int argc, char** argv)
 
     VerifyResult verify;
     if (config.verify) {
-        const std::vector<float> expected = ReferenceOutput(config, a, b, c);
-        const std::vector<float> actual = DecodeBuffer(buffer_d.Download(d_bytes_size), config.dtype);
-        verify = CompareOutput(config, expected, actual);
+        const RawValues expected = ReferenceOutputRaw(config, a, b, c);
+        const RawValues actual = DecodeRawBuffer(buffer_d.Download(d_bytes_size), config.accum_dtype);
+        verify = CompareOutputRaw(config, expected, actual);
     }
 
     PrintJson(config, ComputeStats(samples), verify);

@@ -13,13 +13,19 @@
 namespace vk_hw {
 
 enum class CaseKind { kMatmul, kVecMatmul, kVecMatmulAdd, kLoadStore, kMultiOps, kMlp, kReduce };
-enum class DType { kF16, kF32 };
+enum class DType { kF16, kF32, kI8, kU8, kI16, kU16, kI32, kU32 };
 enum class ReduceAxis { kRow, kColumn };
 enum class ReduceOp { kAdd, kMin, kMax };
 
 struct CaseConfig {
     CaseKind kind = CaseKind::kMatmul;
+    // |dtype| is retained as the legacy, single-type spelling. Parsers set
+    // all three explicit fields from --dtype before applying any per-input
+    // overrides.
     DType dtype = DType::kF32;
+    DType a_dtype = DType::kF32;
+    DType b_dtype = DType::kF32;
+    DType accum_dtype = DType::kF32;
     uint32_t m = 1;
     uint32_t n = 1;
     uint32_t k = 1;
@@ -42,6 +48,9 @@ struct VerifyResult {
 };
 
 size_t ElementSize(DType dtype);
+uint32_t ElementBitWidth(DType dtype);
+bool IsFloatDType(DType dtype);
+bool IsSignedDType(DType dtype);
 uint16_t FloatToHalfBits(float value);
 float HalfBitsToFloat(uint16_t value);
 std::string CaseName(CaseKind kind);
@@ -49,6 +58,17 @@ std::string DTypeName(DType dtype);
 std::string ReduceAxisName(ReduceAxis axis);
 std::string ReduceOpName(ReduceOp op);
 uint64_t FlopCount(const CaseConfig& config);
+
+// Typed reference values are represented by their raw scalar bit pattern. A
+// 64-bit container keeps 32-bit integer products and accumulation well-defined
+// in the host reference implementation.
+using RawValues = std::vector<uint64_t>;
+
+RawValues MakeRawInput(size_t count, int seed, DType dtype);
+std::vector<uint8_t> EncodeRawBuffer(const RawValues& values, DType dtype);
+RawValues DecodeRawBuffer(const std::vector<uint8_t>& bytes, DType dtype);
+RawValues ReferenceOutputRaw(const CaseConfig& config, const RawValues& a, const RawValues& b, const RawValues& c);
+VerifyResult CompareOutputRaw(const CaseConfig& config, const RawValues& expected, const RawValues& actual);
 
 std::vector<float> MakeInput(size_t count, int seed, DType dtype);
 std::vector<uint8_t> EncodeBuffer(const std::vector<float>& values, DType dtype);

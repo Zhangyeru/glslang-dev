@@ -13,6 +13,145 @@
 namespace vk_hw {
 namespace {
 
+uint64_t WidthMask(uint32_t width) { return (uint64_t{1} << width) - 1u; }
+
+uint64_t FloatBits(float value)
+{
+    uint32_t bits = 0;
+    std::memcpy(&bits, &value, sizeof(bits));
+    return bits;
+}
+
+float BitsFloat(uint64_t value)
+{
+    const uint32_t bits = static_cast<uint32_t>(value);
+    float result = 0.0f;
+    std::memcpy(&result, &bits, sizeof(result));
+    return result;
+}
+
+long double RawToFloat(uint64_t raw, DType dtype)
+{
+    switch (dtype) {
+    case DType::kF16:
+        return HalfBitsToFloat(static_cast<uint16_t>(raw));
+    case DType::kF32:
+        return BitsFloat(raw);
+    default:
+        return 0.0;
+    }
+}
+
+uint64_t FloatToRaw(long double value, DType dtype)
+{
+    switch (dtype) {
+    case DType::kF16:
+        return FloatToHalfBits(static_cast<float>(value));
+    case DType::kF32:
+        return FloatBits(static_cast<float>(value));
+    default:
+        return 0;
+    }
+}
+
+uint64_t ConvertInteger(uint64_t raw, DType source, DType destination)
+{
+    const uint32_t source_width = ElementBitWidth(source);
+    const uint32_t destination_width = ElementBitWidth(destination);
+    raw &= WidthMask(source_width);
+    if (IsSignedDType(source) && (raw & (uint64_t{1} << (source_width - 1u))) != 0) {
+        raw |= ~WidthMask(source_width);
+    }
+    return raw & WidthMask(destination_width);
+}
+
+bool SignedIntegerLess(uint64_t lhs, uint64_t rhs, uint32_t width)
+{
+    const uint64_t sign = uint64_t{1} << (width - 1u);
+    const bool lhs_negative = (lhs & sign) != 0;
+    const bool rhs_negative = (rhs & sign) != 0;
+    if (lhs_negative != rhs_negative)
+        return lhs_negative;
+    return (lhs & WidthMask(width)) < (rhs & WidthMask(width));
+}
+
+uint64_t FloatFma(uint64_t lhs, DType lhs_type, uint64_t rhs, DType rhs_type, uint64_t acc, DType accum_type)
+{
+    const long double lhs_value = RawToFloat(FloatToRaw(RawToFloat(lhs, lhs_type), accum_type), accum_type);
+    const long double rhs_value = RawToFloat(FloatToRaw(RawToFloat(rhs, rhs_type), accum_type), accum_type);
+    const long double acc_value = RawToFloat(acc, accum_type);
+    switch (accum_type) {
+    case DType::kF16:
+        return FloatToRaw(
+            std::fma(static_cast<float>(lhs_value), static_cast<float>(rhs_value), static_cast<float>(acc_value)),
+            accum_type);
+    case DType::kF32:
+        return FloatToRaw(
+            std::fma(static_cast<float>(lhs_value), static_cast<float>(rhs_value), static_cast<float>(acc_value)),
+            accum_type);
+    default:
+        return 0;
+    }
+}
+
+uint64_t IntegerMulAdd(uint64_t lhs, DType lhs_type, uint64_t rhs, DType rhs_type, uint64_t acc, DType accum_type)
+{
+    const uint64_t mask = WidthMask(ElementBitWidth(accum_type));
+    const uint64_t lhs_value = ConvertInteger(lhs, lhs_type, accum_type);
+    const uint64_t rhs_value = ConvertInteger(rhs, rhs_type, accum_type);
+    // Unsigned arithmetic is defined modulo 2^N. The 64-bit host container
+    // keeps multiplication of supported 32-bit values well-defined.
+    return (acc + lhs_value * rhs_value) & mask;
+}
+
+uint64_t MulAdd(uint64_t lhs, DType lhs_type, uint64_t rhs, DType rhs_type, uint64_t acc, DType accum_type)
+{
+    return IsFloatDType(accum_type) ? FloatFma(lhs, lhs_type, rhs, rhs_type, acc, accum_type)
+                                    : IntegerMulAdd(lhs, lhs_type, rhs, rhs_type, acc, accum_type);
+}
+
+uint64_t ZeroRaw(DType dtype) { return IsFloatDType(dtype) ? FloatToRaw(0.0, dtype) : 0; }
+
+uint64_t ConvertRaw(uint64_t raw, DType source, DType destination)
+{
+    if (source == destination)
+        return raw & WidthMask(ElementBitWidth(destination));
+    if (IsFloatDType(source) && IsFloatDType(destination))
+        return FloatToRaw(RawToFloat(raw, source), destination);
+    if (!IsFloatDType(source) && !IsFloatDType(destination))
+        return ConvertInteger(raw, source, destination);
+    return 0;
+}
+
+uint64_t ReduceRawPair(uint64_t lhs, uint64_t rhs, ReduceOp op, DType dtype)
+{
+    if (IsFloatDType(dtype)) {
+        const long double lhs_value = RawToFloat(lhs, dtype);
+        const long double rhs_value = RawToFloat(rhs, dtype);
+        long double result = 0.0;
+        switch (op) {
+        case ReduceOp::kAdd:
+            result = lhs_value + rhs_value;
+            break;
+        case ReduceOp::kMin:
+            result = std::fmin(lhs_value, rhs_value);
+            break;
+        case ReduceOp::kMax:
+            result = std::fmax(lhs_value, rhs_value);
+            break;
+        }
+        return FloatToRaw(result, dtype);
+    }
+
+    const uint64_t mask = WidthMask(ElementBitWidth(dtype));
+    lhs &= mask;
+    rhs &= mask;
+    if (op == ReduceOp::kAdd)
+        return (lhs + rhs) & mask;
+    const bool less = IsSignedDType(dtype) ? SignedIntegerLess(lhs, rhs, ElementBitWidth(dtype)) : lhs < rhs;
+    return op == ReduceOp::kMin ? (less ? lhs : rhs) : (less ? rhs : lhs);
+}
+
 float QuantizeForDType(float value, DType dtype)
 {
     if (dtype == DType::kF32)
@@ -32,10 +171,7 @@ bool HasConstBiasVariant(const CaseConfig& config)
     return config.shader_path.find("_constbias") != std::string::npos;
 }
 
-bool HasConstWeightVariant(const CaseConfig& config)
-{
-    return config.shader_path.find("_constw") != std::string::npos;
-}
+bool HasConstWeightVariant(const CaseConfig& config) { return config.shader_path.find("_constw") != std::string::npos; }
 
 float ConstBiasValue(uint32_t index, DType dtype)
 {
@@ -75,7 +211,32 @@ float ReducePair(float lhs, float rhs, ReduceOp op, DType dtype)
 
 } // namespace
 
-size_t ElementSize(DType dtype) { return dtype == DType::kF16 ? 2 : 4; }
+uint32_t ElementBitWidth(DType dtype)
+{
+    switch (dtype) {
+    case DType::kI8:
+    case DType::kU8:
+        return 8;
+    case DType::kF16:
+    case DType::kI16:
+    case DType::kU16:
+        return 16;
+    case DType::kF32:
+    case DType::kI32:
+    case DType::kU32:
+        return 32;
+    }
+    return 0;
+}
+
+size_t ElementSize(DType dtype) { return ElementBitWidth(dtype) / 8u; }
+
+bool IsFloatDType(DType dtype) { return dtype == DType::kF16 || dtype == DType::kF32; }
+
+bool IsSignedDType(DType dtype)
+{
+    return dtype == DType::kI8 || dtype == DType::kI16 || dtype == DType::kI32;
+}
 
 uint16_t FloatToHalfBits(float value)
 {
@@ -173,7 +334,28 @@ std::string CaseName(CaseKind kind)
     return "unknown";
 }
 
-std::string DTypeName(DType dtype) { return dtype == DType::kF16 ? "f16" : "f32"; }
+std::string DTypeName(DType dtype)
+{
+    switch (dtype) {
+    case DType::kF16:
+        return "f16";
+    case DType::kF32:
+        return "f32";
+    case DType::kI8:
+        return "i8";
+    case DType::kU8:
+        return "u8";
+    case DType::kI16:
+        return "i16";
+    case DType::kU16:
+        return "u16";
+    case DType::kI32:
+        return "i32";
+    case DType::kU32:
+        return "u32";
+    }
+    return "unknown";
+}
 
 std::string ReduceAxisName(ReduceAxis axis) { return axis == ReduceAxis::kRow ? "row" : "column"; }
 
@@ -202,8 +384,7 @@ uint64_t FlopCount(const CaseConfig& config)
         return 2ull * (2ull * config.m * config.n * config.k + 2ull * config.n * config.k);
     }
     if (config.kind == CaseKind::kMlp) {
-        return 2ull * (static_cast<uint64_t>(config.d0) * config.d1 +
-                       static_cast<uint64_t>(config.d1) * config.d2 +
+        return 2ull * (static_cast<uint64_t>(config.d0) * config.d1 + static_cast<uint64_t>(config.d1) * config.d2 +
                        static_cast<uint64_t>(config.d2) * config.d3);
     }
     if (config.kind == CaseKind::kReduce) {
@@ -215,13 +396,51 @@ uint64_t FlopCount(const CaseConfig& config)
     return 0;
 }
 
+RawValues MakeRawInput(size_t count, int seed, DType dtype)
+{
+    RawValues values(count);
+    for (size_t i = 0; i < count; ++i) {
+        const int signed_value = static_cast<int>((i * 17 + seed * 23) % 29) - 14;
+        if (IsFloatDType(dtype)) {
+            values[i] = FloatToRaw(static_cast<long double>(signed_value) / 19.0L, dtype);
+        } else if (IsSignedDType(dtype)) {
+            // Conversion through uint64_t is well-defined modulo 2^64.
+            values[i] = static_cast<uint64_t>(static_cast<int64_t>(signed_value)) & WidthMask(ElementBitWidth(dtype));
+        } else {
+            values[i] = static_cast<uint64_t>(signed_value + 14) & WidthMask(ElementBitWidth(dtype));
+        }
+    }
+    return values;
+}
+
+std::vector<uint8_t> EncodeRawBuffer(const RawValues& values, DType dtype)
+{
+    const size_t element_size = ElementSize(dtype);
+    std::vector<uint8_t> bytes(values.size() * element_size);
+    for (size_t i = 0; i < values.size(); ++i) {
+        const uint64_t raw = values[i] & WidthMask(ElementBitWidth(dtype));
+        std::memcpy(bytes.data() + i * element_size, &raw, element_size);
+    }
+    return bytes;
+}
+
+RawValues DecodeRawBuffer(const std::vector<uint8_t>& bytes, DType dtype)
+{
+    const size_t element_size = ElementSize(dtype);
+    const size_t count = bytes.size() / element_size;
+    RawValues values(count, 0);
+    for (size_t i = 0; i < count; ++i) {
+        std::memcpy(&values[i], bytes.data() + i * element_size, element_size);
+    }
+    return values;
+}
+
 std::vector<float> MakeInput(size_t count, int seed, DType dtype)
 {
-    std::vector<float> values(count);
-    for (size_t i = 0; i < count; ++i) {
-        const int v = static_cast<int>((i * 17 + seed * 23) % 29) - 14;
-        values[i] = QuantizeForDType(static_cast<float>(v) / 19.0f, dtype);
-    }
+    const RawValues raw = MakeRawInput(count, seed, dtype);
+    std::vector<float> values(raw.size());
+    for (size_t i = 0; i < raw.size(); ++i)
+        values[i] = static_cast<float>(RawToFloat(raw[i], dtype));
     return values;
 }
 
@@ -330,6 +549,191 @@ size_t ElementCountD(const CaseConfig& config)
     return 0;
 }
 
+RawValues ReferenceOutputRaw(const CaseConfig& config, const RawValues& a, const RawValues& b, const RawValues& c)
+{
+    RawValues out(ElementCountD(config), ZeroRaw(config.accum_dtype));
+
+    if (config.kind == CaseKind::kLoadStore) {
+        for (size_t i = 0; i < out.size(); ++i)
+            out[i] = ConvertRaw(a[i], config.a_dtype, config.accum_dtype);
+        return out;
+    }
+
+    if (config.kind == CaseKind::kReduce) {
+        if (config.reduce_axis == ReduceAxis::kRow) {
+            for (uint32_t row = 0; row < config.m; ++row) {
+                uint64_t reduced = ConvertRaw(a[row * config.n], config.a_dtype, config.accum_dtype);
+                for (uint32_t col = 1; col < config.n; ++col) {
+                    reduced =
+                        ReduceRawPair(reduced, ConvertRaw(a[row * config.n + col], config.a_dtype, config.accum_dtype),
+                                      config.reduce_op, config.accum_dtype);
+                }
+                for (uint32_t col = 0; col < config.n; ++col)
+                    out[row * config.n + col] = reduced;
+            }
+        } else {
+            for (uint32_t col = 0; col < config.n; ++col) {
+                uint64_t reduced = ConvertRaw(a[col], config.a_dtype, config.accum_dtype);
+                for (uint32_t row = 1; row < config.m; ++row) {
+                    reduced =
+                        ReduceRawPair(reduced, ConvertRaw(a[row * config.n + col], config.a_dtype, config.accum_dtype),
+                                      config.reduce_op, config.accum_dtype);
+                }
+                for (uint32_t row = 0; row < config.m; ++row)
+                    out[row * config.n + col] = reduced;
+            }
+        }
+        return out;
+    }
+
+    auto const_weight = [&](uint32_t, uint32_t) {
+        return IsFloatDType(config.b_dtype) ? FloatToRaw(0.5L, config.b_dtype)
+                                            : ConvertRaw(1, DType::kU8, config.b_dtype);
+    };
+    auto const_bias = [&](uint32_t index) {
+        const int signed_value = static_cast<int>(index % 7u) - 3;
+        if (IsFloatDType(config.accum_dtype))
+            return FloatToRaw(static_cast<long double>(signed_value) * 0.25L, config.accum_dtype);
+        return static_cast<uint64_t>(static_cast<int64_t>(signed_value)) &
+               WidthMask(ElementBitWidth(config.accum_dtype));
+    };
+
+    if (config.kind == CaseKind::kMatmul) {
+        for (uint32_t row = 0; row < config.m; ++row) {
+            for (uint32_t col = 0; col < config.n; ++col) {
+                uint64_t acc = c[row * config.n + col];
+                for (uint32_t inner = 0; inner < config.k; ++inner) {
+                    const uint64_t b_value =
+                        HasConstWeightVariant(config) ? const_weight(inner, col) : b[inner * config.n + col];
+                    acc = MulAdd(a[row * config.k + inner], config.a_dtype, b_value, config.b_dtype, acc,
+                                 config.accum_dtype);
+                }
+                out[row * config.n + col] = acc;
+            }
+        }
+        return out;
+    }
+
+    if (config.kind == CaseKind::kMultiOps) {
+        for (uint32_t row = 0; row < config.m; ++row) {
+            for (uint32_t col = 0; col < config.n; ++col) {
+                uint64_t d0 = c[row * config.n + col];
+                for (uint32_t inner = 0; inner < config.k; ++inner) {
+                    d0 = MulAdd(a[row * config.k + inner], config.a_dtype, b[inner * config.n + col], config.b_dtype,
+                                d0, config.accum_dtype);
+                }
+                uint64_t d1 = d0;
+                for (uint32_t inner = 0; inner < config.k; ++inner) {
+                    d1 = MulAdd(a[row * config.k + inner], config.a_dtype, b[inner * config.n + col], config.b_dtype,
+                                d1, config.accum_dtype);
+                }
+                out[row * config.n + col] = d1;
+            }
+        }
+        for (uint32_t col = 0; col < config.n; ++col) {
+            uint64_t vec = ZeroRaw(config.accum_dtype);
+            for (uint32_t inner = 0; inner < config.k; ++inner) {
+                vec = MulAdd(a[inner], config.a_dtype, b[inner * config.n + col], config.b_dtype, vec,
+                             config.accum_dtype);
+            }
+            out[col] = ReduceRawPair(out[col], vec, ReduceOp::kAdd, config.accum_dtype);
+            out[col] = ReduceRawPair(out[col], vec, ReduceOp::kAdd, config.accum_dtype);
+        }
+        return out;
+    }
+
+    if (config.kind == CaseKind::kMlp) {
+        const size_t w2_offset = static_cast<size_t>(config.d0) * config.d1;
+        const size_t w3_offset = w2_offset + static_cast<size_t>(config.d1) * config.d2;
+        const size_t b2_offset = config.d1;
+        const size_t b3_offset = b2_offset + config.d2;
+        auto run_layer = [&](const RawValues& input, DType input_type, uint32_t input_width, uint32_t output_width,
+                             size_t weight_offset, size_t bias_offset) {
+            RawValues layer(output_width, ZeroRaw(config.accum_dtype));
+            for (uint32_t col = 0; col < output_width; ++col) {
+                uint64_t acc = c[bias_offset + col];
+                for (uint32_t inner = 0; inner < input_width; ++inner) {
+                    acc = MulAdd(input[inner], input_type, b[weight_offset + inner * output_width + col],
+                                 config.b_dtype, acc, config.accum_dtype);
+                }
+                if (IsFloatDType(config.accum_dtype) && RawToFloat(acc, config.accum_dtype) < 0.0L)
+                    acc = ZeroRaw(config.accum_dtype);
+                if (!IsFloatDType(config.accum_dtype) && IsSignedDType(config.accum_dtype) &&
+                    (acc & (uint64_t{1} << (ElementBitWidth(config.accum_dtype) - 1u))) != 0)
+                    acc = 0;
+                layer[col] = acc;
+            }
+            return layer;
+        };
+        const RawValues h1 = run_layer(a, config.a_dtype, config.d0, config.d1, 0, 0);
+        const RawValues h2 = run_layer(h1, config.accum_dtype, config.d1, config.d2, w2_offset, b2_offset);
+        return run_layer(h2, config.accum_dtype, config.d2, config.d3, w3_offset, b3_offset);
+    }
+
+    for (uint32_t col = 0; col < config.n; ++col) {
+        uint64_t acc = ZeroRaw(config.accum_dtype);
+        if (config.kind == CaseKind::kVecMatmulAdd)
+            acc = HasConstBiasVariant(config) ? const_bias(col) : c[col];
+        for (uint32_t inner = 0; inner < config.k; ++inner) {
+            const uint64_t weight =
+                HasConstWeightVariant(config) ? const_weight(inner, col) : b[inner * config.n + col];
+            acc = MulAdd(a[inner], config.a_dtype, weight, config.b_dtype, acc, config.accum_dtype);
+        }
+        out[col] = acc;
+    }
+    return out;
+}
+
+VerifyResult CompareOutputRaw(const CaseConfig& config, const RawValues& expected, const RawValues& actual)
+{
+    VerifyResult result;
+    if (expected.size() != actual.size())
+        result.pass = false;
+    const size_t count = std::min(expected.size(), actual.size());
+    if (!IsFloatDType(config.accum_dtype)) {
+        const uint64_t mask = WidthMask(ElementBitWidth(config.accum_dtype));
+        for (size_t i = 0; i < count; ++i) {
+            if ((expected[i] & mask) != (actual[i] & mask)) {
+                result.pass = false;
+                result.max_abs_error = std::numeric_limits<double>::infinity();
+                result.max_rel_error = std::numeric_limits<double>::infinity();
+            }
+        }
+        return result;
+    }
+
+    const double abs_threshold = config.accum_dtype == DType::kF16 ? 2e-2 : 1e-5;
+    const double rel_threshold = config.accum_dtype == DType::kF16 ? 2e-2 : 1e-4;
+    for (size_t i = 0; i < count; ++i) {
+        const long double expected_value = RawToFloat(expected[i], config.accum_dtype);
+        const long double actual_value = RawToFloat(actual[i], config.accum_dtype);
+        if (std::isnan(expected_value) && std::isnan(actual_value))
+            continue;
+        if (expected_value == 0.0L && actual_value == 0.0L) {
+            const uint64_t sign = uint64_t{1} << (ElementBitWidth(config.accum_dtype) - 1u);
+            if (((expected[i] ^ actual[i]) & sign) != 0)
+                result.pass = false;
+            continue;
+        }
+        if (expected_value == actual_value)
+            continue;
+        if (!std::isfinite(expected_value) || !std::isfinite(actual_value)) {
+            result.pass = false;
+            result.max_abs_error = std::numeric_limits<double>::infinity();
+            result.max_rel_error = std::numeric_limits<double>::infinity();
+            continue;
+        }
+        const long double diff = std::fabs(expected_value - actual_value);
+        const long double denom = std::max(std::fabs(expected_value), 1e-18L);
+        const long double rel = diff / denom;
+        result.max_abs_error = std::max(result.max_abs_error, static_cast<double>(diff));
+        result.max_rel_error = std::max(result.max_rel_error, static_cast<double>(rel));
+        if (diff > abs_threshold && rel > rel_threshold)
+            result.pass = false;
+    }
+    return result;
+}
+
 std::vector<float> ReferenceOutput(const CaseConfig& config, const std::vector<float>& a, const std::vector<float>& b,
                                    const std::vector<float>& c)
 {
@@ -372,9 +776,8 @@ std::vector<float> ReferenceOutput(const CaseConfig& config, const std::vector<f
             for (uint32_t col = 0; col < config.n; ++col) {
                 float acc = c[row * config.n + col];
                 for (uint32_t inner = 0; inner < config.k; ++inner) {
-                    const float b_value = HasConstWeightVariant(config)
-                                              ? ConstWeightValue(inner, col, config.dtype)
-                                              : b[inner * config.n + col];
+                    const float b_value = HasConstWeightVariant(config) ? ConstWeightValue(inner, col, config.dtype)
+                                                                        : b[inner * config.n + col];
                     acc += a[row * config.k + inner] * b_value;
                 }
                 out[row * config.n + col] = OutputQuantize(acc, config.dtype);
@@ -419,9 +822,7 @@ std::vector<float> ReferenceOutput(const CaseConfig& config, const std::vector<f
         const size_t b2_offset = config.d1;
         const size_t b3_offset = b2_offset + config.d2;
 
-        auto relu_quantized = [&](float value) {
-            return std::max(OutputQuantize(value, config.dtype), 0.0f);
-        };
+        auto relu_quantized = [&](float value) { return std::max(OutputQuantize(value, config.dtype), 0.0f); };
 
         auto run_layer = [&](const std::vector<float>& input, uint32_t input_width, uint32_t output_width,
                              size_t weight_offset, size_t bias_offset) {
@@ -444,13 +845,11 @@ std::vector<float> ReferenceOutput(const CaseConfig& config, const std::vector<f
     for (uint32_t col = 0; col < config.n; ++col) {
         float acc = 0.0f;
         if (config.kind == CaseKind::kVecMatmulAdd) {
-            acc = HasConstBiasVariant(config) ? ConstBiasValue(col, config.dtype)
-                                              : c[col];
+            acc = HasConstBiasVariant(config) ? ConstBiasValue(col, config.dtype) : c[col];
         }
         for (uint32_t inner = 0; inner < config.k; ++inner) {
-            const float w_value = HasConstWeightVariant(config)
-                                      ? ConstWeightValue(inner, col, config.dtype)
-                                      : b[inner * config.n + col];
+            const float w_value =
+                HasConstWeightVariant(config) ? ConstWeightValue(inner, col, config.dtype) : b[inner * config.n + col];
             acc += a[inner] * w_value;
         }
         out[col] = OutputQuantize(acc, config.dtype);

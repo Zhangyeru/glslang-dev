@@ -12,6 +12,19 @@ import re
 import subprocess
 import sys
 
+DTYPE_RE = r"(?:f16|f32|i8|u8|i16|u16|i32|u32)"
+
+
+def typed_meta(case, dtype, **kwargs):
+    return {
+        "case": case,
+        "dtype": dtype,
+        "a_dtype": dtype,
+        "b_dtype": dtype,
+        "accum_dtype": dtype,
+        **kwargs,
+    }
+
 
 def parse_case(path):
     name = path.name
@@ -23,60 +36,84 @@ def parse_case(path):
     suffix = r"(?:_(?:scalar|ssbo_direct|ubo|constbias|constw|constx|convert|arith))?"
 
     m = re.match(
-        r"reduce_(row|column)_(add|min|max)_(f16|f32)(?:_(scalar))?_(\d+)x(\d+)$",
+        rf"reduce_(row|column)_(add|min|max)_({DTYPE_RE})(?:_(scalar))?_(\d+)x(\d+)$",
         stem,
     )
     if m:
         axis, reduce_op, dtype, scalar, rows, cols = m.groups()
-        result = {
-            "case": "reduce",
-            "dtype": dtype,
-            "axis": axis,
-            "reduce_op": reduce_op,
-            "m": rows,
-            "n": cols,
-            "k": "0",
-        }
+        result = typed_meta(
+            "reduce",
+            dtype,
+            axis=axis,
+            reduce_op=reduce_op,
+            m=rows,
+            n=cols,
+            k="0",
+        )
         if scalar:
             result["scalar"] = True
         return result
 
-    m = re.match(rf"multiops_(f16|f32){suffix}_(\d+)x(\d+)x(\d+)$", stem)
+    m = re.match(rf"multiops_({DTYPE_RE}){suffix}_(\d+)x(\d+)x(\d+)$", stem)
     if m:
         dtype, rows, cols, inner = m.groups()
-        return {"case": "multiops", "dtype": dtype, "m": rows, "n": cols, "k": inner}
+        return typed_meta("multiops", dtype, m=rows, n=cols, k=inner)
 
-    m = re.match(rf"matmul_(f16|f32){suffix}_(\d+)x(\d+)x(\d+)$", stem)
+    m = re.match(
+        rf"matmul_({DTYPE_RE})x({DTYPE_RE})_to_({DTYPE_RE}){suffix}_(\d+)x(\d+)x(\d+)$",
+        stem,
+    )
+    if m:
+        a_dtype, b_dtype, accum_dtype, rows, cols, inner = m.groups()
+        return {
+            "case": "matmul",
+            "dtype": accum_dtype,
+            "a_dtype": a_dtype,
+            "b_dtype": b_dtype,
+            "accum_dtype": accum_dtype,
+            "m": rows,
+            "n": cols,
+            "k": inner,
+        }
+
+    m = re.match(rf"matmul_({DTYPE_RE}){suffix}_(\d+)x(\d+)x(\d+)$", stem)
     if m:
         dtype, rows, cols, inner = m.groups()
-        return {"case": "matmul", "dtype": dtype, "m": rows, "n": cols, "k": inner}
+        return typed_meta("matmul", dtype, m=rows, n=cols, k=inner)
 
-    m = re.match(rf"(vecmatmuladd|vecmatmul)_(f16|f32){suffix}_(\d+)x(\d+)$", stem)
+    m = re.match(
+        rf"(vecmatmuladd|vecmatmul)_({DTYPE_RE})x({DTYPE_RE})_to_({DTYPE_RE}){suffix}_(\d+)x(\d+)$",
+        stem,
+    )
+    if m:
+        case, a_dtype, b_dtype, accum_dtype, inner, cols = m.groups()
+        return {
+            "case": case,
+            "dtype": accum_dtype,
+            "a_dtype": a_dtype,
+            "b_dtype": b_dtype,
+            "accum_dtype": accum_dtype,
+            "m": "1",
+            "n": cols,
+            "k": inner,
+        }
+
+    m = re.match(rf"(vecmatmuladd|vecmatmul)_({DTYPE_RE}){suffix}_(\d+)x(\d+)$", stem)
     if m:
         case, dtype, inner, cols = m.groups()
-        return {"case": case, "dtype": dtype, "m": "1", "n": cols, "k": inner}
+        return typed_meta(case, dtype, m="1", n=cols, k=inner)
 
-    m = re.match(r"mlp_(f16|f32)_(\d+)x(\d+)_(\d+)x(\d+)_(\d+)x(\d+)$", stem)
+    m = re.match(rf"mlp_({DTYPE_RE})_(\d+)x(\d+)_(\d+)x(\d+)_(\d+)x(\d+)$", stem)
     if m:
         dtype, d0, d1, d1_check, d2, d2_check, d3 = m.groups()
         if d1 != d1_check or d2 != d2_check:
             raise ValueError(f"inconsistent mlp dimensions in {path}")
-        return {
-            "case": "mlp",
-            "dtype": dtype,
-            "m": "1",
-            "n": d3,
-            "k": "0",
-            "d0": d0,
-            "d1": d1,
-            "d2": d2,
-            "d3": d3,
-        }
+        return typed_meta("mlp", dtype, m="1", n=d3, k="0", d0=d0, d1=d1, d2=d2, d3=d3)
 
-    m = re.match(r"load_store_(f16|f32)(?:_(?:scalar|convert|arith|flow))?(?:_(\d+)x(\d+))?$", stem)
+    m = re.match(rf"load_store_({DTYPE_RE})(?:_(?:scalar|convert|arith|flow))?(?:_(\d+)x(\d+))?$", stem)
     if m:
         dtype, rows, cols = m.groups()
-        return {"case": "load_store", "dtype": dtype, "m": rows or "8", "n": cols or "8", "k": "0"}
+        return typed_meta("load_store", dtype, m=rows or "8", n=cols or "8", k="0")
 
     raise ValueError(f"cannot parse case from {path}")
 
@@ -91,6 +128,12 @@ def run_case(runner, shader, warmup, repeat):
         meta["case"],
         "--dtype",
         meta["dtype"],
+        "--a-dtype",
+        meta["a_dtype"],
+        "--b-dtype",
+        meta["b_dtype"],
+        "--accum-dtype",
+        meta["accum_dtype"],
         "--m",
         meta["m"],
         "--n",
@@ -130,7 +173,7 @@ def shape_string(result):
     dims = result.get("layer_dims")
     if isinstance(dims, list) and len(dims) == 4:
         return f"{dims[0]}x{dims[1]}, {dims[1]}x{dims[2]}, {dims[2]}x{dims[3]}"
-    if result.get("case") == "reduce":
+    if result.get("case") in ("load_store", "reduce"):
         return f"{result.get('m', 0)}x{result.get('n', 0)}"
     return f"{result.get('m', 0)}x{result.get('n', 0)}x{result.get('k', 0)}"
 
@@ -158,14 +201,16 @@ def write_reports(results, out_dir):
     lines = [
         "# HW Vulkan Functional Results",
         "",
-        "| Shader | Case | DType | Axis | Operation | Shape | Verify | Max Abs Error | Max Rel Error |",
-        "|---|---|---|---|---|---:|---|---:|---:|",
+        "| Shader | Case | A | B | Accum | Axis | Operation | Shape | Status | Verify | Max Abs Error | Max Rel Error | Skip Reason |",
+        "|---|---|---|---|---|---|---|---:|---|---|---:|---:|---|",
     ]
     for result in results:
         lines.append(
-            f"| {pathlib.Path(result['shader']).name} | {result['case']} | {result['dtype']} | "
+            f"| {pathlib.Path(result['shader']).name} | {result['case']} | {result['a_dtype']} | "
+            f"{result['b_dtype']} | {result['accum_dtype']} | "
             f"{result.get('axis', '')} | {result.get('reduce_op', '')} | "
-            f"{shape_string(result)} | {result['verify']} | {result['max_abs_error']:.8g} | {result['max_rel_error']:.8g} |"
+            f"{shape_string(result)} | {result.get('status', 'pass')} | {result['verify']} | "
+            f"{result['max_abs_error']:.8g} | {result['max_rel_error']:.8g} | {result.get('skip_reason', '')} |"
         )
     (out_dir / "functional.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -189,7 +234,7 @@ def main():
     results = [run_case(args.runner, shader, args.warmup, args.repeat) for shader in shaders]
     write_reports(results, pathlib.Path(args.out))
 
-    failed = [r for r in results if r.get("verify") != "pass"]
+    failed = [r for r in results if r.get("status", "pass") != "skip" and r.get("verify") != "pass"]
     if failed:
         print(f"{len(failed)} functional cases failed", file=sys.stderr)
         return 1

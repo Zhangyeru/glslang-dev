@@ -1,0 +1,6 @@
+spv.coopmatHW_matmulNarrowError.comp
+ERROR: 0:14: 'coopMatMulAddHW' : accumulator component type must not be narrower than A or B 
+ERROR: 1 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

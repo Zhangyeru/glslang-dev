@@ -1,0 +1,6 @@
+spv.coopmatHW_matmulDomainError.comp
+ERROR: 0:14: 'coopMatMulAddHW' : A, B, and accumulator component types must all be floating-point or all be integer 
+ERROR: 1 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

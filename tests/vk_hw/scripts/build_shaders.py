@@ -13,7 +13,7 @@ import subprocess
 import sys
 
 
-HW_RE = re.compile(r"HW|CooperativeMatrixHW|CooperativeVectorHW|OpTypeCooperative|OpCooperative")
+HW_RE = re.compile(r"HW|CooperativeMatrixHW|CooperativeVectorHW|OpTypeCooperative|OpCooperative|\bRelreg\b")
 
 
 def run(cmd):
