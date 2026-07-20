@@ -51,6 +51,13 @@ class CaseParsingTest(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     parse_case(pathlib.Path(f"matmul_f16xf32_to_{dtype}_3x5x7.lowered.spv"))
 
+    def test_scalar_broadcast_identity_case_keeps_non_aligned_shape(self):
+        case = parse_case(
+            pathlib.Path("load_store_f32_scalar_5x7.lowered.spv"))
+        self.assertEqual(case["case"], "load_store")
+        self.assertEqual(case["dtype"], "f32")
+        self.assertEqual((case["m"], case["n"]), ("5", "7"))
+
     def test_structured_skip_is_reported_without_numeric_performance(self):
         functional = {
             "shader": "typed.lowered.spv",

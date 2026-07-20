@@ -1,0 +1,13 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+// TensorMap currently has no equivalent standard-SPIR-V lowering.  This
+// shader verifies that cooperative-only mode preserves it and extension-free
+// mode rejects the module instead of silently leaving HW residue.
+layout(set = 0, binding = 0) uniform tensorMap1D tensorMap;
+
+void main()
+{
+}

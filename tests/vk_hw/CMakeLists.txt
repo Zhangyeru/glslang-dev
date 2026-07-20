@@ -97,6 +97,7 @@ if(Python3_Interpreter_FOUND AND TARGET glslang-standalone AND TARGET spirv-opt
         --spirv-dis $<TARGET_FILE:spirv-dis>
         --shader-dir ${CMAKE_CURRENT_SOURCE_DIR}/shaders/hw
         --baseline-dir ${CMAKE_CURRENT_SOURCE_DIR}/shaders/baseline
+        --unsupported-dir ${CMAKE_CURRENT_SOURCE_DIR}/shaders/unsupported
         --out-dir ${CMAKE_BINARY_DIR}/tests/vk_hw/spv
         --glsl-out-dir ${CMAKE_BINARY_DIR}/tests/vk_hw/glsl
         --golden-dir ${CMAKE_CURRENT_SOURCE_DIR}/glsl

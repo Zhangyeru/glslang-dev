@@ -1,0 +1,34 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA { float data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float data[]; } B;
+layout(set = 0, binding = 2) buffer InputC { float data[]; } C;
+layout(set = 0, binding = 3) buffer OutputD { float data[]; } D;
+
+void main()
+{
+    const ivec2 shape = ivec2(5, 7);
+    const ivec2 zeroOffset = ivec2(0);
+    const coopmatHW<float, 5, 7> matrixZero =
+        coopmatHW<float, 5, 7>(0.0);
+    const coopmatHW<float, 5, 7> matrixOne =
+        coopmatHW<float, 5, 7>(1.0);
+    const coopvecHW<float, 7> vectorZero = coopvecHW<float, 7>(0.0);
+    const coopvecHW<float, 7> vectorOne = coopvecHW<float, 7>(1.0);
+
+    coopmatHW<float, 5, 7> matrixValue;
+    coopvecHW<float, 7> vectorValue;
+    coopMatLoadHW(matrixValue, A.data, shape, zeroOffset,
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(vectorValue, A.data, 0u);
+
+    matrixValue = (matrixValue + matrixZero) * matrixOne;
+    vectorValue = (vectorValue + vectorZero) * vectorOne;
+
+    coopMatStoreHW(matrixValue, D.data, shape, zeroOffset,
+                   gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecStoreHW(vectorValue, D.data, 0u);
+}

@@ -13,7 +13,74 @@ import subprocess
 import sys
 
 
-HW_RE = re.compile(r"HW|CooperativeMatrixHW|CooperativeVectorHW|OpTypeCooperative|OpCooperative|\bRelreg\b")
+SPIRV_INSTRUCTION_RE = re.compile(
+    r"^\s*(?:%[^\s=]+\s*=\s*)?"
+    r"(?P<opcode>Op[A-Za-z0-9_]+)(?:\s+(?P<operands>.*))?$"
+)
+HW_CAPABILITY_RE = re.compile(r"[A-Za-z0-9_]*(?:HW|AZD)")
+HW_EXTENSION_RE = re.compile(r"SPV_(?:HW|AZD)_[A-Za-z0-9_]+")
+HW_SOURCE_EXTENSION_RE = re.compile(r"GL_(?:HW|AZD)_[A-Za-z0-9_]+")
+QUOTED_OPERAND_RE = re.compile(r'"([^"\\]*(?:\\.[^"\\]*)*)"')
+
+
+def _strip_spirv_comment(line):
+    """Remove a SPIR-V assembly comment without treating ';' in a string as one."""
+    in_string = False
+    escaped = False
+    for index, char in enumerate(line):
+        if escaped:
+            escaped = False
+        elif in_string and char == "\\":
+            escaped = True
+        elif char == '"':
+            in_string = not in_string
+        elif char == ";" and not in_string:
+            return line[:index]
+    return line
+
+
+def _quoted_operand(operands):
+    match = QUOTED_OPERAND_RE.fullmatch(operands.strip())
+    return match.group(1) if match else None
+
+
+def has_hw_residue(asm_text):
+    """Return whether SPIR-V assembly contains an actual HW/AZD construct.
+
+    Parse only instruction/opcode positions so debug names, strings, comments,
+    and standard cooperative KHR/NV instructions cannot be mistaken for HW
+    residue.
+    """
+    for raw_line in asm_text.splitlines():
+        line = _strip_spirv_comment(raw_line).rstrip()
+        instruction = SPIRV_INSTRUCTION_RE.fullmatch(line)
+        if not instruction:
+            continue
+
+        opcode = instruction.group("opcode")
+        operands = instruction.group("operands") or ""
+        if opcode.endswith("HW"):
+            return True
+
+        if opcode == "OpCapability":
+            capability = operands.split(maxsplit=1)[0] if operands else ""
+            if HW_CAPABILITY_RE.fullmatch(capability):
+                return True
+        elif opcode == "OpExtension":
+            extension = _quoted_operand(operands)
+            if extension and HW_EXTENSION_RE.fullmatch(extension):
+                return True
+        elif opcode == "OpSourceExtension":
+            extension = _quoted_operand(operands)
+            if extension and HW_SOURCE_EXTENSION_RE.fullmatch(extension):
+                return True
+        elif opcode == "OpSelectionMerge":
+            merge_operands = operands.split()
+            if (len(merge_operands) >= 2 and
+                    "Relreg" in merge_operands[1].split("|")):
+                return True
+
+    return False
 
 
 def run(cmd):
@@ -69,8 +136,51 @@ def compile_hw_shader(glslang, spirv_opt, spirv_val, spirv_dis, shader, out_dir,
     run([spirv_dis, str(lowered_spv), "-o", str(lowered_asm)])
 
     asm_text = lowered_asm.read_text(encoding="utf-8")
-    if HW_RE.search(asm_text):
+    if has_hw_residue(asm_text):
         raise RuntimeError(f"FAIL: HW op remains after lowering: {lowered_asm}")
+
+
+def compile_unsupported_shader(glslang, spirv_opt, spirv_val, spirv_dis,
+                               shader, out_dir, target_env):
+    """Check the contract between partial and extension-free lowering.
+
+    Unsupported shaders intentionally contain a non-cooperative HW feature.
+    Cooperative-only lowering must preserve that feature in valid SPIR-V,
+    while extension-free lowering must fail instead of silently emitting a
+    module with HW residue.
+    """
+    stem = shader.stem
+    hw_spv = out_dir / f"{stem}.unsupported.hw.spv"
+    partial_spv = out_dir / f"{stem}.unsupported.partial.hw.spv"
+    partial_asm = out_dir / f"{stem}.unsupported.partial.spvasm"
+    rejected_spv = out_dir / f"{stem}.unsupported.rejected.hw.spv"
+
+    run([glslang, "-V", str(shader), "-o", str(hw_spv)])
+    run([spirv_opt, "--hw-lower-to-standard", str(hw_spv),
+         "-o", str(partial_spv)])
+    run([*validator_cmd(spirv_val, target_env, shader), str(partial_spv)])
+    run([spirv_dis, str(partial_spv), "-o", str(partial_asm)])
+
+    asm_text = partial_asm.read_text(encoding="utf-8")
+    if not has_hw_residue(asm_text):
+        raise RuntimeError(
+            "FAIL: cooperative-only lowering unexpectedly removed every HW "
+            f"feature from unsupported input: {partial_asm}")
+
+    cmd = [spirv_opt, "--hw-lower-to-standard-extension-free", str(hw_spv),
+           "-o", str(rejected_spv)]
+    print("+", " ".join(str(c) for c in cmd), "(expect failure)")
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode == 0:
+        raise RuntimeError(
+            "FAIL: extension-free lowering accepted unsupported HW input: "
+            f"{shader}")
+    diagnostic = "\n".join((result.stdout, result.stderr))
+    if "extension-free HW lowering" not in diagnostic:
+        raise RuntimeError(
+            "FAIL: extension-free lowering failed for an unexpected reason: "
+            f"{shader}\n{diagnostic.strip()}")
+    rejected_spv.unlink(missing_ok=True)
 
 
 def compile_baseline_shader(glslang, spirv_val, spirv_dis, shader, out_dir, target_env):
@@ -241,6 +351,10 @@ def main():
                              "is skipped when not provided or not found.")
     parser.add_argument("--shader-dir", required=True)
     parser.add_argument("--baseline-dir", required=True)
+    parser.add_argument(
+        "--unsupported-dir",
+        help="Directory of HW shaders that cooperative-only lowering must "
+             "preserve and extension-free lowering must reject.")
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--glsl-out-dir",
                         help="Directory for decompiled GLSL output.  "
@@ -266,6 +380,8 @@ def main():
 
     shader_dir = pathlib.Path(args.shader_dir)
     baseline_dir = pathlib.Path(args.baseline_dir)
+    unsupported_dir = pathlib.Path(args.unsupported_dir) \
+        if args.unsupported_dir else None
     out_dir = pathlib.Path(args.out_dir)
     glsl_out_dir = pathlib.Path(args.glsl_out_dir) if args.glsl_out_dir \
                    else out_dir.parent / "glsl"
@@ -277,17 +393,27 @@ def main():
 
     hw_shaders = sorted(shader_dir.glob("*.comp"))
     baseline_shaders = sorted(baseline_dir.glob("*.comp"))
+    unsupported_shaders = (sorted(unsupported_dir.glob("*.comp"))
+                           if unsupported_dir else [])
     if not hw_shaders:
         raise RuntimeError(f"no HW shaders found in {shader_dir}")
     if not baseline_shaders:
         raise RuntimeError(f"no baseline shaders found in {baseline_dir}")
+    if unsupported_dir is not None and not unsupported_shaders:
+        raise RuntimeError(f"no unsupported HW shaders found in {unsupported_dir}")
 
     for shader in hw_shaders:
         compile_hw_shader(glslang, spirv_opt, spirv_val, spirv_dis, shader, out_dir, args.target_env)
     for shader in baseline_shaders:
         compile_baseline_shader(glslang, spirv_val, spirv_dis, shader, out_dir, args.target_env)
+    for shader in unsupported_shaders:
+        compile_unsupported_shader(
+            glslang, spirv_opt, spirv_val, spirv_dis, shader, out_dir,
+            args.target_env)
 
-    print(f"built {len(hw_shaders)} HW shaders and {len(baseline_shaders)} baselines into {out_dir}")
+    print(f"built {len(hw_shaders)} HW shaders and {len(baseline_shaders)} "
+          f"baselines; checked {len(unsupported_shaders)} unsupported HW "
+          f"shader(s) in {out_dir}")
 
     if spirv_cross:
         ok, fail, skipped = decompile_spv_to_glsl(spirv_cross, out_dir, glsl_out_dir)
