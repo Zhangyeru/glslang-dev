@@ -4,12 +4,12 @@
 
 当前 `hw-lower-to-standard` 已能完整处理本文定义的 cooperative matrix/vector 子集，将其转换为标准 SPIR-V array、vec4 或 scalar 代码；但还不能等价 lower 整个 `SPV_HW_neural_shader`。
 
-本文档描述 2026-07-20 的工作树状态，基线提交为：
+本文档描述 2026-07-21 的工作树状态，基线提交为：
 
-- glslang：`eda56509`
-- SPIRV-Tools：`787aec4d`
+- glslang：`98791cac`
+- SPIRV-Tools：`121650c4`
 
-本文所述 P0 修改尚未提交；实现没有修改 `source/val`。
+本文所述 P0 已提交；本轮浮点重结合、direct 路径和 golden 更新尚未提交。实现没有修改 `source/val`。
 
 核心实现位于 [`hw_lower_to_standard_pass.cpp`](External/spirv-tools/source/opt/hw_lower_to_standard_pass.cpp)。
 
@@ -147,13 +147,19 @@ Input[K] * Matrix[K×N] + Bias[N] -> Result[N]
 - 最终使用 `OpIMul + OpIAdd`
 - 没有饱和运算
 
-浮点使用 `GLSL.std.450 Fma`。默认保持 K 方向累加顺序；会改变归约顺序的 direct/fused 优化只有在原指令带 `AllowReassoc` 或 `Fast` 时才启用。完整 `FPFastMathMode` 会传播到生成的 Fma、FConvert、FAdd、Min/Max 等结果。
+浮点 generic 路径以及 matrix/non-fused-vector direct 路径使用 `GLSL.std.450 Fma`。无 bias 的 fused vector-store 路径与 baseline 保持相同的四路 vec4 累加结构：每个 K tile 生成 4 个 Fma，循环结束后分别做 horizontal reduce；常量 bias 的 fused vector-matmul-add 路径则对每个 4-column tile 生成 4 个 `OpDot`，再用一次 vec4 `OpFAdd` 累加。没有显式浮点约束时，lower pass 的默认 contract 允许沿 K 方向重结合，因此满足 direct 条件的 matrix/vector matmul 会优先使用 direct 或 fused-direct 路径。显式 `FPFastMathMode` 优先于该默认值：只有包含 `AllowReassoc` 或 `Fast` 才允许 direct；匹配 component type 的 `FPFastMathDefault` 也必须包含 `AllowReassoc`。如果 entry point 已声明其他 component type 的 `FPFastMathDefault`，未匹配的当前 type 按无 fast-math flags 处理。`NoContraction` 无法由当前重结合 lowering 等价表达，因此明确拒绝。
+
+direct/fused-direct 只支持 operand 和 result component type 完全相同的 packed f16 或 f32；mixed precision、整数、force-scalar 和非 4 对齐 shape 走 generic 路径。traced matrix load 还必须是 RowMajor、pointer 可捕获、shape/offset module-visible 且 MemoryAccess 可移动；vector input/bias load 要求 offset 为 0。fused vector-store 覆盖 output offset 为 0 的 `OpCooperativeVectorMatrixMulHW`，以及最多 4 个 vec4 pack、没有类型转换的 `OpConstantComposite` bias 的 `OpCooperativeVectorMatrixMulAddHW`。streaming fusion 还要求 input/matrix/output root 已知且互不冲突，并且没有 `Aliased`/`AliasedPointer`；类型变化、潜在 alias、不安全或不封闭的 use-chain 都会回退。
+
+matrix/non-fused-vector direct 路径按 4 个 K 元素分组累加并执行 horizontal reduce；matrix mul-add 再用独立 `OpFAdd` 加 C。无 bias 的 fused vector-store 使用四个 vec4 accumulator，并在写回前分别 horizontal reduce；常量 bias 的 fused vector-matmul-add 使用单个 vec4 accumulator 累加 4 个 `OpDot` 的结果，最后加入 bias 并直接写回。结果可能与严格逐 K、以 C/bias 为初始 accumulator 的 Fma 链产生不同的 contraction、舍入、NaN/Inf 或正负零行为。原指令已有的完整 `FPFastMathMode` 仍会传播到生成的 Fma、`OpDot`、FConvert、FAdd、Min/Max 等结果。
 
 相关实现：
 
 - [`LegalizeModule`](External/spirv-tools/source/opt/hw_lower_to_standard_pass.cpp)：类型、shape 和 MAC 合法性
 - [`BuildMatmulAccumulate`](External/spirv-tools/source/opt/hw_lower_to_standard_pass.cpp)：mixed-precision widening 和乘加
-- [`MatmulAllowsReassociation`](External/spirv-tools/source/opt/hw_lower_to_standard_pass.cpp)：重关联门控
+- [`TryLowerDirectMatrixMulAddPackedVec4`](External/spirv-tools/source/opt/hw_lower_to_standard_pass.cpp)：matrix direct 路径
+- [`TryLowerDirectVectorMatrixMulPackedVec4`](External/spirv-tools/source/opt/hw_lower_to_standard_pass.cpp)：vector direct 路径
+- [`TryLowerFusedVectorMatmulStore`](External/spirv-tools/source/opt/hw_lower_to_standard_pass.cpp)：vector fused-store 与常量 bias 路径
 
 ## 7. Core conversion、算术和 ExtInst
 
@@ -450,6 +456,7 @@ unroll-macs=N
 - accumulator narrowing
 - 与 result 类型不同的 C/Bias
 - integer saturation
+- `NoContraction` cooperative matrix/vector matmul
 - mixed-width cooperative `OpUDiv`
 - packed integer vec4
 - `vec4[] + scalar tail` 混合内部表示
@@ -466,7 +473,9 @@ unroll-macs=N
 
 本次审计现场运行结果：
 
-- SPIRV-Tools `HwLowerToStandardTest.*`：179/179 通过
+- `cmake --build build -j8`：通过
+- SPIRV-Tools CTest：32/32 通过
+- SPIRV-Tools `HwLowerToStandardTest.*`：189/189 通过
 - Optimizer API/CLI option 测试：2/2 通过
 - glslang lowering 集成测试：4/4 通过
 - `vk_hw` Python 单测：33/33 通过
@@ -478,9 +487,16 @@ unroll-macs=N
   - 扫描所有 `*HW` opcode、HW/AZD capability/extension 和 `Relreg` residue
   - 验证 cooperative-only 保留 TensorMap，而 extension-free 明确失败
   - 执行 lowered GLSL golden 对比
-- Vulkan 定向功能测试：`load_store_f32_scalar_5x7.lowered.spv` 通过，max abs/rel error 均为 0
+- 顶层 CTest：8/8 通过
+- 完整 `vk_hw_function`：64/64 通过，无 skip
+- 完整 `vk_hw_perf`：63/63 完成且 lowered/baseline verify 均通过，无 skip
+  - `vecmatmul_f32_64x32`：ratio 0.9891
+  - `vecmatmuladd_f32_constbias_32x16`：ratio 1.0539
+  - `load_store_f32_scalar_5x7`：ratio 5.6577；scalar aggregate 的 4 个动态循环和 private-array 动态索引被后端展开为大量分支/选择，baseline 则完全展开并向量化
+  - `matmul_f16_32x32x32`：ratio 3.7062；三层动态循环阻止后端展开和跨 output tile 复用 A/B，不是寄存器 spill
+  - `vecmatmuladd_f16_convert_32x16`：ratio 11.6138；f16/f32 往返转换物化并复制大型 aggregate，产生 4 KiB scratch 和大量 scratch load/store
 
-本次没有运行完整 `vk_hw_function` 集合和 `vk_hw_perf`；只运行了新增 5×7 定向 GPU 用例。两个仓库工作树均保留本次未提交修改。
+两个仓库工作树均保留本次未提交修改。
 
 因此最准确的能力描述是：
 
