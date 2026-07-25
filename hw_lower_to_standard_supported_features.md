@@ -4,7 +4,7 @@
 
 当前 `hw-lower-to-standard` 已能完整处理本文定义的 cooperative matrix/vector 子集，将其转换为标准 SPIR-V array、vec4 或 scalar 代码；但还不能等价 lower 整个 `SPV_HW_neural_shader`。
 
-本文档描述 2026-07-21 的工作树状态，基线提交为：
+本文档描述 2026-07-24 的工作树状态，基线提交为：
 
 - glslang：`98791cac`
 - SPIRV-Tools：`121650c4`
@@ -160,6 +160,39 @@ matrix/non-fused-vector direct 路径按 4 个 K 元素分组累加并执行 hor
 - [`TryLowerDirectMatrixMulAddPackedVec4`](External/spirv-tools/source/opt/hw_lower_to_standard_pass.cpp)：matrix direct 路径
 - [`TryLowerDirectVectorMatrixMulPackedVec4`](External/spirv-tools/source/opt/hw_lower_to_standard_pass.cpp)：vector direct 路径
 - [`TryLowerFusedVectorMatmulStore`](External/spirv-tools/source/opt/hw_lower_to_standard_pass.cpp)：vector fused-store 与常量 bias 路径
+
+### 6.4 两层 vector-matmul fusion
+
+packed 模式会在主 lowering 前运行内部 pass `HwFuseTwoLayerVectorMatmulPass`，识别同一 basic block 内的：
+
+```text
+hidden = input[1×K] * matrix0[K×N] (+ bias0)
+hidden = max(hidden, 0)                 // 可选
+output = hidden[1×N] * matrix1[N×P] (+ bias1)
+```
+
+启用条件：
+
+- 全部 cooperative component 都是 f16
+- `N > 16`，`1 <= P <= 16`
+- K/N/P 都是普通常量，spec-constant shape 不匹配
+- 两层及可选零 ReLU 位于同一 basic block
+- 中间值只有融合链使用；允许通过封闭的 Function variable store/load 传递
+- `K*N + N*P <= max_unrolled_matmul_macs`
+- force-scalar 模式完全跳过该 pass
+
+N 按 16 切分，但实际计算以相邻两个 hidden column 为一个 f16vec2：先用 `splat(input[k]) * matrix0[k][h:h+2]` 生成 hidden pair，执行可选 vec2 ReLU，然后立即用 matrix1 的对应两行更新最多 8 个 f16vec2 output accumulator。K、N 或 P 的奇数尾部用零补 lane，不生成越界 extract/load。
+
+对每个可封闭追溯到常量 shape/offset 的 RowMajor `OpCooperativeMatrixLoadHW` operand，fusion 会尝试从原 array pointer 流式加载元素；两层 mul-add 的 bias 若可封闭追溯到常量 offset 的 `OpCooperativeVectorLoadHW`，也会直接按输出 lane 加载，不再先物化完整 cooperative vector 和 Function 临时数组。四个 matrix/bias 候选分别判定，一个 operand 回退不会关闭其他 operand 的 direct 路径。
+
+这些 direct load 都会传播可移动的 `Aligned`、`Nontemporal`、`NonPrivatePointer`、`AliasScopeINTEL` 和 `NoAliasINTEL`；`Aligned` 按实际 `ArrayStride` 对应的 byte offset 收紧。direct source 不接受 Function/Private storage，索引必须能由 32 位 `OpAccessChain` 表达。内存时序检查采用保守的纯操作允许列表；遇到 Volatile、MakePointerAvailable/Visible、HW async/split barrier、named/control/memory barrier、atomic、call、cooperative/image/module write、共享 source 或其他未知副作用时，仅该 operand 保留原 cooperative load，由普通 lowering 处理。
+
+该内部 fusion 采用本项目允许重结合的两层 MLP contract：即使原结果带 `NoContraction` 或未声明 `AllowReassoc` 也会融合，并将原有 `FPFastMathMode` 分别传播到生成的 stage1、ReLU 和 stage2 运算；replacement composite 上不保留浮点算术 decoration。这是上一节普通 direct/generic matmul 规则的显式例外。
+
+实现与测试：
+
+- [`hw_fuse_two_layer_vector_matmul_pass.cpp`](External/spirv-tools/source/opt/hw_fuse_two_layer_vector_matmul_pass.cpp)
+- [`hw_fuse_two_layer_vector_matmul_test.cpp`](External/spirv-tools/test/opt/hw_fuse_two_layer_vector_matmul_test.cpp)
 
 ## 7. Core conversion、算术和 ExtInst
 
@@ -475,26 +508,33 @@ unroll-macs=N
 
 - `cmake --build build -j8`：通过
 - SPIRV-Tools CTest：32/32 通过
+- SPIRV-Tools `HwFuseTwoLayerVectorMatmulTest.*`：34/34 通过
 - SPIRV-Tools `HwLowerToStandardTest.*`：189/189 通过
 - Optimizer API/CLI option 测试：2/2 通过
 - glslang lowering 集成测试：4/4 通过
 - `vk_hw` Python 单测：33/33 通过
 - `vk_hw_build_shaders_script_tests`、`vk_hw_case_parsing_tests`、`vk_hw_reference_tests`：3/3 通过
 - `vk_hw_build_shaders`：通过
-  - 覆盖 64 个 HW shader、63 个 baseline 和 1 个 unsupported HW shader
+  - 覆盖 67 个 HW shader、66 个 baseline 和 1 个 unsupported HW shader
   - 执行 extension-free lowering
   - 执行 `spirv-val` 校验
   - 扫描所有 `*HW` opcode、HW/AZD capability/extension 和 `Relreg` residue
   - 验证 cooperative-only 保留 TensorMap，而 extension-free 明确失败
-  - 执行 lowered GLSL golden 对比
+  - 执行 lowered GLSL golden 对比：133/133 匹配
 - 顶层 CTest：8/8 通过
-- 完整 `vk_hw_function`：64/64 通过，无 skip
-- 完整 `vk_hw_perf`：63/63 完成且 lowered/baseline verify 均通过，无 skip
-  - `vecmatmul_f32_64x32`：ratio 0.9891
-  - `vecmatmuladd_f32_constbias_32x16`：ratio 1.0539
-  - `load_store_f32_scalar_5x7`：ratio 5.6577；scalar aggregate 的 4 个动态循环和 private-array 动态索引被后端展开为大量分支/选择，baseline 则完全展开并向量化
-  - `matmul_f16_32x32x32`：ratio 3.7062；三层动态循环阻止后端展开和跨 output tile 复用 A/B，不是寄存器 spill
-  - `vecmatmuladd_f16_convert_32x16`：ratio 11.6138；f16/f32 往返转换物化并复制大型 aggregate，产生 4 KiB scratch 和大量 scratch load/store
+- 完整 `vk_hw_function`：67/67 通过，无 skip
+- 4 个 MLP 功能用例：verify 通过，最大 `max_abs_error=0.001953`、最大 `max_rel_error=0.0018`
+- 独占 GPU、`warmup=100`、`repeat=1000` 的完整 `vk_hw_perf`：66/66 完成且 lowered/baseline verify 均通过，无 skip
+  - `mlp_f16_16x64_64x16_16x8`：ratio 1.0290；lowered 21330.92 ns，baseline 20729.44 ns；RADV 为 36 VGPR、0 VGPR spill、0 scratch、7 subgroups/SIMD
+  - `mlp_f16_4x48_48x16_16x1`：ratio 1.0435；lowered 7533.88 ns，baseline 7219.68 ns
+  - `mlp_f16_8x36_36x8_8x4`：ratio 0.7606；lowered 6698.92 ns，baseline 8807.00 ns
+  - `mlp_f16_8x48_48x8_8x4`：ratio 0.7160；lowered 7673.16 ns，baseline 10716.16 ns
+  - `vecmatmul_f32_64x32`：ratio 0.9880
+  - `vecmatmuladd_f32_constbias_32x16`：ratio 1.0471
+  - 其余 60 个用例中有 57 个 ratio 不超过 2；以下 3 个超限项均已单独分析
+  - `vecmatmuladd_f16_convert_32x16`：ratio 11.9086；f16/f32 往返转换物化并复制大型 aggregate，产生 4 KiB scratch 和大量 scratch load/store
+  - `load_store_f32_scalar_5x7`：ratio 5.3671；scalar aggregate 的 4 个动态循环和 private-array 动态索引被后端展开为大量分支/选择，baseline 则完全展开并向量化
+  - `matmul_f16_32x32x32`：ratio 3.6905；三层动态循环阻止后端展开和跨 output tile 复用 A/B，不是寄存器 spill
 
 两个仓库工作树均保留本次未提交修改。
 

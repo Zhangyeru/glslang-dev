@@ -1,0 +1,67 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputX {
+    float16_t x[36];
+} InX;
+
+layout(set = 0, binding = 1) buffer PackedWeights {
+    float16_t w1[8 * 36];
+    float16_t w2[36 * 8];
+    float16_t w3[8 * 4];
+} Weights;
+
+layout(set = 0, binding = 2) buffer PackedBias {
+    float16_t b1[36];
+    float16_t b2[8];
+    float16_t b3[4];
+} Biases;
+
+layout(set = 0, binding = 3) buffer OutputY {
+    float16_t y[4];
+} OutY;
+
+void main()
+{
+    const ivec2 zeroOffset = ivec2(0, 0);
+    const ivec2 shapeW1 = ivec2(8, 36);
+    const ivec2 shapeW2 = ivec2(36, 8);
+    const ivec2 shapeW3 = ivec2(8, 4);
+
+    coopvecHW<float16_t, 8> x;
+    coopmatHW<float16_t, 8, 36> w1;
+    coopvecHW<float16_t, 36> bias1, h1;
+
+    coopmatHW<float16_t, 36, 8> w2;
+    coopvecHW<float16_t, 8> bias2, h2;
+
+    coopmatHW<float16_t, 8, 4> w3;
+    coopvecHW<float16_t, 4> bias3, y;
+
+    const coopvecHW<float16_t, 36> zero36 = coopvecHW<float16_t, 36>(float16_t(0));
+    const coopvecHW<float16_t, 8> zero8 = coopvecHW<float16_t, 8>(float16_t(0));
+    const coopvecHW<float16_t, 4> zero4 = coopvecHW<float16_t, 4>(float16_t(0));
+
+    /* Layer 1: x(8) * w1(8x36) + b1(36) -> h1(36), ReLU */
+    coopVecLoadHW(x, InX.x, 0u);
+    coopMatLoadHW(w1, Weights.w1, shapeW1, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias1, Biases.b1, 0u);
+    coopVecMatMulAddHW(h1, x, w1, bias1);
+    h1 = max(h1, zero36);
+
+    /* Layer 2: h1(36) * w2(36x8) + b2(8) -> h2(8), ReLU */
+    coopMatLoadHW(w2, Weights.w2, shapeW2, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias2, Biases.b2, 0u);
+    coopVecMatMulAddHW(h2, h1, w2, bias2);
+    h2 = max(h2, zero8);
+
+    /* Layer 3: h2(8) * w3(8x4) + b3(4) -> y(4), ReLU */
+    coopMatLoadHW(w3, Weights.w3, shapeW3, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias3, Biases.b3, 0u);
+    coopVecMatMulAddHW(y, h2, w3, bias3);
+    y = max(y, zero4);
+    coopVecStoreHW(y, OutY.y, 0u);
+}
