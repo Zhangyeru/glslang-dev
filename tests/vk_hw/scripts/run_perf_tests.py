@@ -44,9 +44,8 @@ def run_shader(runner, shader, meta, warmup, repeat):
         "--verify",
         "1",
     ]
-    for dim in ("d0", "d1", "d2", "d3"):
-        if dim in meta:
-            cmd.extend([f"--{dim}", meta[dim]])
+    if "layer_dims" in meta:
+        cmd.extend(["--layer-dims", ",".join(str(dim) for dim in meta["layer_dims"])])
     if meta["case"] == "reduce":
         cmd.extend(["--axis", meta["axis"], "--reduce-op", meta["reduce_op"]])
     proc = subprocess.run(cmd, check=True, text=True, capture_output=True)

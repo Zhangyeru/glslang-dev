@@ -103,12 +103,18 @@ def parse_case(path):
         case, dtype, inner, cols = m.groups()
         return typed_meta(case, dtype, m="1", n=cols, k=inner)
 
-    m = re.match(rf"mlp_({DTYPE_RE})_(\d+)x(\d+)_(\d+)x(\d+)_(\d+)x(\d+)$", stem)
+    m = re.match(rf"mlp_({DTYPE_RE})_(\d+x\d+(?:_\d+x\d+)*)$", stem)
     if m:
-        dtype, d0, d1, d1_check, d2, d2_check, d3 = m.groups()
-        if d1 != d1_check or d2 != d2_check:
-            raise ValueError(f"inconsistent mlp dimensions in {path}")
-        return typed_meta("mlp", dtype, m="1", n=d3, k="0", d0=d0, d1=d1, d2=d2, d3=d3)
+        dtype, encoded_layers = m.groups()
+        layers = [layer.split("x") for layer in encoded_layers.split("_")]
+        layer_dims = [layers[0][0]]
+        for input_dim, output_dim in layers:
+            if layer_dims[-1] != input_dim:
+                raise ValueError(f"inconsistent mlp dimensions in {path}")
+            layer_dims.append(output_dim)
+        if any(int(dim) == 0 for dim in layer_dims):
+            raise ValueError(f"mlp dimensions must be non-zero in {path}")
+        return typed_meta("mlp", dtype, m="1", n=layer_dims[-1], k="0", layer_dims=layer_dims)
 
     m = re.match(rf"load_store_({DTYPE_RE})(?:_(?:scalar|convert|arith|flow))?(?:_(\d+)x(\d+))?$", stem)
     if m:
@@ -147,9 +153,8 @@ def run_case(runner, shader, warmup, repeat):
         "--verify",
         "1",
     ]
-    for dim in ("d0", "d1", "d2", "d3"):
-        if dim in meta:
-            cmd.extend([f"--{dim}", meta[dim]])
+    if "layer_dims" in meta:
+        cmd.extend(["--layer-dims", ",".join(str(dim) for dim in meta["layer_dims"])])
     if meta["case"] == "reduce":
         cmd.extend(["--axis", meta["axis"], "--reduce-op", meta["reduce_op"]])
     proc = subprocess.run(cmd, check=True, text=True, capture_output=True)
@@ -158,7 +163,8 @@ def run_case(runner, shader, warmup, repeat):
 
 def case_work(meta):
     if meta["case"] == "mlp":
-        return int(meta["d0"]) * int(meta["d1"]) + int(meta["d1"]) * int(meta["d2"]) + int(meta["d2"]) * int(meta["d3"])
+        dims = [int(dim) for dim in meta["layer_dims"]]
+        return sum(input_dim * output_dim for input_dim, output_dim in zip(dims, dims[1:]))
     m = int(meta["m"])
     n = int(meta["n"])
     k = int(meta["k"])
@@ -171,8 +177,8 @@ def case_work(meta):
 
 def shape_string(result):
     dims = result.get("layer_dims")
-    if isinstance(dims, list) and len(dims) == 4:
-        return f"{dims[0]}x{dims[1]}, {dims[1]}x{dims[2]}, {dims[2]}x{dims[3]}"
+    if isinstance(dims, list) and len(dims) >= 2:
+        return ", ".join(f"{input_dim}x{output_dim}" for input_dim, output_dim in zip(dims, dims[1:]))
     if result.get("case") in ("load_store", "reduce"):
         return f"{result.get('m', 0)}x{result.get('n', 0)}"
     return f"{result.get('m', 0)}x{result.get('n', 0)}x{result.get('k', 0)}"

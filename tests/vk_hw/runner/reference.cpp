@@ -233,10 +233,7 @@ size_t ElementSize(DType dtype) { return ElementBitWidth(dtype) / 8u; }
 
 bool IsFloatDType(DType dtype) { return dtype == DType::kF16 || dtype == DType::kF32; }
 
-bool IsSignedDType(DType dtype)
-{
-    return dtype == DType::kI8 || dtype == DType::kI16 || dtype == DType::kI32;
-}
+bool IsSignedDType(DType dtype) { return dtype == DType::kI8 || dtype == DType::kI16 || dtype == DType::kI32; }
 
 uint16_t FloatToHalfBits(float value)
 {
@@ -384,8 +381,10 @@ uint64_t FlopCount(const CaseConfig& config)
         return 2ull * (2ull * config.m * config.n * config.k + 2ull * config.n * config.k);
     }
     if (config.kind == CaseKind::kMlp) {
-        return 2ull * (static_cast<uint64_t>(config.d0) * config.d1 + static_cast<uint64_t>(config.d1) * config.d2 +
-                       static_cast<uint64_t>(config.d2) * config.d3);
+        uint64_t work = 0;
+        for (size_t i = 1; i < config.layer_dims.size(); ++i)
+            work += static_cast<uint64_t>(config.layer_dims[i - 1]) * config.layer_dims[i];
+        return 2ull * work;
     }
     if (config.kind == CaseKind::kReduce) {
         if (config.reduce_axis == ReduceAxis::kRow) {
@@ -489,7 +488,7 @@ size_t ElementCountA(const CaseConfig& config)
     case CaseKind::kReduce:
         return static_cast<size_t>(config.m) * config.n;
     case CaseKind::kMlp:
-        return std::max({config.d0, config.d1, config.d2, config.d3});
+        return config.layer_dims.empty() ? 0 : *std::max_element(config.layer_dims.begin(), config.layer_dims.end());
     }
     return 0;
 }
@@ -507,8 +506,10 @@ size_t ElementCountB(const CaseConfig& config)
     case CaseKind::kReduce:
         return 1;
     case CaseKind::kMlp:
-        return static_cast<size_t>(config.d0) * config.d1 + static_cast<size_t>(config.d1) * config.d2 +
-               static_cast<size_t>(config.d2) * config.d3;
+        size_t count = 0;
+        for (size_t i = 1; i < config.layer_dims.size(); ++i)
+            count += static_cast<size_t>(config.layer_dims[i - 1]) * config.layer_dims[i];
+        return count;
     }
     return 0;
 }
@@ -526,7 +527,10 @@ size_t ElementCountC(const CaseConfig& config)
     case CaseKind::kReduce:
         return 1;
     case CaseKind::kMlp:
-        return config.d1 + config.d2 + config.d3;
+        size_t count = 0;
+        for (size_t i = 1; i < config.layer_dims.size(); ++i)
+            count += config.layer_dims[i];
+        return count;
     }
     return 0;
 }
@@ -544,7 +548,7 @@ size_t ElementCountD(const CaseConfig& config)
     case CaseKind::kReduce:
         return static_cast<size_t>(config.m) * config.n;
     case CaseKind::kMlp:
-        return config.d3;
+        return config.layer_dims.empty() ? 0 : config.layer_dims.back();
     }
     return 0;
 }
@@ -643,10 +647,6 @@ RawValues ReferenceOutputRaw(const CaseConfig& config, const RawValues& a, const
     }
 
     if (config.kind == CaseKind::kMlp) {
-        const size_t w2_offset = static_cast<size_t>(config.d0) * config.d1;
-        const size_t w3_offset = w2_offset + static_cast<size_t>(config.d1) * config.d2;
-        const size_t b2_offset = config.d1;
-        const size_t b3_offset = b2_offset + config.d2;
         auto run_layer = [&](const RawValues& input, DType input_type, uint32_t input_width, uint32_t output_width,
                              size_t weight_offset, size_t bias_offset) {
             RawValues layer(output_width, ZeroRaw(config.accum_dtype));
@@ -665,9 +665,21 @@ RawValues ReferenceOutputRaw(const CaseConfig& config, const RawValues& a, const
             }
             return layer;
         };
-        const RawValues h1 = run_layer(a, config.a_dtype, config.d0, config.d1, 0, 0);
-        const RawValues h2 = run_layer(h1, config.accum_dtype, config.d1, config.d2, w2_offset, b2_offset);
-        return run_layer(h2, config.accum_dtype, config.d2, config.d3, w3_offset, b3_offset);
+        if (config.layer_dims.size() < 2)
+            return out;
+
+        RawValues activation = a;
+        size_t weight_offset = 0;
+        size_t bias_offset = 0;
+        for (size_t layer = 0; layer + 1 < config.layer_dims.size(); ++layer) {
+            const uint32_t input_width = config.layer_dims[layer];
+            const uint32_t output_width = config.layer_dims[layer + 1];
+            const DType input_type = layer == 0 ? config.a_dtype : config.accum_dtype;
+            activation = run_layer(activation, input_type, input_width, output_width, weight_offset, bias_offset);
+            weight_offset += static_cast<size_t>(input_width) * output_width;
+            bias_offset += output_width;
+        }
+        return activation;
     }
 
     for (uint32_t col = 0; col < config.n; ++col) {
@@ -815,13 +827,6 @@ std::vector<float> ReferenceOutput(const CaseConfig& config, const std::vector<f
     }
 
     if (config.kind == CaseKind::kMlp) {
-        const size_t w1_offset = 0;
-        const size_t w2_offset = static_cast<size_t>(config.d0) * config.d1;
-        const size_t w3_offset = w2_offset + static_cast<size_t>(config.d1) * config.d2;
-        const size_t b1_offset = 0;
-        const size_t b2_offset = config.d1;
-        const size_t b3_offset = b2_offset + config.d2;
-
         auto relu_quantized = [&](float value) { return std::max(OutputQuantize(value, config.dtype), 0.0f); };
 
         auto run_layer = [&](const std::vector<float>& input, uint32_t input_width, uint32_t output_width,
@@ -836,10 +841,20 @@ std::vector<float> ReferenceOutput(const CaseConfig& config, const std::vector<f
             }
             return layer;
         };
+        if (config.layer_dims.size() < 2)
+            return out;
 
-        const auto h1 = run_layer(a, config.d0, config.d1, w1_offset, b1_offset);
-        const auto h2 = run_layer(h1, config.d1, config.d2, w2_offset, b2_offset);
-        return run_layer(h2, config.d2, config.d3, w3_offset, b3_offset);
+        std::vector<float> activation = a;
+        size_t weight_offset = 0;
+        size_t bias_offset = 0;
+        for (size_t layer = 0; layer + 1 < config.layer_dims.size(); ++layer) {
+            const uint32_t input_width = config.layer_dims[layer];
+            const uint32_t output_width = config.layer_dims[layer + 1];
+            activation = run_layer(activation, input_width, output_width, weight_offset, bias_offset);
+            weight_offset += static_cast<size_t>(input_width) * output_width;
+            bias_offset += output_width;
+        }
+        return activation;
     }
 
     for (uint32_t col = 0; col < config.n; ++col) {

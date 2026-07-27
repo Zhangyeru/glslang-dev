@@ -32,10 +32,7 @@ struct CaseConfig {
     uint32_t warmup = 20;
     uint32_t repeat = 200;
     bool verify = true;
-    uint32_t d0 = 0;
-    uint32_t d1 = 0;
-    uint32_t d2 = 0;
-    uint32_t d3 = 0;
+    std::vector<uint32_t> layer_dims;
     ReduceAxis reduce_axis = ReduceAxis::kRow;
     ReduceOp reduce_op = ReduceOp::kAdd;
     std::string shader_path;

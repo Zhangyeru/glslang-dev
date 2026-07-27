@@ -11,6 +11,7 @@
 
 #include <vulkan/vulkan.h>
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <fstream>
@@ -19,6 +20,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace vk_hw {
@@ -131,11 +133,35 @@ ReduceOp ParseReduceOp(const std::string& value)
 
 uint32_t ParseU32(const std::string& value, const char* name)
 {
-    const unsigned long parsed = std::stoul(value);
+    size_t consumed = 0;
+    const unsigned long parsed = std::stoul(value, &consumed);
+    if (consumed != value.size()) {
+        throw std::runtime_error(std::string(name) + " must be an unsigned integer");
+    }
     if (parsed > UINT32_MAX) {
         throw std::runtime_error(std::string(name) + " exceeds uint32_t");
     }
     return static_cast<uint32_t>(parsed);
+}
+
+std::vector<uint32_t> ParseLayerDims(const std::string& value)
+{
+    std::vector<uint32_t> dims;
+    size_t begin = 0;
+    while (begin <= value.size()) {
+        const size_t delimiter = value.find(',', begin);
+        const std::string token = value.substr(begin, delimiter - begin);
+        if (token.empty())
+            throw std::runtime_error("--layer-dims must be a comma-separated list of non-zero dimensions");
+        const uint32_t dim = ParseU32(token, "--layer-dims");
+        if (dim == 0)
+            throw std::runtime_error("--layer-dims dimensions must be greater than zero");
+        dims.push_back(dim);
+        if (delimiter == std::string::npos)
+            break;
+        begin = delimiter + 1;
+    }
+    return dims;
 }
 
 CaseConfig ParseArgs(int argc, char** argv)
@@ -145,6 +171,8 @@ CaseConfig ParseArgs(int argc, char** argv)
     std::optional<DType> a_dtype;
     std::optional<DType> b_dtype;
     std::optional<DType> accum_dtype;
+    std::optional<std::vector<uint32_t>> layer_dims;
+    std::array<std::optional<uint32_t>, 4> legacy_layer_dims;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         auto require_value = [&](const char* option) -> std::string {
@@ -172,14 +200,18 @@ CaseConfig ParseArgs(int argc, char** argv)
             config.n = ParseU32(require_value("--n"), "--n");
         } else if (arg == "--k") {
             config.k = ParseU32(require_value("--k"), "--k");
+        } else if (arg == "--layer-dims") {
+            if (layer_dims.has_value())
+                throw std::runtime_error("--layer-dims may only be specified once");
+            layer_dims = ParseLayerDims(require_value("--layer-dims"));
         } else if (arg == "--d0") {
-            config.d0 = ParseU32(require_value("--d0"), "--d0");
+            legacy_layer_dims[0] = ParseU32(require_value("--d0"), "--d0");
         } else if (arg == "--d1") {
-            config.d1 = ParseU32(require_value("--d1"), "--d1");
+            legacy_layer_dims[1] = ParseU32(require_value("--d1"), "--d1");
         } else if (arg == "--d2") {
-            config.d2 = ParseU32(require_value("--d2"), "--d2");
+            legacy_layer_dims[2] = ParseU32(require_value("--d2"), "--d2");
         } else if (arg == "--d3") {
-            config.d3 = ParseU32(require_value("--d3"), "--d3");
+            legacy_layer_dims[3] = ParseU32(require_value("--d3"), "--d3");
         } else if (arg == "--axis") {
             config.reduce_axis = ParseReduceAxis(require_value("--axis"));
         } else if (arg == "--reduce-op") {
@@ -203,8 +235,24 @@ CaseConfig ParseArgs(int argc, char** argv)
     if (config.repeat == 0) {
         throw std::runtime_error("--repeat must be greater than zero");
     }
-    if (config.kind == CaseKind::kMlp && (config.d0 == 0 || config.d1 == 0 || config.d2 == 0 || config.d3 == 0)) {
-        throw std::runtime_error("mlp case requires --d0 --d1 --d2 --d3");
+
+    const bool has_legacy_layer_dims = std::any_of(legacy_layer_dims.begin(), legacy_layer_dims.end(),
+                                                   [](const auto& dim) { return dim.has_value(); });
+    if (layer_dims.has_value() && has_legacy_layer_dims) {
+        throw std::runtime_error("--layer-dims cannot be combined with --d0 --d1 --d2 --d3");
+    }
+    if (layer_dims.has_value()) {
+        config.layer_dims = std::move(*layer_dims);
+    } else if (has_legacy_layer_dims) {
+        config.layer_dims.reserve(legacy_layer_dims.size());
+        for (const auto& dim : legacy_layer_dims)
+            config.layer_dims.push_back(dim.value_or(0));
+    }
+    if (config.kind == CaseKind::kMlp &&
+        (config.layer_dims.size() < 2 ||
+         std::any_of(config.layer_dims.begin(), config.layer_dims.end(), [](uint32_t dim) { return dim == 0; }))) {
+        throw std::runtime_error(
+            "mlp case requires --layer-dims with at least two non-zero dimensions or --d0 --d1 --d2 --d3");
     }
     if (config.kind == CaseKind::kReduce && (config.m == 0 || config.n == 0)) {
         throw std::runtime_error("reduce case requires non-zero --m and --n");
@@ -320,6 +368,17 @@ private:
     VkFence fence_ = VK_NULL_HANDLE;
 };
 
+void PrintLayerDims(const std::vector<uint32_t>& dims)
+{
+    std::cout << "[";
+    for (size_t i = 0; i < dims.size(); ++i) {
+        if (i != 0)
+            std::cout << ", ";
+        std::cout << dims[i];
+    }
+    std::cout << "]";
+}
+
 void PrintJson(const CaseConfig& config, const TimeStats& stats, const VerifyResult& verify)
 {
     const double gflops = stats.avg > 0.0 ? static_cast<double>(FlopCount(config)) / stats.avg : 0.0;
@@ -338,8 +397,9 @@ void PrintJson(const CaseConfig& config, const TimeStats& stats, const VerifyRes
     std::cout << "  \"n\": " << config.n << ",\n";
     std::cout << "  \"k\": " << config.k << ",\n";
     if (config.kind == CaseKind::kMlp) {
-        std::cout << "  \"layer_dims\": [" << config.d0 << ", " << config.d1 << ", " << config.d2 << ", " << config.d3
-                  << "],\n";
+        std::cout << "  \"layer_dims\": ";
+        PrintLayerDims(config.layer_dims);
+        std::cout << ",\n";
     }
     if (config.kind == CaseKind::kReduce) {
         std::cout << "  \"axis\": \"" << ReduceAxisName(config.reduce_axis) << "\",\n";
@@ -375,8 +435,9 @@ void PrintSkipJson(const CaseConfig& config, const std::string& reason)
     std::cout << "  \"n\": " << config.n << ",\n";
     std::cout << "  \"k\": " << config.k << ",\n";
     if (config.kind == CaseKind::kMlp) {
-        std::cout << "  \"layer_dims\": [" << config.d0 << ", " << config.d1 << ", " << config.d2 << ", " << config.d3
-                  << "],\n";
+        std::cout << "  \"layer_dims\": ";
+        PrintLayerDims(config.layer_dims);
+        std::cout << ",\n";
     }
     if (config.kind == CaseKind::kReduce) {
         std::cout << "  \"axis\": \"" << ReduceAxisName(config.reduce_axis) << "\",\n";

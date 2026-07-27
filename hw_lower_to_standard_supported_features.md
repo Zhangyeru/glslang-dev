@@ -183,6 +183,8 @@ output = hidden[1×N] * matrix1[N×P] (+ bias1)
 
 N 按 16 切分，但实际计算以相邻两个 hidden column 为一个 f16vec2：先用 `splat(input[k]) * matrix0[k][h:h+2]` 生成 hidden pair，执行可选 vec2 ReLU，然后立即用 matrix1 的对应两行更新最多 8 个 f16vec2 output accumulator。K、N 或 P 的奇数尾部用零补 lane，不生成越界 extract/load。
 
+更长的线性 MLP 链按指令顺序进行不重叠的两层配对：四层链可融合 `(layer1, layer2)` 与 `(layer3, layer4)`，五层链同样融合前两对并保留最后一层进入普通 lowering。MAC 阈值对每个候选 pair 独立计算，不按整条链累计；一次 rewrite 生成的 cooperative result composite 不会再与紧邻层重叠融合。`vk_hw_runner` 的 MLP 元数据使用任意长度 `layer_dims`，命令行以 `--layer-dims 8,48,8,48,4` 传入，同时保留原 `--d0` 到 `--d3` 的三层兼容形式。
+
 对每个可封闭追溯到常量 shape/offset 的 RowMajor `OpCooperativeMatrixLoadHW` operand，fusion 会尝试从原 array pointer 流式加载元素；两层 mul-add 的 bias 若可封闭追溯到常量 offset 的 `OpCooperativeVectorLoadHW`，也会直接按输出 lane 加载，不再先物化完整 cooperative vector 和 Function 临时数组。四个 matrix/bias 候选分别判定，一个 operand 回退不会关闭其他 operand 的 direct 路径。
 
 这些 direct load 都会传播可移动的 `Aligned`、`Nontemporal`、`NonPrivatePointer`、`AliasScopeINTEL` 和 `NoAliasINTEL`；`Aligned` 按实际 `ArrayStride` 对应的 byte offset 收紧。direct source 不接受 Function/Private storage，索引必须能由 32 位 `OpAccessChain` 表达。内存时序检查采用保守的纯操作允许列表；遇到 Volatile、MakePointerAvailable/Visible、HW async/split barrier、named/control/memory barrier、atomic、call、cooperative/image/module write、共享 source 或其他未知副作用时，仅该 operand 保留原 cooperative load，由普通 lowering 处理。
@@ -508,33 +510,30 @@ unroll-macs=N
 
 - `cmake --build build -j8`：通过
 - SPIRV-Tools CTest：32/32 通过
-- SPIRV-Tools `HwFuseTwoLayerVectorMatmulTest.*`：34/34 通过
+- SPIRV-Tools `HwFuseTwoLayerVectorMatmulTest.*`：37/37 通过；覆盖四层双 pair、五层双 pair 加普通尾层 (2-2-1)、五层双 pair 夹单普通层 (2-1-2) 及 packed outer lowering
 - SPIRV-Tools `HwLowerToStandardTest.*`：189/189 通过
 - Optimizer API/CLI option 测试：2/2 通过
 - glslang lowering 集成测试：4/4 通过
-- `vk_hw` Python 单测：33/33 通过
+- `vk_hw` Python 单测：39/39 通过
 - `vk_hw_build_shaders_script_tests`、`vk_hw_case_parsing_tests`、`vk_hw_reference_tests`：3/3 通过
 - `vk_hw_build_shaders`：通过
-  - 覆盖 67 个 HW shader、66 个 baseline 和 1 个 unsupported HW shader
+  - 覆盖 70 个 HW shader、69 个 baseline 和 1 个 unsupported HW shader
   - 执行 extension-free lowering
   - 执行 `spirv-val` 校验
   - 扫描所有 `*HW` opcode、HW/AZD capability/extension 和 `Relreg` residue
   - 验证 cooperative-only 保留 TensorMap，而 extension-free 明确失败
-  - 执行 lowered GLSL golden 对比：133/133 匹配
+  - 执行 lowered GLSL golden 对比：139/139 匹配
 - 顶层 CTest：8/8 通过
-- 完整 `vk_hw_function`：67/67 通过，无 skip
-- 4 个 MLP 功能用例：verify 通过，最大 `max_abs_error=0.001953`、最大 `max_rel_error=0.0018`
-- 独占 GPU、`warmup=100`、`repeat=1000` 的完整 `vk_hw_perf`：66/66 完成且 lowered/baseline verify 均通过，无 skip
-  - `mlp_f16_16x64_64x16_16x8`：ratio 1.0290；lowered 21330.92 ns，baseline 20729.44 ns；RADV 为 36 VGPR、0 VGPR spill、0 scratch、7 subgroups/SIMD
-  - `mlp_f16_4x48_48x16_16x1`：ratio 1.0435；lowered 7533.88 ns，baseline 7219.68 ns
-  - `mlp_f16_8x36_36x8_8x4`：ratio 0.7606；lowered 6698.92 ns，baseline 8807.00 ns
-  - `mlp_f16_8x48_48x8_8x4`：ratio 0.7160；lowered 7673.16 ns，baseline 10716.16 ns
-  - `vecmatmul_f32_64x32`：ratio 0.9880
-  - `vecmatmuladd_f32_constbias_32x16`：ratio 1.0471
-  - 其余 60 个用例中有 57 个 ratio 不超过 2；以下 3 个超限项均已单独分析
-  - `vecmatmuladd_f16_convert_32x16`：ratio 11.9086；f16/f32 往返转换物化并复制大型 aggregate，产生 4 KiB scratch 和大量 scratch load/store
-  - `load_store_f32_scalar_5x7`：ratio 5.3671；scalar aggregate 的 4 个动态循环和 private-array 动态索引被后端展开为大量分支/选择，baseline 则完全展开并向量化
-  - `matmul_f16_32x32x32`：ratio 3.6905；三层动态循环阻止后端展开和跨 output tile 复用 A/B，不是寄存器 spill
+- 完整 `vk_hw_function`：70/70 通过，无 skip
+- 7 个 MLP 功能用例全部 verify 通过；新增四层用例误差为 0，五层 2-2-1 用例 `max_abs_error=0.000244`、`max_rel_error=0.000576`，五层 2-1-2 用例 `max_abs_error=0.001953`、`max_rel_error=0.004315`
+- `warmup=20`、`repeat=200` 的完整 `vk_hw_perf`：69/69 完成且 lowered/baseline verify 均通过，无 skip
+  - 四层 `mlp_f16_8x48_48x8_8x48_48x4`：ratio 0.6195；lowered 28131.6 ns，baseline 45411.0 ns
+  - 五层 2-2-1 `mlp_f16_8x48_48x8_8x48_48x8_8x4`：ratio 0.6636；lowered 32532.8 ns，baseline 49027.0 ns
+  - 五层 2-1-2 `mlp_f16_8x48_48x8_8x8_8x8_8x4`：ratio 0.6533；lowered 22021.0 ns，baseline 33706.0 ns；(L1,L2) 和 (L4,L5) 融合，L3 因中间 N=48 与 P=8 组合超过 `kMaxCompositeConstituents=256` 而保留为普通 lowering
+  - 除以下 3 个既有超限项外，其余 66 个用例 ratio 均不超过 2
+  - `vecmatmuladd_f16_convert_32x16`：ratio 10.3367；f16/f32 往返转换物化并复制大型 aggregate，产生 4 KiB scratch 和大量 scratch load/store
+  - `load_store_f32_scalar_5x7`：ratio 6.1417；scalar aggregate 的 4 个动态循环和 private-array 动态索引被后端展开为大量分支/选择，baseline 则完全展开并向量化
+  - `matmul_f16_32x32x32`：ratio 3.8398；三层动态循环阻止后端展开和跨 output tile 复用 A/B，不是寄存器 spill
 
 两个仓库工作树均保留本次未提交修改。
 

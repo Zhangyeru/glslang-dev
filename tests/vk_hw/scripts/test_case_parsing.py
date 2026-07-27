@@ -7,9 +7,14 @@
 import pathlib
 import tempfile
 import unittest
+from unittest import mock
 
+from run_function_tests import case_work
 from run_function_tests import parse_case
+from run_function_tests import run_case
+from run_function_tests import shape_string
 from run_function_tests import write_reports
+from run_perf_tests import run_shader
 from run_perf_tests import write_outputs
 
 
@@ -57,6 +62,58 @@ class CaseParsingTest(unittest.TestCase):
         self.assertEqual(case["case"], "load_store")
         self.assertEqual(case["dtype"], "f32")
         self.assertEqual((case["m"], case["n"]), ("5", "7"))
+
+    def test_four_layer_mlp_filename(self):
+        case = parse_case(pathlib.Path("mlp_f16_8x48_48x8_8x48_48x4.lowered.spv"))
+        self.assertEqual(case["case"], "mlp")
+        self.assertEqual(case["layer_dims"], ["8", "48", "8", "48", "4"])
+        self.assertEqual((case["m"], case["n"], case["k"]), ("1", "4", "0"))
+        self.assertEqual((case["dtype"], case["a_dtype"], case["b_dtype"], case["accum_dtype"]),
+                         ("f16", "f16", "f16", "f16"))
+        self.assertEqual(case_work(case), 8 * 48 + 48 * 8 + 8 * 48 + 48 * 4)
+        self.assertEqual(shape_string(case), "8x48, 48x8, 8x48, 48x4")
+
+    def test_five_layer_mlp_filename(self):
+        case = parse_case(pathlib.Path("mlp_f16_8x48_48x8_8x48_48x8_8x4.lowered.spv"))
+        self.assertEqual(case["layer_dims"], ["8", "48", "8", "48", "8", "4"])
+        self.assertEqual((case["m"], case["n"], case["k"]), ("1", "4", "0"))
+        self.assertEqual(case_work(case), 8 * 48 + 48 * 8 + 8 * 48 + 48 * 8 + 8 * 4)
+        self.assertEqual(shape_string(case), "8x48, 48x8, 8x48, 48x8, 8x4")
+
+    def test_five_layer_2_1_2_mlp_filename(self):
+        case = parse_case(pathlib.Path("mlp_f16_8x48_48x8_8x8_8x8_8x4.lowered.spv"))
+        self.assertEqual(case["case"], "mlp")
+        self.assertEqual(case["layer_dims"], ["8", "48", "8", "8", "8", "4"])
+        self.assertEqual((case["m"], case["n"], case["k"]), ("1", "4", "0"))
+        self.assertEqual(case_work(case), 8 * 48 + 48 * 8 + 8 * 8 + 8 * 8 + 8 * 4)
+        self.assertEqual(shape_string(case), "8x48, 48x8, 8x8, 8x8, 8x4")
+
+    def test_mlp_filename_rejects_disconnected_layers(self):
+        for name in (
+            "mlp_f16_8x48_47x8_8x4.lowered.spv",
+            "mlp_f16_8x48_48x8_7x48_48x4.lowered.spv",
+        ):
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, "inconsistent mlp dimensions"):
+                parse_case(pathlib.Path(name))
+
+    def test_mlp_filename_rejects_zero_dimensions(self):
+        with self.assertRaisesRegex(ValueError, "dimensions must be non-zero"):
+            parse_case(pathlib.Path("mlp_f16_8x48_48x0.lowered.spv"))
+
+    @mock.patch("run_function_tests.subprocess.run", return_value=mock.Mock(stdout="{}"))
+    def test_function_runner_passes_generic_mlp_dimensions(self, subprocess_run):
+        run_case("runner", pathlib.Path("mlp_f16_8x48_48x8_8x48_48x4.lowered.spv"), 1, 2)
+        cmd = subprocess_run.call_args.args[0]
+        self.assertEqual(cmd[cmd.index("--layer-dims") + 1], "8,48,8,48,4")
+        self.assertFalse(any(dim in cmd for dim in ("--d0", "--d1", "--d2", "--d3")))
+
+    @mock.patch("run_perf_tests.subprocess.run", return_value=mock.Mock(stdout="{}"))
+    def test_performance_runner_passes_generic_mlp_dimensions(self, subprocess_run):
+        meta = parse_case(pathlib.Path("mlp_f16_8x48_48x8_8x48_48x8_8x4.lowered.spv"))
+        run_shader("runner", pathlib.Path("case.spv"), meta, 1, 2)
+        cmd = subprocess_run.call_args.args[0]
+        self.assertEqual(cmd[cmd.index("--layer-dims") + 1], "8,48,8,48,8,4")
+        self.assertFalse(any(dim in cmd for dim in ("--d0", "--d1", "--d2", "--d3")))
 
     def test_structured_skip_is_reported_without_numeric_performance(self):
         functional = {

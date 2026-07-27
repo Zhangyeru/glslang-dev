@@ -1,0 +1,149 @@
+#version 450 core
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputX {
+    float16_t x[48];
+} InX;
+
+layout(set = 0, binding = 1) buffer PackedWeights {
+    float16_t w1[8 * 48];
+    float16_t w2[48 * 8];
+    float16_t w3[8 * 48];
+    float16_t w4[48 * 8];
+    float16_t w5[8 * 4];
+} Weights;
+
+layout(set = 0, binding = 2) buffer PackedBias {
+    float16_t b1[48];
+    float16_t b2[8];
+    float16_t b3[48];
+    float16_t b4[8];
+    float16_t b5[4];
+} Biases;
+
+layout(set = 0, binding = 3) buffer OutputY {
+    float16_t y[4];
+} OutY;
+
+f16vec2 relu2(f16vec2 value)
+{
+    return max(value, f16vec2(0.0hf));
+}
+
+f16vec4 relu4(f16vec4 value)
+{
+    return max(value, f16vec4(0.0hf));
+}
+
+void main()
+{
+    const int wideWidth = 48;
+    const int narrowWidth = 8;
+    const int splitWidth = 16;
+
+    f16vec2 h2[4];
+    for (int outputPair = 0; outputPair < 4; ++outputPair) {
+        int outputBase = outputPair * 2;
+        h2[outputPair] = f16vec2(Biases.b2[outputBase], Biases.b2[outputBase + 1]);
+    }
+
+    /* Fuse layers 1 and 2. */
+    for (int splitBegin = 0; splitBegin < wideWidth; splitBegin += splitWidth) {
+        int splitEnd = min(splitBegin + splitWidth, wideWidth);
+        for (int hidden = splitBegin; hidden < splitEnd; hidden += 2) {
+            f16vec2 h1 = f16vec2(Biases.b1[hidden], Biases.b1[hidden + 1]);
+            for (int k = 0; k < narrowWidth; ++k) {
+                f16vec2 weight = f16vec2(Weights.w1[k * wideWidth + hidden],
+                                         Weights.w1[k * wideWidth + hidden + 1]);
+                h1 = fma(f16vec2(InX.x[k]), weight, h1);
+            }
+            h1 = relu2(h1);
+
+            for (int outputPair = 0; outputPair < 4; ++outputPair) {
+                int outputBase = outputPair * 2;
+                f16vec2 weight0 = f16vec2(Weights.w2[hidden * narrowWidth + outputBase],
+                                          Weights.w2[hidden * narrowWidth + outputBase + 1]);
+                f16vec2 weight1 = f16vec2(Weights.w2[(hidden + 1) * narrowWidth + outputBase],
+                                          Weights.w2[(hidden + 1) * narrowWidth + outputBase + 1]);
+                h2[outputPair] = fma(f16vec2(h1.x), weight0, h2[outputPair]);
+                h2[outputPair] = fma(f16vec2(h1.y), weight1, h2[outputPair]);
+            }
+        }
+    }
+    for (int outputPair = 0; outputPair < 4; ++outputPair) {
+        h2[outputPair] = relu2(h2[outputPair]);
+    }
+
+    f16vec2 h4[4];
+    for (int outputPair = 0; outputPair < 4; ++outputPair) {
+        int outputBase = outputPair * 2;
+        h4[outputPair] = f16vec2(Biases.b4[outputBase], Biases.b4[outputBase + 1]);
+    }
+
+    /* Fuse layers 3 and 4. */
+    for (int splitBegin = 0; splitBegin < wideWidth; splitBegin += splitWidth) {
+        int splitEnd = min(splitBegin + splitWidth, wideWidth);
+        for (int hidden = splitBegin; hidden < splitEnd; hidden += 2) {
+            f16vec2 h3 = f16vec2(Biases.b3[hidden], Biases.b3[hidden + 1]);
+            for (int k = 0; k < narrowWidth; ++k) {
+                float16_t inputValue = h2[k / 2][k % 2];
+                f16vec2 weight = f16vec2(Weights.w3[k * wideWidth + hidden],
+                                         Weights.w3[k * wideWidth + hidden + 1]);
+                h3 = fma(f16vec2(inputValue), weight, h3);
+            }
+            h3 = relu2(h3);
+
+            for (int outputPair = 0; outputPair < 4; ++outputPair) {
+                int outputBase = outputPair * 2;
+                f16vec2 weight0 = f16vec2(Weights.w4[hidden * narrowWidth + outputBase],
+                                          Weights.w4[hidden * narrowWidth + outputBase + 1]);
+                f16vec2 weight1 = f16vec2(Weights.w4[(hidden + 1) * narrowWidth + outputBase],
+                                          Weights.w4[(hidden + 1) * narrowWidth + outputBase + 1]);
+                h4[outputPair] = fma(f16vec2(h3.x), weight0, h4[outputPair]);
+                h4[outputPair] = fma(f16vec2(h3.y), weight1, h4[outputPair]);
+            }
+        }
+    }
+    for (int outputPair = 0; outputPair < 4; ++outputPair) {
+        h4[outputPair] = relu2(h4[outputPair]);
+    }
+
+    /* Layer 5: ordinary 8x4 lowering tail. */
+    f16vec4 acc0 = f16vec4(0.0hf);
+    f16vec4 acc1 = f16vec4(0.0hf);
+    f16vec4 acc2 = f16vec4(0.0hf);
+    f16vec4 acc3 = f16vec4(0.0hf);
+    for (int block = 0; block < 2; ++block) {
+        int k = block * 4;
+        f16vec4 value = f16vec4(h4[block * 2], h4[block * 2 + 1]);
+        acc0 = fma(value,
+                   f16vec4(Weights.w5[(k + 0) * 4 + 0], Weights.w5[(k + 1) * 4 + 0],
+                           Weights.w5[(k + 2) * 4 + 0], Weights.w5[(k + 3) * 4 + 0]),
+                   acc0);
+        acc1 = fma(value,
+                   f16vec4(Weights.w5[(k + 0) * 4 + 1], Weights.w5[(k + 1) * 4 + 1],
+                           Weights.w5[(k + 2) * 4 + 1], Weights.w5[(k + 3) * 4 + 1]),
+                   acc1);
+        acc2 = fma(value,
+                   f16vec4(Weights.w5[(k + 0) * 4 + 2], Weights.w5[(k + 1) * 4 + 2],
+                           Weights.w5[(k + 2) * 4 + 2], Weights.w5[(k + 3) * 4 + 2]),
+                   acc2);
+        acc3 = fma(value,
+                   f16vec4(Weights.w5[(k + 0) * 4 + 3], Weights.w5[(k + 1) * 4 + 3],
+                           Weights.w5[(k + 2) * 4 + 3], Weights.w5[(k + 3) * 4 + 3]),
+                   acc3);
+    }
+
+    f16vec4 result = relu4(f16vec4(((acc0.x + acc0.y) + acc0.z) + acc0.w,
+                                   ((acc1.x + acc1.y) + acc1.z) + acc1.w,
+                                   ((acc2.x + acc2.y) + acc2.z) + acc2.w,
+                                   ((acc3.x + acc3.y) + acc3.z) + acc3.w) +
+                            f16vec4(Biases.b5[0], Biases.b5[1], Biases.b5[2], Biases.b5[3]));
+    OutY.y[0] = result.x;
+    OutY.y[1] = result.y;
+    OutY.y[2] = result.z;
+    OutY.y[3] = result.w;
+}

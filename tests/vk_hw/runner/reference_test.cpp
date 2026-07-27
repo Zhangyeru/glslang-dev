@@ -105,6 +105,52 @@ uint64_t FloatRaw(float value)
     return raw;
 }
 
+bool TestArbitraryDepthMlpReference()
+{
+    vk_hw::CaseConfig config;
+    config.kind = vk_hw::CaseKind::kMlp;
+    config.dtype = vk_hw::DType::kF32;
+    config.a_dtype = vk_hw::DType::kF32;
+    config.b_dtype = vk_hw::DType::kF32;
+    config.accum_dtype = vk_hw::DType::kF32;
+    config.layer_dims = {2, 2, 1, 2, 2, 1};
+
+    const std::vector<float> input = {1, 2};
+    const std::vector<float> weights = {
+        1,  -1, 0.5f, 1, // 2 -> 2
+        2,  -3,          // 2 -> 1
+        -2, 4,           // 1 -> 2
+        1,  0,  0,    1, // 2 -> 2
+        5,  2,           // 2 -> 1
+    };
+    const std::vector<float> biases = {0, 0, 0, 1, -1, 1, -1, -1};
+
+    const bool counts_match = vk_hw::ElementCountA(config) == 2 && vk_hw::ElementCountB(config) == 14 &&
+                              vk_hw::ElementCountC(config) == 8 && vk_hw::ElementCountD(config) == 1 &&
+                              vk_hw::FlopCount(config) == 28;
+    if (!counts_match) {
+        std::cerr << "arbitrary-depth mlp buffer counts or FLOPs are incorrect\n";
+        return false;
+    }
+    if (!ExpectVector("arbitrary-depth mlp", vk_hw::ReferenceOutput(config, input, weights, biases), {8}))
+        return false;
+
+    vk_hw::RawValues raw_input;
+    vk_hw::RawValues raw_weights;
+    vk_hw::RawValues raw_biases;
+    for (float value : input)
+        raw_input.push_back(FloatRaw(value));
+    for (float value : weights)
+        raw_weights.push_back(FloatRaw(value));
+    for (float value : biases)
+        raw_biases.push_back(FloatRaw(value));
+    if (vk_hw::ReferenceOutputRaw(config, raw_input, raw_weights, raw_biases) != vk_hw::RawValues{FloatRaw(8.0f)}) {
+        std::cerr << "arbitrary-depth typed mlp reference is incorrect\n";
+        return false;
+    }
+    return true;
+}
+
 bool TestAllTypedBufferRoundTrips()
 {
     const vk_hw::DType types[] = {
@@ -199,8 +245,8 @@ int main()
     return TestRowAddBroadcast() && TestColumnMinBroadcast() && TestF16QuantizesEveryFoldStep() &&
                    TestF16UsesRoundToNearestEven() && TestF16FiniteRoundTrip() && TestAllTypedBufferRoundTrips() &&
                    TestMixedSignedUnsignedIntegerMatmul() && TestIntegerMatmulWrapsAt32Bits() &&
-                   TestMixedFloatUsesAccumulatorFma() && TestIntegerReduceUsesOperandSignedness() &&
-                   TestFloatCompareDistinguishesSignedZeroAndAcceptsNaN()
+                   TestMixedFloatUsesAccumulatorFma() && TestArbitraryDepthMlpReference() &&
+                   TestIntegerReduceUsesOperandSignedness() && TestFloatCompareDistinguishesSignedZeroAndAcceptsNaN()
                ? 0
                : 1;
 }
