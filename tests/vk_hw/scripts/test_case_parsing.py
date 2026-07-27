@@ -88,6 +88,22 @@ class CaseParsingTest(unittest.TestCase):
         self.assertEqual(case_work(case), 8 * 48 + 48 * 8 + 8 * 8 + 8 * 8 + 8 * 4)
         self.assertEqual(shape_string(case), "8x48, 48x8, 8x8, 8x8, 8x4")
 
+    def test_five_layer_1_2_1_mlp_filename(self):
+        case = parse_case(pathlib.Path("mlp_f16_8x48_48x8_8x8_8x48_48x4.lowered.spv"))
+        self.assertEqual(case["case"], "mlp")
+        self.assertEqual(case["layer_dims"], ["8", "48", "8", "8", "48", "4"])
+        self.assertEqual((case["m"], case["n"], case["k"]), ("1", "4", "0"))
+        self.assertEqual(case_work(case), 8 * 48 + 48 * 8 + 8 * 8 + 8 * 48 + 48 * 4)
+        self.assertEqual(shape_string(case), "8x48, 48x8, 8x8, 8x48, 48x4")
+
+    def test_five_layer_1_2_2_mlp_filename(self):
+        case = parse_case(pathlib.Path("mlp_f16_8x8_8x48_48x8_8x48_48x4.lowered.spv"))
+        self.assertEqual(case["case"], "mlp")
+        self.assertEqual(case["layer_dims"], ["8", "8", "48", "8", "48", "4"])
+        self.assertEqual((case["m"], case["n"], case["k"]), ("1", "4", "0"))
+        self.assertEqual(case_work(case), 8 * 8 + 8 * 48 + 48 * 8 + 8 * 48 + 48 * 4)
+        self.assertEqual(shape_string(case), "8x8, 8x48, 48x8, 8x48, 48x4")
+
     def test_mlp_filename_rejects_disconnected_layers(self):
         for name in (
             "mlp_f16_8x48_47x8_8x4.lowered.spv",

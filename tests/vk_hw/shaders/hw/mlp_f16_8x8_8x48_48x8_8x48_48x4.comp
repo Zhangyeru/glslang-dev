@@ -1,0 +1,89 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputX {
+    float16_t x[48];
+} InX;
+
+layout(set = 0, binding = 1) buffer PackedWeights {
+    float16_t w1[8 * 8];
+    float16_t w2[8 * 48];
+    float16_t w3[48 * 8];
+    float16_t w4[8 * 48];
+    float16_t w5[48 * 4];
+} Weights;
+
+layout(set = 0, binding = 2) buffer PackedBias {
+    float16_t b1[8];
+    float16_t b2[48];
+    float16_t b3[8];
+    float16_t b4[48];
+    float16_t b5[4];
+} Biases;
+
+layout(set = 0, binding = 3) buffer OutputY {
+    float16_t y[4];
+} OutY;
+
+void main()
+{
+    const ivec2 zeroOffset = ivec2(0, 0);
+    const ivec2 shapeW1 = ivec2(8, 8);
+    const ivec2 shapeW2 = ivec2(8, 48);
+    const ivec2 shapeW3 = ivec2(48, 8);
+    const ivec2 shapeW4 = ivec2(8, 48);
+    const ivec2 shapeW5 = ivec2(48, 4);
+
+    coopvecHW<float16_t, 8> x;
+    coopmatHW<float16_t, 8, 8> w1;
+    coopvecHW<float16_t, 8> bias1, h1;
+
+    coopmatHW<float16_t, 8, 48> w2;
+    coopvecHW<float16_t, 48> bias2, h2;
+
+    coopmatHW<float16_t, 48, 8> w3;
+    coopvecHW<float16_t, 8> bias3, h3;
+
+    coopmatHW<float16_t, 8, 48> w4;
+    coopvecHW<float16_t, 48> bias4, h4;
+
+    coopmatHW<float16_t, 48, 4> w5;
+    coopvecHW<float16_t, 4> bias5, y;
+
+    const coopvecHW<float16_t, 8> zero8 = coopvecHW<float16_t, 8>(float16_t(0));
+    const coopvecHW<float16_t, 48> zero48 = coopvecHW<float16_t, 48>(float16_t(0));
+    const coopvecHW<float16_t, 4> zero4 = coopvecHW<float16_t, 4>(float16_t(0));
+
+    /* Layer 1: ordinary 8x8 lowering (N=8 too small for fusion with L2). */
+    coopVecLoadHW(x, InX.x, 0u);
+    coopMatLoadHW(w1, Weights.w1, shapeW1, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias1, Biases.b1, 0u);
+    coopVecMatMulAddHW(h1, x, w1, bias1);
+    h1 = max(h1, zero8);
+
+    /* Pair 1: fuse layers 2 and 3. */
+    coopMatLoadHW(w2, Weights.w2, shapeW2, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias2, Biases.b2, 0u);
+    coopVecMatMulAddHW(h2, h1, w2, bias2);
+    h2 = max(h2, zero48);
+
+    coopMatLoadHW(w3, Weights.w3, shapeW3, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias3, Biases.b3, 0u);
+    coopVecMatMulAddHW(h3, h2, w3, bias3);
+    h3 = max(h3, zero8);
+
+    /* Pair 2: fuse layers 4 and 5. */
+    coopMatLoadHW(w4, Weights.w4, shapeW4, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias4, Biases.b4, 0u);
+    coopVecMatMulAddHW(h4, h3, w4, bias4);
+    h4 = max(h4, zero48);
+
+    coopMatLoadHW(w5, Weights.w5, shapeW5, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias5, Biases.b5, 0u);
+    coopVecMatMulAddHW(y, h4, w5, bias5);
+    y = max(y, zero4);
+    coopVecStoreHW(y, OutY.y, 0u);
+}
