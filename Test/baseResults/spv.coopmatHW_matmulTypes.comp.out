@@ -2,7 +2,7 @@ spv.coopmatHW_matmulTypes.comp
 ; SPIR-V
 ; Version: 1.0
 ; Generator: Khronos Glslang Reference Front End; 11
-; Bound: 75
+; Bound: 71
 ; Schema: 0
                OpCapability Shader
                OpCapability Float16
@@ -49,26 +49,24 @@ spv.coopmatHW_matmulTypes.comp
      %uint_3 = OpConstant %uint 3
          %15 = OpTypeCooperativeMatrixHW %half %uint_2 %uint_3 MatrixUseAHW
 %_ptr_Function_15 = OpTypePointer Function %15
-         %19 = OpTypeCooperativeMatrixHW %float %uint_3 %uint_4 MatrixUseAHW
+         %19 = OpTypeCooperativeMatrixHW %float %uint_3 %uint_4 MatrixUseBHW
 %_ptr_Function_19 = OpTypePointer Function %19
-         %25 = OpTypeCooperativeMatrixHW %float %uint_3 %uint_4 MatrixUseBHW
-         %29 = OpTypeCooperativeMatrixHW %uint %uint_2 %uint_4 MatrixAccumulatorHW
-%_ptr_Function_29 = OpTypePointer Function %29
+         %27 = OpTypeCooperativeMatrixHW %uint %uint_2 %uint_4 MatrixAccumulatorHW
+%_ptr_Function_27 = OpTypePointer Function %27
        %char = OpTypeInt 8 1
-         %33 = OpTypeCooperativeMatrixHW %char %uint_2 %uint_3 MatrixUseAHW
-%_ptr_Function_33 = OpTypePointer Function %33
+         %31 = OpTypeCooperativeMatrixHW %char %uint_2 %uint_3 MatrixUseAHW
+%_ptr_Function_31 = OpTypePointer Function %31
      %ushort = OpTypeInt 16 0
-         %38 = OpTypeCooperativeMatrixHW %ushort %uint_3 %uint_4 MatrixUseAHW
-%_ptr_Function_38 = OpTypePointer Function %38
-         %44 = OpTypeCooperativeMatrixHW %ushort %uint_3 %uint_4 MatrixUseBHW
-         %48 = OpTypeCooperativeVectorHW %float %uint_4
-%_ptr_Function_48 = OpTypePointer Function %48
-         %51 = OpTypeCooperativeVectorHW %half %uint_3
-%_ptr_Function_51 = OpTypePointer Function %51
-         %60 = OpTypeCooperativeVectorHW %uint %uint_4
-%_ptr_Function_60 = OpTypePointer Function %60
-         %63 = OpTypeCooperativeVectorHW %char %uint_3
-%_ptr_Function_63 = OpTypePointer Function %63
+         %36 = OpTypeCooperativeMatrixHW %ushort %uint_3 %uint_4 MatrixUseBHW
+%_ptr_Function_36 = OpTypePointer Function %36
+         %44 = OpTypeCooperativeVectorHW %float %uint_4
+%_ptr_Function_44 = OpTypePointer Function %44
+         %47 = OpTypeCooperativeVectorHW %half %uint_3
+%_ptr_Function_47 = OpTypePointer Function %47
+         %56 = OpTypeCooperativeVectorHW %uint %uint_4
+%_ptr_Function_56 = OpTypePointer Function %56
+         %59 = OpTypeCooperativeVectorHW %char %uint_3
+%_ptr_Function_59 = OpTypePointer Function %59
      %v3uint = OpTypeVector %uint 3
      %uint_1 = OpConstant %uint 1
 %gl_WorkGroupSize = OpConstantComposite %v3uint %uint_1 %uint_1 %uint_1
@@ -78,45 +76,43 @@ spv.coopmatHW_matmulTypes.comp
      %floatA = OpVariable %_ptr_Function_15 Function
      %floatB = OpVariable %_ptr_Function_19 Function
 %floatAccumulator = OpVariable %_ptr_Function_10 Function
-  %tempArg_0 = OpVariable %_ptr_Function_29 Function
-   %integerA = OpVariable %_ptr_Function_33 Function
-   %integerB = OpVariable %_ptr_Function_38 Function
-%integerAccumulator = OpVariable %_ptr_Function_29 Function
-  %tempArg_1 = OpVariable %_ptr_Function_48 Function
- %floatInput = OpVariable %_ptr_Function_51 Function
-%floatResult = OpVariable %_ptr_Function_48 Function
-  %tempArg_2 = OpVariable %_ptr_Function_60 Function
-%integerInput = OpVariable %_ptr_Function_63 Function
-%integerResult = OpVariable %_ptr_Function_60 Function
+  %tempArg_0 = OpVariable %_ptr_Function_27 Function
+   %integerA = OpVariable %_ptr_Function_31 Function
+   %integerB = OpVariable %_ptr_Function_36 Function
+%integerAccumulator = OpVariable %_ptr_Function_27 Function
+  %tempArg_1 = OpVariable %_ptr_Function_44 Function
+ %floatInput = OpVariable %_ptr_Function_47 Function
+%floatResult = OpVariable %_ptr_Function_44 Function
+  %tempArg_2 = OpVariable %_ptr_Function_56 Function
+%integerInput = OpVariable %_ptr_Function_59 Function
+%integerResult = OpVariable %_ptr_Function_56 Function
          %18 = OpLoad %15 %floatA
          %22 = OpLoad %19 %floatB
          %24 = OpLoad %10 %floatAccumulator
-         %26 = OpBitcast %25 %22
-         %27 = OpCooperativeMatrixMulAddHW %10 %18 %26 %24
-               OpStore %tempArg %27
-         %28 = OpLoad %10 %tempArg
-               OpStore %floatAccumulator %28
-         %36 = OpLoad %33 %integerA
-         %41 = OpLoad %38 %integerB
-         %43 = OpLoad %29 %integerAccumulator
-         %45 = OpBitcast %44 %41
-         %46 = OpCooperativeMatrixMulAddHW %29 %36 %45 %43
-               OpStore %tempArg_0 %46
-         %47 = OpLoad %29 %tempArg_0
-               OpStore %integerAccumulator %47
-         %54 = OpLoad %51 %floatInput
-         %55 = OpLoad %19 %floatB
-         %57 = OpLoad %48 %floatResult
-         %58 = OpCooperativeVectorMatrixMulAddHW %48 %54 %55 %57
-               OpStore %tempArg_1 %58
-         %59 = OpLoad %48 %tempArg_1
-               OpStore %floatResult %59
-         %66 = OpLoad %63 %integerInput
-         %67 = OpLoad %38 %integerB
-         %69 = OpLoad %60 %integerResult
-         %70 = OpCooperativeVectorMatrixMulAddHW %60 %66 %67 %69
-               OpStore %tempArg_2 %70
-         %71 = OpLoad %60 %tempArg_2
-               OpStore %integerResult %71
+         %25 = OpCooperativeMatrixMulAddHW %10 %18 %22 %24
+               OpStore %tempArg %25
+         %26 = OpLoad %10 %tempArg
+               OpStore %floatAccumulator %26
+         %34 = OpLoad %31 %integerA
+         %39 = OpLoad %36 %integerB
+         %41 = OpLoad %27 %integerAccumulator
+         %42 = OpCooperativeMatrixMulAddHW %27 %34 %39 %41
+               OpStore %tempArg_0 %42
+         %43 = OpLoad %27 %tempArg_0
+               OpStore %integerAccumulator %43
+         %50 = OpLoad %47 %floatInput
+         %51 = OpLoad %19 %floatB
+         %53 = OpLoad %44 %floatResult
+         %54 = OpCooperativeVectorMatrixMulAddHW %44 %50 %51 %53
+               OpStore %tempArg_1 %54
+         %55 = OpLoad %44 %tempArg_1
+               OpStore %floatResult %55
+         %62 = OpLoad %59 %integerInput
+         %63 = OpLoad %36 %integerB
+         %65 = OpLoad %56 %integerResult
+         %66 = OpCooperativeVectorMatrixMulAddHW %56 %62 %63 %65
+               OpStore %tempArg_2 %66
+         %67 = OpLoad %56 %tempArg_2
+               OpStore %integerResult %67
                OpReturn
                OpFunctionEnd

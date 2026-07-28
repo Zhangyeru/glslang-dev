@@ -35,7 +35,7 @@ spv.coopvecHW_lower_tile.comp
      %uint_8 = OpConstant %uint 8
           %9 = OpTypeCooperativeVectorHW %float %uint_8
 %_ptr_Function_9 = OpTypePointer Function %9
-         %14 = OpTypeCooperativeMatrixHW %float %uint_8 %uint_8 MatrixUseAHW
+         %14 = OpTypeCooperativeMatrixHW %float %uint_8 %uint_8 MatrixUseBHW
 %_ptr_Function_14 = OpTypePointer Function %14
      %v3uint = OpTypeVector %uint 3
      %uint_1 = OpConstant %uint 1
