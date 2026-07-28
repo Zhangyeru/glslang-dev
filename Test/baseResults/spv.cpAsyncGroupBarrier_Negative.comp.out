@@ -1,0 +1,6 @@
+spv.cpAsyncGroupBarrier_Negative.comp
+ERROR: 0:8: 'cp_async_wait_group' : argument must be non-negative n
+ERROR: 1 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

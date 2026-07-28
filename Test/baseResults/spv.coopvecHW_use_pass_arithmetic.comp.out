@@ -1,0 +1,102 @@
+spv.coopvecHW_use_pass_arithmetic.comp
+; SPIR-V
+; Version: 1.0
+; Generator: Khronos Glslang Reference Front End; 11
+; Bound: 54
+; Schema: 0
+               OpCapability Shader
+               OpCapability Float16
+               OpCapability VulkanMemoryModel
+               OpCapability CooperativeMatrixHW
+               OpCapability CooperativeVectorHW
+               OpExtension "SPV_HW_neural_shader"
+               OpExtension "SPV_KHR_vulkan_memory_model"
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint GLCompute %main "main"
+               OpExecutionMode %main LocalSize 1 1 1
+               OpSource GLSL 450
+               OpSourceExtension "GL_EXT_shader_explicit_arithmetic_types"
+               OpSourceExtension "GL_HW_neural_shader"
+               OpSourceExtension "GL_KHR_memory_scope_semantics"
+               OpName %main "main"
+               OpName %tempArg "tempArg"
+               OpName %v1 "v1"
+               OpName %A1 "A1"
+               OpName %A2 "A2"
+               OpName %v0 "v0"
+               OpName %tempArg_0 "tempArg"
+               OpName %v3 "v3"
+               OpName %B1 "B1"
+               OpName %B2 "B2"
+               OpName %v2 "v2"
+               OpName %tempArg_1 "tempArg"
+               OpName %v5 "v5"
+               OpName %C1 "C1"
+               OpName %v4 "v4"
+               OpName %tempArg_2 "tempArg"
+               OpName %v7 "v7"
+               OpName %v6 "v6"
+               OpDecorate %gl_WorkGroupSize BuiltIn WorkgroupSize
+       %void = OpTypeVoid
+          %3 = OpTypeFunction %void
+       %half = OpTypeFloat 16
+       %uint = OpTypeInt 32 0
+    %uint_16 = OpConstant %uint 16
+          %9 = OpTypeCooperativeVectorHW %half %uint_16
+%_ptr_Function_9 = OpTypePointer Function %9
+         %14 = OpTypeCooperativeMatrixHW %half %uint_16 %uint_16 MatrixUseBHW
+%_ptr_Function_14 = OpTypePointer Function %14
+     %v3uint = OpTypeVector %uint 3
+     %uint_1 = OpConstant %uint 1
+%gl_WorkGroupSize = OpConstantComposite %v3uint %uint_1 %uint_1 %uint_1
+       %main = OpFunction %void None %3
+          %5 = OpLabel
+    %tempArg = OpVariable %_ptr_Function_9 Function
+         %v1 = OpVariable %_ptr_Function_9 Function
+         %A1 = OpVariable %_ptr_Function_14 Function
+         %A2 = OpVariable %_ptr_Function_14 Function
+         %v0 = OpVariable %_ptr_Function_9 Function
+  %tempArg_0 = OpVariable %_ptr_Function_9 Function
+         %v3 = OpVariable %_ptr_Function_9 Function
+         %B1 = OpVariable %_ptr_Function_14 Function
+         %B2 = OpVariable %_ptr_Function_14 Function
+         %v2 = OpVariable %_ptr_Function_9 Function
+  %tempArg_1 = OpVariable %_ptr_Function_9 Function
+         %v5 = OpVariable %_ptr_Function_9 Function
+         %C1 = OpVariable %_ptr_Function_14 Function
+         %v4 = OpVariable %_ptr_Function_9 Function
+  %tempArg_2 = OpVariable %_ptr_Function_9 Function
+         %v7 = OpVariable %_ptr_Function_9 Function
+         %v6 = OpVariable %_ptr_Function_9 Function
+         %13 = OpLoad %9 %v1
+         %17 = OpLoad %14 %A1
+         %19 = OpLoad %14 %A2
+         %20 = OpFAdd %14 %17 %19
+         %21 = OpCooperativeVectorMatrixMulHW %9 %13 %20
+               OpStore %tempArg %21
+         %23 = OpLoad %9 %tempArg
+               OpStore %v0 %23
+         %26 = OpLoad %9 %v3
+         %28 = OpLoad %14 %B1
+         %30 = OpLoad %14 %B2
+         %31 = OpFSub %14 %28 %30
+         %32 = OpCooperativeVectorMatrixMulHW %9 %26 %31
+               OpStore %tempArg_0 %32
+         %34 = OpLoad %9 %tempArg_0
+               OpStore %v2 %34
+         %37 = OpLoad %9 %v5
+         %39 = OpLoad %14 %C1
+         %40 = OpFNegate %14 %39
+         %41 = OpCooperativeVectorMatrixMulHW %9 %37 %40
+               OpStore %tempArg_1 %41
+         %43 = OpLoad %9 %tempArg_1
+               OpStore %v4 %43
+         %46 = OpLoad %9 %v7
+         %47 = OpLoad %14 %C1
+         %48 = OpCooperativeVectorMatrixMulHW %9 %46 %47
+               OpStore %tempArg_2 %48
+         %50 = OpLoad %9 %tempArg_2
+               OpStore %v6 %50
+               OpReturn
+               OpFunctionEnd

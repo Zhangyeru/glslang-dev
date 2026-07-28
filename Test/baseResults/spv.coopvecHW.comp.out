@@ -98,14 +98,14 @@ spv.coopvecHW.comp
    %uint_100 = OpConstant %uint 100
          %92 = OpTypeCooperativeVectorHW %half %uint_100
 %_ptr_Function_92 = OpTypePointer Function %92
-         %96 = OpTypeCooperativeMatrixHW %half %uint_100 %uint_20 MatrixUseAHW
+         %96 = OpTypeCooperativeMatrixHW %half %uint_100 %uint_20 MatrixUseBHW
 %_ptr_Function_96 = OpTypePointer Function %96
         %103 = OpTypeCooperativeVectorHW %int %uint_20
 %_ptr_Function_103 = OpTypePointer Function %103
        %char = OpTypeInt 8 1
         %107 = OpTypeCooperativeVectorHW %char %uint_100
 %_ptr_Function_107 = OpTypePointer Function %107
-        %111 = OpTypeCooperativeMatrixHW %char %uint_100 %uint_20 MatrixUseAHW
+        %111 = OpTypeCooperativeMatrixHW %char %uint_100 %uint_20 MatrixUseBHW
 %_ptr_Function_111 = OpTypePointer Function %111
         %119 = OpTypeCooperativeVectorHW %float %uint_100
 %_ptr_Function_half = OpTypePointer Function %half

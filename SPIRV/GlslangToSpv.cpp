@@ -268,10 +268,10 @@ public:
             constrain(sequence[3]->getAsTyped(), glslang::ECoopMatUseAccumulator, true);
         } else if (collectDirect && node->getOp() == glslang::EOpCooperativeVectorMatMulHW &&
                    sequence.size() == 3) {
-            constrain(sequence[2]->getAsTyped(), glslang::ECoopMatUseA, true);
+            constrain(sequence[2]->getAsTyped(), glslang::ECoopMatUseB, true);
         } else if (collectDirect && node->getOp() == glslang::EOpCooperativeVectorMatMulAddHW &&
                    sequence.size() == 4) {
-            constrain(sequence[2]->getAsTyped(), glslang::ECoopMatUseA, true);
+            constrain(sequence[2]->getAsTyped(), glslang::ECoopMatUseB, true);
         } else if (node->getOp() == glslang::EOpCooperativeMatrixReduceHW && sequence.size() >= 1) {
             propagateSameUse(node, node, sequence[0]->getAsTyped());
         } else if (node->getOp() == glslang::EOpConstructCooperativeMatrixHW && sequence.size() == 1 &&
@@ -309,7 +309,7 @@ public:
         glslang::TIntermTyped* right = node->getRight();
         switch (node->getOp()) {
         case glslang::EOpAssign:
-            propagateGeneratedOutputTempUse(left, right);
+            propagateRoleNeutralAssignmentSourceUse(left, right);
             break;
         case glslang::EOpAddAssign:
         case glslang::EOpSubAssign:
@@ -566,11 +566,33 @@ private:
         return symbol && symbol->getName() == "tempArg";
     }
 
-    void propagateGeneratedOutputTempUse(glslang::TIntermTyped* left, glslang::TIntermTyped* right)
+    bool isConstructedFromNonCoopMatOperands(glslang::TIntermTyped* node) const
+    {
+        glslang::TIntermAggregate* aggregate = node ? node->getAsAggregate() : nullptr;
+        if (!aggregate || aggregate->getOp() != glslang::EOpConstructCooperativeMatrixHW)
+            return false;
+
+        for (auto* operand : aggregate->getSequence()) {
+            glslang::TIntermTyped* typedOperand = operand ? operand->getAsTyped() : nullptr;
+            if (isCoopMatHWTyped(typedOperand))
+                return false;
+        }
+
+        return true;
+    }
+
+    bool isRoleNeutralAssignmentSource(glslang::TIntermTyped* node) const
+    {
+        return isGeneratedOutputTempArg(node) ||
+               (node && node->getAsConstantUnion() != nullptr) ||
+               isConstructedFromNonCoopMatOperands(node);
+    }
+
+    void propagateRoleNeutralAssignmentSourceUse(glslang::TIntermTyped* left, glslang::TIntermTyped* right)
     {
         if (!isCoopMatHWTyped(left) || !isCoopMatHWTyped(right) ||
             !left->getType().sameCoopMatHWBaseType(right->getType()) ||
-            !isGeneratedOutputTempArg(right))
+            !isRoleNeutralAssignmentSource(right))
             return;
 
         glslang::TCoopMatUse leftUse = roleOf(left);
@@ -810,11 +832,15 @@ const char* getCooperativeVectorHWExtension()
     return spv::E_SPV_HW_neural_shader;
 }
 
+spv::Id createCooperativeMatrixHWUseCast(spv::Builder& builder, spv::Id object, spv::CooperativeMatrixUseHW use);
+
 spv::Id createCooperativeVectorHWMatMul(spv::Builder& builder, spv::Id typeId, const std::vector<spv::Id>& operands)
 {
     std::vector<spv::IdImmediate> idImmOps;
+    spv::Id matrix = createCooperativeMatrixHWUseCast(builder, operands[2],
+        spv::CooperativeMatrixUseHWMatrixUseBHW);
     idImmOps.push_back(spv::IdImmediate(true, operands[1])); // Input
-    idImmOps.push_back(spv::IdImmediate(true, operands[2])); // Matrix
+    idImmOps.push_back(spv::IdImmediate(true, matrix)); // Matrix
 
     return builder.createOp(spv::OpCooperativeVectorMatrixMulHW, typeId, idImmOps);
 }
@@ -822,8 +848,10 @@ spv::Id createCooperativeVectorHWMatMul(spv::Builder& builder, spv::Id typeId, c
 spv::Id createCooperativeVectorHWMatMulAdd(spv::Builder& builder, spv::Id typeId, const std::vector<spv::Id>& operands)
 {
     std::vector<spv::IdImmediate> idImmOps;
+    spv::Id matrix = createCooperativeMatrixHWUseCast(builder, operands[2],
+        spv::CooperativeMatrixUseHWMatrixUseBHW);
     idImmOps.push_back(spv::IdImmediate(true, operands[1])); // Input
-    idImmOps.push_back(spv::IdImmediate(true, operands[2])); // Matrix
+    idImmOps.push_back(spv::IdImmediate(true, matrix)); // Matrix
     idImmOps.push_back(spv::IdImmediate(true, operands[3])); // Bias
 
     return builder.createOp(spv::OpCooperativeVectorMatrixMulAddHW, typeId, idImmOps);
@@ -3723,9 +3751,7 @@ bool TGlslangToSpvTraverser::visitUnary(glslang::TVisit /* visit */, glslang::TI
     case glslang::EOpCpAsyncWaitGroup:
         {
             std::vector<spv::IdImmediate> idImmOps;
-            const glslang::TIntermConstantUnion* waitCount = node->getOperand()->getAsConstantUnion();
-            unsigned count = waitCount != nullptr ? waitCount->getConstArray()[0].getIConst() : 0;
-            idImmOps.push_back(spv::IdImmediate(false, count)); // N
+            idImmOps.push_back(spv::IdImmediate(true, operand)); // N
             builder.createNoResultOp(spv::OpCpAsyncWaitGroupHW, idImmOps);
             return false;
         }
@@ -5272,9 +5298,7 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
     } else if (node->getOp() == glslang::EOpCpAsyncWaitGroup) {
         std::vector<spv::IdImmediate> idImmOps;
         builder.addExtension(spv::E_SPV_HW_neural_shader);
-        const glslang::TIntermConstantUnion* waitCount = glslangOperands[0]->getAsConstantUnion();
-        unsigned count = waitCount != nullptr ? waitCount->getConstArray()[0].getIConst() : 0;
-        idImmOps.push_back(spv::IdImmediate(false, count)); // N
+        idImmOps.push_back(spv::IdImmediate(true, operands[0])); // N
         builder.createNoResultOp(spv::OpCpAsyncWaitGroupHW, idImmOps);
         result = 0;
     } else if (node->getOp() == glslang::EOpBarrierArrive) {

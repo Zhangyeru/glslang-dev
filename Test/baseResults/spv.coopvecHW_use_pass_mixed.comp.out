@@ -1,0 +1,176 @@
+spv.coopvecHW_use_pass_mixed.comp
+; SPIR-V
+; Version: 1.0
+; Generator: Khronos Glslang Reference Front End; 11
+; Bound: 100
+; Schema: 0
+               OpCapability Shader
+               OpCapability Float16
+               OpCapability VulkanMemoryModel
+               OpCapability CooperativeMatrixHW
+               OpCapability CooperativeVectorHW
+               OpExtension "SPV_HW_neural_shader"
+               OpExtension "SPV_KHR_vulkan_memory_model"
+          %1 = OpExtInstImport "GLSL.std.450"
+               OpMemoryModel Logical Vulkan
+               OpEntryPoint GLCompute %main "main"
+               OpExecutionMode %main LocalSize 1 1 1
+               OpSource GLSL 450
+               OpSourceExtension "GL_EXT_shader_explicit_arithmetic_types"
+               OpSourceExtension "GL_HW_neural_shader"
+               OpSourceExtension "GL_KHR_memory_scope_semantics"
+               OpName %main "main"
+               OpName %tempArg "tempArg"
+               OpName %vin0 "vin0"
+               OpName %rhsMul "rhsMul"
+               OpName %vout0 "vout0"
+               OpName %tempArg_0 "tempArg"
+               OpName %lhs0 "lhs0"
+               OpName %d0 "d0"
+               OpName %tempArg_1 "tempArg"
+               OpName %vin1 "vin1"
+               OpName %rhsAdd "rhsAdd"
+               OpName %bias0 "bias0"
+               OpName %vout1 "vout1"
+               OpName %tempArg_2 "tempArg"
+               OpName %lhs1 "lhs1"
+               OpName %acc0 "acc0"
+               OpName %d1 "d1"
+               OpName %tempArg_3 "tempArg"
+               OpName %vin2 "vin2"
+               OpName %tie "tie"
+               OpName %vout2 "vout2"
+               OpName %tempArg_4 "tempArg"
+               OpName %lhs2 "lhs2"
+               OpName %acc1 "acc1"
+               OpName %d2 "d2"
+               OpName %tempArg_5 "tempArg"
+               OpName %vin3 "vin3"
+               OpName %bDominant "bDominant"
+               OpName %bias1 "bias1"
+               OpName %vout3 "vout3"
+               OpName %tempArg_6 "tempArg"
+               OpName %lhs3 "lhs3"
+               OpName %acc2 "acc2"
+               OpName %d3 "d3"
+               OpName %tempArg_7 "tempArg"
+               OpName %d4 "d4"
+               OpDecorate %gl_WorkGroupSize BuiltIn WorkgroupSize
+       %void = OpTypeVoid
+          %3 = OpTypeFunction %void
+       %half = OpTypeFloat 16
+       %uint = OpTypeInt 32 0
+    %uint_16 = OpConstant %uint 16
+          %9 = OpTypeCooperativeVectorHW %half %uint_16
+%_ptr_Function_9 = OpTypePointer Function %9
+         %14 = OpTypeCooperativeMatrixHW %half %uint_16 %uint_16 MatrixUseBHW
+%_ptr_Function_14 = OpTypePointer Function %14
+         %21 = OpTypeCooperativeMatrixHW %half %uint_16 %uint_16 MatrixAccumulatorHW
+%_ptr_Function_21 = OpTypePointer Function %21
+         %24 = OpTypeCooperativeMatrixHW %half %uint_16 %uint_16 MatrixUseAHW
+%_ptr_Function_24 = OpTypePointer Function %24
+         %29 = OpConstantNull %21
+     %v3uint = OpTypeVector %uint 3
+     %uint_1 = OpConstant %uint 1
+%gl_WorkGroupSize = OpConstantComposite %v3uint %uint_1 %uint_1 %uint_1
+       %main = OpFunction %void None %3
+          %5 = OpLabel
+    %tempArg = OpVariable %_ptr_Function_9 Function
+       %vin0 = OpVariable %_ptr_Function_9 Function
+     %rhsMul = OpVariable %_ptr_Function_14 Function
+      %vout0 = OpVariable %_ptr_Function_9 Function
+  %tempArg_0 = OpVariable %_ptr_Function_21 Function
+       %lhs0 = OpVariable %_ptr_Function_24 Function
+         %d0 = OpVariable %_ptr_Function_21 Function
+  %tempArg_1 = OpVariable %_ptr_Function_9 Function
+       %vin1 = OpVariable %_ptr_Function_9 Function
+     %rhsAdd = OpVariable %_ptr_Function_14 Function
+      %bias0 = OpVariable %_ptr_Function_9 Function
+      %vout1 = OpVariable %_ptr_Function_9 Function
+  %tempArg_2 = OpVariable %_ptr_Function_21 Function
+       %lhs1 = OpVariable %_ptr_Function_24 Function
+       %acc0 = OpVariable %_ptr_Function_21 Function
+         %d1 = OpVariable %_ptr_Function_21 Function
+  %tempArg_3 = OpVariable %_ptr_Function_9 Function
+       %vin2 = OpVariable %_ptr_Function_9 Function
+        %tie = OpVariable %_ptr_Function_24 Function
+      %vout2 = OpVariable %_ptr_Function_9 Function
+  %tempArg_4 = OpVariable %_ptr_Function_21 Function
+       %lhs2 = OpVariable %_ptr_Function_14 Function
+       %acc1 = OpVariable %_ptr_Function_21 Function
+         %d2 = OpVariable %_ptr_Function_21 Function
+  %tempArg_5 = OpVariable %_ptr_Function_9 Function
+       %vin3 = OpVariable %_ptr_Function_9 Function
+  %bDominant = OpVariable %_ptr_Function_14 Function
+      %bias1 = OpVariable %_ptr_Function_9 Function
+      %vout3 = OpVariable %_ptr_Function_9 Function
+  %tempArg_6 = OpVariable %_ptr_Function_21 Function
+       %lhs3 = OpVariable %_ptr_Function_24 Function
+       %acc2 = OpVariable %_ptr_Function_21 Function
+         %d3 = OpVariable %_ptr_Function_21 Function
+  %tempArg_7 = OpVariable %_ptr_Function_21 Function
+         %d4 = OpVariable %_ptr_Function_21 Function
+         %13 = OpLoad %9 %vin0
+         %17 = OpLoad %14 %rhsMul
+         %18 = OpCooperativeVectorMatrixMulHW %9 %13 %17
+               OpStore %tempArg %18
+         %20 = OpLoad %9 %tempArg
+               OpStore %vout0 %20
+         %27 = OpLoad %24 %lhs0
+         %28 = OpLoad %14 %rhsMul
+         %30 = OpCooperativeMatrixMulAddHW %21 %27 %28 %29
+               OpStore %tempArg_0 %30
+         %32 = OpLoad %21 %tempArg_0
+               OpStore %d0 %32
+         %35 = OpLoad %9 %vin1
+         %37 = OpLoad %14 %rhsAdd
+         %39 = OpLoad %9 %bias0
+         %40 = OpCooperativeVectorMatrixMulAddHW %9 %35 %37 %39
+               OpStore %tempArg_1 %40
+         %42 = OpLoad %9 %tempArg_1
+               OpStore %vout1 %42
+         %45 = OpLoad %24 %lhs1
+         %46 = OpLoad %14 %rhsAdd
+         %48 = OpLoad %21 %acc0
+         %49 = OpCooperativeMatrixMulAddHW %21 %45 %46 %48
+               OpStore %tempArg_2 %49
+         %51 = OpLoad %21 %tempArg_2
+               OpStore %d1 %51
+         %54 = OpLoad %9 %vin2
+         %56 = OpLoad %24 %tie
+         %57 = OpBitcast %14 %56
+         %58 = OpCooperativeVectorMatrixMulHW %9 %54 %57
+               OpStore %tempArg_3 %58
+         %60 = OpLoad %9 %tempArg_3
+               OpStore %vout2 %60
+         %62 = OpLoad %24 %tie
+         %64 = OpLoad %14 %lhs2
+         %66 = OpLoad %21 %acc1
+         %67 = OpCooperativeMatrixMulAddHW %21 %62 %64 %66
+               OpStore %tempArg_4 %67
+         %69 = OpLoad %21 %tempArg_4
+               OpStore %d2 %69
+         %72 = OpLoad %9 %vin3
+         %74 = OpLoad %14 %bDominant
+         %76 = OpLoad %9 %bias1
+         %77 = OpCooperativeVectorMatrixMulAddHW %9 %72 %74 %76
+               OpStore %tempArg_5 %77
+         %79 = OpLoad %9 %tempArg_5
+               OpStore %vout3 %79
+         %81 = OpLoad %14 %bDominant
+         %83 = OpLoad %24 %lhs3
+         %85 = OpLoad %21 %acc2
+         %86 = OpBitcast %24 %81
+         %87 = OpBitcast %14 %83
+         %88 = OpCooperativeMatrixMulAddHW %21 %86 %87 %85
+               OpStore %tempArg_6 %88
+         %90 = OpLoad %21 %tempArg_6
+               OpStore %d3 %90
+         %92 = OpLoad %24 %lhs3
+         %93 = OpLoad %14 %bDominant
+         %94 = OpCooperativeMatrixMulAddHW %21 %92 %93 %29
+               OpStore %tempArg_7 %94
+         %96 = OpLoad %21 %tempArg_7
+               OpStore %d4 %96
+               OpReturn
+               OpFunctionEnd

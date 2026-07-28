@@ -1,0 +1,14 @@
+#version 450
+#extension GL_HW_neural_shader : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer Block {
+    int n;
+} block;
+
+void main()
+{
+    barrier_arrive(0, block.n);
+    barrier_wait(0, block.n);
+}

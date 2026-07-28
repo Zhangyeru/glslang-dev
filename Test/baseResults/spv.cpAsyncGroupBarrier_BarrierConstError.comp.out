@@ -1,0 +1,7 @@
+spv.cpAsyncGroupBarrier_BarrierConstError.comp
+ERROR: 0:12: 'barrier_arrive' : argument must be a compile-time constant n
+ERROR: 0:13: 'barrier_wait' : argument must be a compile-time constant n
+ERROR: 2 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link
