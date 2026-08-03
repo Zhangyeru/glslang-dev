@@ -189,7 +189,7 @@ N 按 16 切分，但实际计算以相邻两个 hidden column 为一个 f16vec2
 
 这些 direct load 都会传播可移动的 `Aligned`、`Nontemporal`、`NonPrivatePointer`、`AliasScopeINTEL` 和 `NoAliasINTEL`；`Aligned` 按实际 `ArrayStride` 对应的 byte offset 收紧。direct source 不接受 Function/Private storage，索引必须能由 32 位 `OpAccessChain` 表达。内存时序检查采用保守的纯操作允许列表；遇到 Volatile、MakePointerAvailable/Visible、HW async/split barrier、named/control/memory barrier、atomic、call、cooperative/image/module write、共享 source 或其他未知副作用时，仅该 operand 保留原 cooperative load，由普通 lowering 处理。
 
-该内部 fusion 采用本项目允许重结合的两层 MLP contract：即使原结果带 `NoContraction` 或未声明 `AllowReassoc` 也会融合，并将原有 `FPFastMathMode` 分别传播到生成的 stage1、ReLU 和 stage2 运算；replacement composite 上不保留浮点算术 decoration。这是上一节普通 direct/generic matmul 规则的显式例外。
+该内部 fusion 采用本项目允许重结合的两层 MLP contract，并将原有 `FPFastMathMode` 分别传播到生成的 stage1、ReLU 和 stage2 运算；replacement composite 上不保留浮点算术 decoration。`NoContraction` 不属于该 relaxed contract：validator 明确拒绝带该 decoration 的 HW vector-matmul，lower pass 也会在 fusion 前执行只读 preflight 并失败；直接运行内部 fusion pass 时，任一待替换算术节点带 `NoContraction` 都不会匹配。
 
 实现与测试：
 
@@ -491,7 +491,7 @@ unroll-macs=N
 - accumulator narrowing
 - 与 result 类型不同的 C/Bias
 - integer saturation
-- `NoContraction` cooperative matrix/vector matmul
+- `NoContraction` cooperative matrix matmul 无法 lower；HW vector-matmul 在 validator 和 lower preflight 阶段即被拒绝
 - mixed-width cooperative `OpUDiv`
 - packed integer vec4
 - `vec4[] + scalar tail` 混合内部表示

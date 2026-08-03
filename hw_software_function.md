@@ -74,6 +74,7 @@
 - 支持校验 `OpTypeTensorMapHW` 的维度约束，确保 TensorMap 维度处于 1 到 4 的合法范围内。
 - 支持校验 cooperative matrix/vector 的 load/store、mul/muladd、length、conversion、bitcast 及相关复合操作的类型匹配与对象约束。
 - 支持校验 `OpCooperativeVectorMatrixMulHW` 与 `OpCooperativeVectorMatrixMulAddHW` 的结果向量、输入向量、矩阵和 bias 类型关系，检查组件类型、行列维度和分量数是否一致。
+- 明确禁止在 `OpCooperativeVectorMatrixMulHW` 与 `OpCooperativeVectorMatrixMulAddHW` 的结果上使用 `NoContraction`；直接 decoration 和 decoration group 均按非法模块拒绝。
 - 支持校验 `OpCpAsyncTensorGlobalSharedHW` 的操作数约束，包括目标地址必须指向 Workgroup 存储中的 32 位有符号整数数组、TensorMap 操作数必须为 `OpTypeTensorMapHW`、维度必须与坐标类型匹配。
 - 支持校验 `OpCpAsyncWaitGroupHW` 的参数约束，确保 `N` 为 32 位整数编译期常量，且取值非负。
 - 支持校验 `Relreg` 选择控制位的扩展依赖关系，保证该控制位仅在 HW neural shader 扩展启用时合法使用。
