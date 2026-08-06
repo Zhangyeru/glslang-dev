@@ -48,7 +48,7 @@
 - 整数或非 4 对齐浮点：一维 scalar array
 - `scalar` 模式强制所有 cooperative 值使用 scalar array
 
-非 4 对齐不是“vec4 + tail”的混合布局，而是整个值回退到 scalar array。matrix 内部统一按逻辑 row-major 展平。
+非 4 对齐不是“vec4 + tail”的混合存储布局，而是整个 cooperative 值物化为 scalar array。mixed vector direct 只在计算内部为 4-lane tile 构造 vec4 并单独处理 tail，不改变该存储布局。matrix 内部统一按逻辑 row-major 展平。
 
 类型检查位于 [`IsSupportedHwComponentType`](External/spirv-tools/source/opt/hw_lower_to_standard_pass_internal.h)，类型物化位于 [`MaterializeLoweredTypes`](External/spirv-tools/source/opt/hw_lower_to_standard_types.cpp)。
 
@@ -67,13 +67,13 @@ lower pass 没有固定的 shape 白名单。只要 shape 是普通常量、维�
 | Vector matmul-add | `Input[K] * Matrix[K×N] + Bias[N] -> Result[N]` | 与 vector matmul 相同；`Bias` 必须为 `[N]` |
 | Reduce、conversion 和逐元素操作 | 输入输出保持相同的 vector length 或 matrix rows/cols | 每个 cooperative type 分别满足上述 element limit |
 
-默认 `max_unrolled_elements` 和 `max_unrolled_matmul_macs` 都是 `4,096`。受这些阈值控制且具有 loop fallback 的 load/store、reduce、matmul 和批量逐元素操作，在超过 unroll threshold、但没有超过 hard limit 时会改用结构化循环，而不是因 shape 过大而失败。常量和 composite 构造仍受 4.2 节单独列出的 constituent 规则约束。
+默认 `max_unrolled_elements` 和 `max_unrolled_matmul_macs` 都是 `4,096`。受这些阈值控制且具有 loop fallback 的 load/store、reduce、generic matmul 和批量逐元素操作，在超过 unroll threshold、但没有超过 hard limit 时会改用结构化循环，而不是因 shape 过大而失败。mixed vector direct 本身始终生成 runtime structured loops，不受 `max_unrolled_matmul_macs` 控制，只受总体 element/MAC hard limit 约束。常量和 composite 构造仍受 4.2 节单独列出的 constituent 规则约束。
 
 默认 packed 模式不会改变通用 shape 支持范围：
 
 - f16/f32 matrix 仅在 `cols % 4 == 0` 时使用 packed vec4 表示；f16/f32 vector 仅在 `length % 4 == 0` 时使用 packed vec4 表示。
 - 同 component type 的 f16/f32 matrix/vector matmul 要走完整 packed 快路径，shape 上需要 `K % 4 == 0` 且 `N % 4 == 0`；matrix matmul 的 `M` 不要求 4 对齐。
-- K 或 N 非 4 对齐、整数、mixed precision 或 force-scalar 情况仍可由 generic scalar/loop 路径 lower；这类情况不是 unsupported。generic 计算中某些本身满足对齐的 operand/result 仍可能保留 packed 内部布局。
+- K 或 N 非 4 对齐、整数、其他 mixed precision 或 force-scalar 情况仍可由 generic scalar/loop 路径 lower；这类情况不是 unsupported。prefer-packed 下 f16 input/matrix、f32 result/bias 的 non-fused vector matmul 是 mixed precision 例外，K/N 可以不对齐。generic 计算中某些本身满足对齐的 operand/result 仍可能保留 packed 内部布局。
 
 两层 `HwFuseTwoLayerVectorMatmulPass` 只匹配：
 
@@ -195,9 +195,9 @@ Input[K] * Matrix[K×N] + Bias[N] -> Result[N]
 
 浮点 generic 路径以及 matrix/non-fused-vector direct 路径使用 `GLSL.std.450 Fma`。无 bias 的 fused vector-store 路径与 baseline 保持相同的四路 vec4 累加结构：每个 K tile 生成 4 个 Fma，循环结束后分别做 horizontal reduce；常量 bias 的 fused vector-matmul-add 路径则对每个 4-column tile 生成 4 个 `OpDot`，再用一次 vec4 `OpFAdd` 累加。没有显式浮点约束时，lower pass 的默认 contract 允许沿 K 方向重结合，因此满足 direct 条件的 matrix/vector matmul 会优先使用 direct 或 fused-direct 路径。显式 `FPFastMathMode` 优先于该默认值：只有包含 `AllowReassoc` 或 `Fast` 才允许 direct；匹配 component type 的 `FPFastMathDefault` 也必须包含 `AllowReassoc`。如果 entry point 已声明其他 component type 的 `FPFastMathDefault`，未匹配的当前 type 按无 fast-math flags 处理。`NoContraction` 无法由当前重结合 lowering 等价表达，因此明确拒绝。
 
-direct/fused-direct 只支持 operand 和 result component type 完全相同的 packed f16 或 f32；具体到 matmul shape，需要 K 和 N 都 4 对齐，M 不要求 4 对齐。mixed precision、整数、force-scalar 或 K/N 非 4 对齐时走 generic 路径。traced matrix load 还必须是 RowMajor、pointer 可捕获、shape/offset module-visible 且 MemoryAccess 可移动；vector input/bias load 要求 offset 为 0。fused vector-store 覆盖 output offset 为 0 的 `OpCooperativeVectorMatrixMulHW`，以及最多 4 个 vec4 pack、没有类型转换的 `OpConstantComposite` bias 的 `OpCooperativeVectorMatrixMulAddHW`。streaming fusion 还要求 input/matrix/output root 已知且互不冲突，并且没有 `Aliased`/`AliasedPointer`；类型变化、潜在 alias、不安全或不封闭的 use-chain 都会回退。
+matrix direct 和 fused-direct 只支持 operand 与 result component type 完全相同的 packed f16 或 f32，并要求 K 和 N 都 4 对齐（M 不要求 4 对齐）。non-fused vector direct 另外支持 f16 input/matrix、f32 accumulator/result 以及可选 f32 bias 的 mixed precision；它与 same-component packed direct 一样使用 runtime structured loops，完整 N/K tile 走 vec4 循环，K/N tail 由独立 epilogue 处理。mixed direct 不受 `max_unrolled_matmul_macs` 控制，只要 K×N 没有超过总体 `max_elements`/`max_matmul_macs` hard limit 就保持 direct。same-component 与 mixed direct 仍由两个独立 helper 生成。其他 mixed precision、整数、force-scalar，以及 matrix/fused-direct 的 K/N 非 4 对齐场景走 generic 路径。traced matrix load 还必须是 RowMajor、pointer 可捕获、shape/offset module-visible 且 MemoryAccess 可移动；vector input/bias load 要求 offset 为 0。矩阵类型 trace 允许 component type 与 shape 完全相同的显式 `MatrixUseAHW -> MatrixUseBHW` bitcast，其他方向、use 或 shape/type 变化仍会回退。fused vector-store 覆盖 output offset 为 0 的 `OpCooperativeVectorMatrixMulHW`，以及最多 4 个 vec4 pack、没有类型转换的 `OpConstantComposite` bias 的 `OpCooperativeVectorMatrixMulAddHW`。streaming fusion 还要求 input/matrix/output root 已知且互不冲突，并且没有 `Aliased`/`AliasedPointer`；潜在 alias、不安全或不封闭的 use-chain 都会回退。
 
-matrix/non-fused-vector direct 路径按 4 个 K 元素分组累加并执行 horizontal reduce；matrix mul-add 再用独立 `OpFAdd` 加 C。无 bias 的 fused vector-store 使用四个 vec4 accumulator，并在写回前分别 horizontal reduce；常量 bias 的 fused vector-matmul-add 使用单个 vec4 accumulator 累加 4 个 `OpDot` 的结果，最后加入 bias 并直接写回。结果可能与严格逐 K、以 C/bias 为初始 accumulator 的 Fma 链产生不同的 contraction、舍入、NaN/Inf 或正负零行为。原指令已有的完整 `FPFastMathMode` 仍会传播到生成的 Fma、`OpDot`、FConvert、FAdd、Min/Max 等结果。
+matrix/non-fused-vector direct 路径按 4 个 K 元素分组累加并执行 horizontal reduce；matrix mul-add 再用独立 `OpFAdd` 加 C。mixed vector direct 的 runtime structured helper 以完整 4-lane N tile 为外层循环、完整 4-lane K tile 为内层循环，将 f16vec4 input/weight 通过 `OpFConvert` 扩展为 f32vec4，再使用 f32vec4 Fma；每个 N tile 的 K tail 由独立 epilogue 用 f16 零补齐，完整 N loop 之后的 N tail epilogue 只构造有效 result lane。无 bias 的 fused vector-store 使用四个 vec4 accumulator，并在写回前分别 horizontal reduce；常量 bias 的 fused vector-matmul-add 使用单个 vec4 accumulator 累加 4 个 `OpDot` 的结果，最后加入 bias 并直接写回。结果可能与严格逐 K、以 C/bias 为初始 accumulator 的 Fma 链产生不同的 contraction、舍入、NaN/Inf 或正负零行为。原指令已有的完整 `FPFastMathMode` 仍会传播到生成的 Fma、`OpDot`、FConvert、FAdd、Min/Max 等结果。
 
 相关实现：
 
@@ -205,6 +205,8 @@ matrix/non-fused-vector direct 路径按 4 个 K 元素分组累加并执行 hor
 - [`BuildMatmulAccumulate`](External/spirv-tools/source/opt/hw_lower_to_standard_matmul.cpp)：mixed-precision widening 和乘加
 - [`TryLowerDirectMatrixMulAddPackedVec4`](External/spirv-tools/source/opt/hw_lower_to_standard_direct.cpp)：matrix direct 路径
 - [`TryLowerDirectVectorMatrixMulPackedVec4`](External/spirv-tools/source/opt/hw_lower_to_standard_direct.cpp)：vector direct 路径
+- [`BuildDirectVectorMatmulFunctionPackedVec4`](External/spirv-tools/source/opt/hw_lower_to_standard_direct_generated.cpp)：same-component packed vector direct runtime loops
+- [`BuildDirectMixedVectorMatmulFunctionPackedVec4`](External/spirv-tools/source/opt/hw_lower_to_standard_direct_generated.cpp)：独立的 f16×f16→f32 mixed vector direct runtime loops 与 K/N tail epilogue
 - [`TryLowerFusedVectorMatmulStore`](External/spirv-tools/source/opt/hw_lower_to_standard_direct.cpp)：vector fused-store 与常量 bias 路径
 
 ### 6.4 两层 vector-matmul fusion
@@ -464,12 +466,14 @@ vector offset 支持 1–64 位 signed/unsigned integer。这里的 64 位仅用
 | `max_unrolled_elements` | 4,096 |
 | `max_unrolled_matmul_macs` | 4,096 |
 
-超过 hard limit 时失败；超过 unroll threshold 时改为结构化循环：
+超过 hard limit 时失败；对受 unroll threshold 控制的 generic 路径，超过阈值时改为结构化循环：
 
 - 大 load/store：逐元素 memory loop
 - 大 matmul：output × K 双层循环
 - 大 reduce：output/reduce/broadcast 三层循环
 - elementwise conversion/arithmetic/scale：按 scalar 或 vec4 piece 循环
+
+mixed vector direct 无论 K×N 是否超过 `max_unrolled_matmul_macs`，都使用自己的 runtime structured loops；只有总体 `max_elements` 或 `max_matmul_macs` hard limit 会阻止该 direct 路径。
 
 unroll threshold 内部还会截断到 65,532，避免生成无法序列化的超长 composite instruction。
 

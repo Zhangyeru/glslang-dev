@@ -123,12 +123,28 @@ def lowering_pass_for_stem(stem):
     )
 
 
+def find_hw_shaders(shader_dir):
+    """Return supported HW shaders in deterministic order."""
+    return sorted((*shader_dir.glob("*.comp"), *shader_dir.glob("*.frag")))
+
+
+def artifact_stem_for_shader(shader):
+    """Keep existing compute names and qualify graphics artifacts by stage."""
+    return shader.stem if shader.suffix == ".comp" else shader.name
+
+
+def output_dir_for_shader(out_dir, shader):
+    """Keep non-compute SPIR-V out of the compute runner's flat directory."""
+    return out_dir if shader.suffix == ".comp" else out_dir / "graphics"
+
+
 def compile_hw_shader(glslang, spirv_opt, spirv_val, spirv_dis, shader, out_dir, target_env):
-    stem = shader.stem
+    stem = artifact_stem_for_shader(shader)
+    out_dir.mkdir(parents=True, exist_ok=True)
     hw_spv = out_dir / f"{stem}.hw.spv"
     lowered_spv = out_dir / f"{stem}.lowered.spv"
     lowered_asm = out_dir / f"{stem}.lowered.spvasm"
-    lowering_pass = lowering_pass_for_stem(stem)
+    lowering_pass = lowering_pass_for_stem(shader.stem)
 
     run([glslang, "-V", str(shader), "-o", str(hw_spv)])
     run([spirv_opt, lowering_pass, str(hw_spv), "-o", str(lowered_spv)])
@@ -222,7 +238,7 @@ def decompile_spv_to_glsl(spirv_cross, spv_dir, glsl_dir):
     success = 0
     fail = 0
     skipped = 0
-    for spv in sorted(spv_dir.glob("*.spv")):
+    for spv in sorted(spv_dir.rglob("*.spv")):
         # .hw.spv contains pre-lowering HW extension opcodes that
         # spirv-cross does not understand — skip them silently.
         if spv.name.endswith(".hw.spv"):
@@ -388,10 +404,10 @@ def main():
     golden_dir = pathlib.Path(args.golden_dir) if args.golden_dir else None
     ensure_golden_comparison_ready(golden_dir, spirv_cross)
     out_dir.mkdir(parents=True, exist_ok=True)
-    for stale in out_dir.glob("*.spv*"):
+    for stale in out_dir.rglob("*.spv*"):
         stale.unlink()
 
-    hw_shaders = sorted(shader_dir.glob("*.comp"))
+    hw_shaders = find_hw_shaders(shader_dir)
     baseline_shaders = sorted(baseline_dir.glob("*.comp"))
     unsupported_shaders = (sorted(unsupported_dir.glob("*.comp"))
                            if unsupported_dir else [])
@@ -403,7 +419,9 @@ def main():
         raise RuntimeError(f"no unsupported HW shaders found in {unsupported_dir}")
 
     for shader in hw_shaders:
-        compile_hw_shader(glslang, spirv_opt, spirv_val, spirv_dis, shader, out_dir, args.target_env)
+        compile_hw_shader(
+            glslang, spirv_opt, spirv_val, spirv_dis, shader,
+            output_dir_for_shader(out_dir, shader), args.target_env)
     for shader in baseline_shaders:
         compile_baseline_shader(glslang, spirv_val, spirv_dis, shader, out_dir, args.target_env)
     for shader in unsupported_shaders:

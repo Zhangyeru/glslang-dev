@@ -1,0 +1,28 @@
+#version 460 core
+#extension GL_HW_neural_shader : require
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputX { float16_t data[]; } X;
+layout(set = 0, binding = 1) buffer InputW { float16_t data[]; } W;
+layout(set = 0, binding = 2) buffer InputBias { float data[]; } Bias;
+layout(set = 0, binding = 3) buffer OutputY { float data[]; } Y;
+
+void main()
+{
+    const ivec2 shapeW = ivec2(10, 3);
+    const ivec2 zeroOffset = ivec2(0);
+
+    coopvecHW<float16_t, 10> x;
+    coopmatHW<float16_t, 10, 3> w;
+    coopvecHW<float, 3> bias;
+    coopvecHW<float, 3> y;
+
+    coopVecLoadHW(x, X.data, 0u);
+    coopMatLoadHW(w, W.data, shapeW, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias, Bias.data, 0u);
+    coopVecMatMulAddHW(y, x, w, bias);
+    coopVecStoreHW(y, Y.data, 0u);
+}

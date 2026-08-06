@@ -9,12 +9,16 @@ import tempfile
 import unittest
 from unittest import mock
 
+from build_shaders import artifact_stem_for_shader
 from build_shaders import compare_glsl_to_golden
 from build_shaders import compile_hw_shader
 from build_shaders import compile_unsupported_shader
+from build_shaders import decompile_spv_to_glsl
 from build_shaders import ensure_golden_comparison_ready
+from build_shaders import find_hw_shaders
 from build_shaders import has_hw_residue
 from build_shaders import lowering_pass_for_stem
+from build_shaders import output_dir_for_shader
 from run_function_tests import case_work
 from run_function_tests import parse_case
 from run_function_tests import run_case
@@ -137,6 +141,85 @@ class ExtensionFreeLoweringModeTest(unittest.TestCase):
             lowering_pass_for_stem("load_store_f32_scalar_5x7"),
             "--hw-lower-to-standard-extension-free=scalar",
         )
+
+
+class ShaderStageDiscoveryTest(unittest.TestCase):
+    def test_discovers_compute_and_fragment_shaders_only(self):
+        with tempfile.TemporaryDirectory() as temp:
+            shader_dir = pathlib.Path(temp)
+            fragment = shader_dir / "a.frag"
+            compute = shader_dir / "b.comp"
+            unsupported_stage = shader_dir / "c.vert"
+            for shader in (fragment, compute, unsupported_stage):
+                shader.touch()
+
+            self.assertEqual(find_hw_shaders(shader_dir), [fragment, compute])
+
+    def test_fragment_artifacts_are_stage_qualified_and_isolated(self):
+        out_dir = pathlib.Path("spv")
+        compute = pathlib.Path("load_store_f32.comp")
+        fragment = pathlib.Path("neural.frag")
+
+        self.assertEqual(artifact_stem_for_shader(compute), "load_store_f32")
+        self.assertEqual(output_dir_for_shader(out_dir, compute), out_dir)
+        self.assertEqual(artifact_stem_for_shader(fragment), "neural.frag")
+        self.assertEqual(
+            output_dir_for_shader(out_dir, fragment), out_dir / "graphics")
+
+    def test_fragment_compile_uses_graphics_artifact_names(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            shader = root / "neural.frag"
+            shader.touch()
+            out_dir = output_dir_for_shader(root / "spv", shader)
+            out_dir.mkdir(parents=True)
+            (out_dir / "neural.frag.lowered.spvasm").write_text(
+                "OpCapability Shader\n", encoding="utf-8")
+
+            with mock.patch("build_shaders.run") as run:
+                compile_hw_shader(
+                    "glslang", "spirv-opt", "spirv-val", "spirv-dis",
+                    shader, out_dir, "vulkan1.3")
+
+        commands = [call.args[0] for call in run.call_args_list]
+        self.assertTrue(str(commands[0][-1]).endswith(
+            "graphics/neural.frag.hw.spv"))
+        self.assertTrue(str(commands[1][-1]).endswith(
+            "graphics/neural.frag.lowered.spv"))
+        self.assertEqual(
+            commands[1][1], "--hw-lower-to-standard-extension-free")
+
+    def test_recursive_decompile_finds_graphics_lowered_shader(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            spv_dir = root / "spv"
+            graphics_dir = spv_dir / "graphics"
+            graphics_dir.mkdir(parents=True)
+            (graphics_dir / "neural.frag.hw.spv").touch()
+            (graphics_dir / "neural.frag.lowered.spv").touch()
+
+            with mock.patch("build_shaders.subprocess.run",
+                            return_value=mock.Mock(returncode=0)) as run:
+                counts = decompile_spv_to_glsl(
+                    "spirv-cross", spv_dir, root / "glsl")
+
+        self.assertEqual(counts, (1, 0, 1))
+        command = run.call_args.args[0]
+        self.assertTrue(str(command[1]).endswith(
+            "graphics/neural.frag.lowered.spv"))
+        self.assertTrue(str(command[3]).endswith(
+            "glsl/hw/neural.frag.lowered.glsl"))
+
+    def test_compute_runner_selection_ignores_nested_fragment_artifact(self):
+        with tempfile.TemporaryDirectory() as temp:
+            spv_dir = pathlib.Path(temp)
+            compute = spv_dir / "load_store_f32.lowered.spv"
+            compute.touch()
+            graphics_dir = spv_dir / "graphics"
+            graphics_dir.mkdir()
+            (graphics_dir / "neural.frag.lowered.spv").touch()
+
+            self.assertEqual(select_shaders(spv_dir, [], [], 0), [compute])
 
 
 class HwResidueDetectionTest(unittest.TestCase):
