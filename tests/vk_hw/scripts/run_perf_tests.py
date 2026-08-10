@@ -29,6 +29,8 @@ def run_shader(runner, shader, meta, warmup, repeat):
         meta["a_dtype"],
         "--b-dtype",
         meta["b_dtype"],
+        "--c-dtype",
+        meta["c_dtype"],
         "--accum-dtype",
         meta["accum_dtype"],
         "--m",
@@ -71,6 +73,7 @@ def write_outputs(rows, out_json):
                 "dtype",
                 "a_dtype",
                 "b_dtype",
+                "c_dtype",
                 "accum_dtype",
                 "axis",
                 "reduce_op",
@@ -97,8 +100,8 @@ def write_outputs(rows, out_json):
     lines = [
         "# HW Lowered Shader Vulkan Performance",
         "",
-        "| Shader | Case | A | B | Accum | Axis | Operation | Shape | Lowered ns | Baseline ns | Ratio | GOPS | Status | Verify | Baseline Verify | Skip Reason |",
-        "|---|---|---|---|---|---|---|---:|---:|---:|---:|---:|---|---|---|---|",
+        "| Shader | Case | A | B | C/Bias | Accum | Axis | Operation | Shape | Lowered ns | Baseline ns | Ratio | GOPS | Status | Verify | Baseline Verify | Skip Reason |",
+        "|---|---|---|---|---|---|---|---|---:|---:|---:|---:|---:|---|---|---|---|",
     ]
     def number(value, digits):
         return "" if value is None else f"{value:.{digits}f}"
@@ -106,7 +109,7 @@ def write_outputs(rows, out_json):
     for row in rows:
         lines.append(
             f"| {row['shader']} | {row['case']} | {row['a_dtype']} | {row['b_dtype']} | "
-            f"{row['accum_dtype']} | {row.get('axis', '')} | "
+            f"{row['c_dtype']} | {row['accum_dtype']} | {row.get('axis', '')} | "
             f"{row.get('reduce_op', '')} | {shape_string(row)} | {number(row['lowered_ns'], 3)} | "
             f"{number(row['baseline_ns'], 3)} | {number(row['ratio'], 4)} | {number(row['gops_avg'], 4)} | "
             f"{row['status']} | {row['verify']} | {row['baseline_verify']} | {row['skip_reason']} |"
@@ -150,6 +153,7 @@ def main():
                 "dtype": lowered_result["dtype"],
                 "a_dtype": lowered_result["a_dtype"],
                 "b_dtype": lowered_result["b_dtype"],
+                "c_dtype": lowered_result["c_dtype"],
                 "accum_dtype": lowered_result["accum_dtype"],
                 "axis": lowered_result.get("axis", ""),
                 "reduce_op": lowered_result.get("reduce_op", ""),

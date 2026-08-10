@@ -170,6 +170,7 @@ CaseConfig ParseArgs(int argc, char** argv)
     std::optional<DType> legacy_dtype;
     std::optional<DType> a_dtype;
     std::optional<DType> b_dtype;
+    std::optional<DType> c_dtype;
     std::optional<DType> accum_dtype;
     std::optional<std::vector<uint32_t>> layer_dims;
     std::array<std::optional<uint32_t>, 4> legacy_layer_dims;
@@ -192,6 +193,8 @@ CaseConfig ParseArgs(int argc, char** argv)
             a_dtype = ParseDType(require_value("--a-dtype"));
         } else if (arg == "--b-dtype") {
             b_dtype = ParseDType(require_value("--b-dtype"));
+        } else if (arg == "--c-dtype") {
+            c_dtype = ParseDType(require_value("--c-dtype"));
         } else if (arg == "--accum-dtype") {
             accum_dtype = ParseDType(require_value("--accum-dtype"));
         } else if (arg == "--m") {
@@ -261,17 +264,19 @@ CaseConfig ParseArgs(int argc, char** argv)
     config.a_dtype = a_dtype.value_or(shorthand);
     config.b_dtype = b_dtype.value_or(shorthand);
     config.accum_dtype = accum_dtype.value_or(shorthand);
+    config.c_dtype = c_dtype.value_or(config.accum_dtype);
     config.dtype = config.accum_dtype;
 
-    const bool float_inputs =
-        IsFloatDType(config.a_dtype) && IsFloatDType(config.b_dtype) && IsFloatDType(config.accum_dtype);
-    const bool integer_inputs =
-        !IsFloatDType(config.a_dtype) && !IsFloatDType(config.b_dtype) && !IsFloatDType(config.accum_dtype);
+    const bool float_inputs = IsFloatDType(config.a_dtype) && IsFloatDType(config.b_dtype) &&
+                              IsFloatDType(config.c_dtype) && IsFloatDType(config.accum_dtype);
+    const bool integer_inputs = !IsFloatDType(config.a_dtype) && !IsFloatDType(config.b_dtype) &&
+                                !IsFloatDType(config.c_dtype) && !IsFloatDType(config.accum_dtype);
     if (!float_inputs && !integer_inputs)
-        throw std::runtime_error("A, B, and accumulator types must all be floating-point or all be integer");
+        throw std::runtime_error("A, B, C, and accumulator types must all be floating-point or all be integer");
     if (ElementBitWidth(config.accum_dtype) < ElementBitWidth(config.a_dtype) ||
-        ElementBitWidth(config.accum_dtype) < ElementBitWidth(config.b_dtype)) {
-        throw std::runtime_error("accumulator type must not be narrower than A or B");
+        ElementBitWidth(config.accum_dtype) < ElementBitWidth(config.b_dtype) ||
+        ElementBitWidth(config.accum_dtype) < ElementBitWidth(config.c_dtype)) {
+        throw std::runtime_error("accumulator type must not be narrower than A, B, or C");
     }
     return config;
 }
@@ -390,6 +395,7 @@ void PrintJson(const CaseConfig& config, const TimeStats& stats, const VerifyRes
     std::cout << "  \"dtype\": \"" << DTypeName(config.dtype) << "\",\n";
     std::cout << "  \"a_dtype\": \"" << DTypeName(config.a_dtype) << "\",\n";
     std::cout << "  \"b_dtype\": \"" << DTypeName(config.b_dtype) << "\",\n";
+    std::cout << "  \"c_dtype\": \"" << DTypeName(config.c_dtype) << "\",\n";
     std::cout << "  \"accum_dtype\": \"" << DTypeName(config.accum_dtype) << "\",\n";
     std::cout << "  \"status\": \"" << (verify.pass ? "pass" : "fail") << "\",\n";
     std::cout << "  \"skip_reason\": \"\",\n";
@@ -428,6 +434,7 @@ void PrintSkipJson(const CaseConfig& config, const std::string& reason)
     std::cout << "  \"dtype\": \"" << DTypeName(config.dtype) << "\",\n";
     std::cout << "  \"a_dtype\": \"" << DTypeName(config.a_dtype) << "\",\n";
     std::cout << "  \"b_dtype\": \"" << DTypeName(config.b_dtype) << "\",\n";
+    std::cout << "  \"c_dtype\": \"" << DTypeName(config.c_dtype) << "\",\n";
     std::cout << "  \"accum_dtype\": \"" << DTypeName(config.accum_dtype) << "\",\n";
     std::cout << "  \"status\": \"skip\",\n";
     std::cout << "  \"skip_reason\": \"" << JsonEscape(reason) << "\",\n";
@@ -492,15 +499,15 @@ int Run(int argc, char** argv)
 
     const RawValues a = MakeRawInput(ElementCountA(config), 1, config.a_dtype);
     const RawValues b = MakeRawInput(ElementCountB(config), 2, config.b_dtype);
-    const RawValues c = MakeRawInput(ElementCountC(config), 3, config.accum_dtype);
+    const RawValues c = MakeRawInput(ElementCountC(config), 3, config.c_dtype);
     const std::vector<uint8_t> a_bytes = EncodeRawBuffer(a, config.a_dtype);
     const std::vector<uint8_t> b_bytes = EncodeRawBuffer(b, config.b_dtype);
-    const std::vector<uint8_t> c_bytes = EncodeRawBuffer(c, config.accum_dtype);
+    const std::vector<uint8_t> c_bytes = EncodeRawBuffer(c, config.c_dtype);
     const size_t d_bytes_size = ElementCountD(config) * ElementSize(config.accum_dtype);
     const std::vector<uint8_t> d_init(d_bytes_size, 0);
 
     VulkanContext context;
-    for (DType dtype : {config.a_dtype, config.b_dtype, config.accum_dtype}) {
+    for (DType dtype : {config.a_dtype, config.b_dtype, config.c_dtype, config.accum_dtype}) {
         const std::string missing = MissingFeature(context, dtype);
         if (!missing.empty()) {
             PrintSkipJson(config, DTypeName(dtype) + " case requires Vulkan feature " + missing);

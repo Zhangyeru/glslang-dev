@@ -24,6 +24,7 @@ class CaseParsingTest(unittest.TestCase):
         self.assertEqual(case["dtype"], "f32")
         self.assertEqual(case["a_dtype"], "f32")
         self.assertEqual(case["b_dtype"], "f32")
+        self.assertEqual(case["c_dtype"], "f32")
         self.assertEqual(case["accum_dtype"], "f32")
 
     def test_mixed_matmul_filename(self):
@@ -31,6 +32,7 @@ class CaseParsingTest(unittest.TestCase):
         self.assertEqual(case["case"], "matmul")
         self.assertEqual(case["a_dtype"], "i8")
         self.assertEqual(case["b_dtype"], "u8")
+        self.assertEqual(case["c_dtype"], "i32")
         self.assertEqual(case["accum_dtype"], "i32")
         self.assertEqual((case["m"], case["n"], case["k"]), ("5", "7", "3"))
 
@@ -39,6 +41,13 @@ class CaseParsingTest(unittest.TestCase):
         self.assertEqual(case["case"], "vecmatmul")
         self.assertEqual((case["a_dtype"], case["b_dtype"], case["accum_dtype"]), ("i8", "u8", "i32"))
         self.assertEqual((case["m"], case["n"], case["k"]), ("1", "4", "4"))
+
+    def test_converted_bias_dtype_is_parsed_independently(self):
+        case = parse_case(
+            pathlib.Path("vecmatmuladd_f16xf16_to_f32_biasconvert_10x3.lowered.spv"))
+        self.assertEqual(case["case"], "vecmatmuladd")
+        self.assertEqual((case["a_dtype"], case["b_dtype"], case["c_dtype"], case["accum_dtype"]),
+                         ("f16", "f16", "f16", "f32"))
 
     def test_every_dtype_is_accepted_for_load_store_and_reduce(self):
         for dtype in ("f16", "f32", "i8", "u8", "i16", "u16", "i32", "u32"):
@@ -68,8 +77,8 @@ class CaseParsingTest(unittest.TestCase):
         self.assertEqual(case["case"], "mlp")
         self.assertEqual(case["layer_dims"], ["8", "48", "8", "48", "4"])
         self.assertEqual((case["m"], case["n"], case["k"]), ("1", "4", "0"))
-        self.assertEqual((case["dtype"], case["a_dtype"], case["b_dtype"], case["accum_dtype"]),
-                         ("f16", "f16", "f16", "f16"))
+        self.assertEqual((case["dtype"], case["a_dtype"], case["b_dtype"], case["c_dtype"],
+                          case["accum_dtype"]), ("f16", "f16", "f16", "f16", "f16"))
         self.assertEqual(case_work(case), 8 * 48 + 48 * 8 + 8 * 48 + 48 * 4)
         self.assertEqual(shape_string(case), "8x48, 48x8, 8x48, 48x4")
 
@@ -138,6 +147,7 @@ class CaseParsingTest(unittest.TestCase):
             "dtype": "i32",
             "a_dtype": "i8",
             "b_dtype": "u8",
+            "c_dtype": "i32",
             "accum_dtype": "i32",
             "m": 4,
             "n": 4,

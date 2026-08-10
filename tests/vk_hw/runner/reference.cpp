@@ -605,7 +605,7 @@ RawValues ReferenceOutputRaw(const CaseConfig& config, const RawValues& a, const
     if (config.kind == CaseKind::kMatmul) {
         for (uint32_t row = 0; row < config.m; ++row) {
             for (uint32_t col = 0; col < config.n; ++col) {
-                uint64_t acc = c[row * config.n + col];
+                uint64_t acc = ConvertRaw(c[row * config.n + col], config.c_dtype, config.accum_dtype);
                 for (uint32_t inner = 0; inner < config.k; ++inner) {
                     const uint64_t b_value =
                         HasConstWeightVariant(config) ? const_weight(inner, col) : b[inner * config.n + col];
@@ -621,7 +621,7 @@ RawValues ReferenceOutputRaw(const CaseConfig& config, const RawValues& a, const
     if (config.kind == CaseKind::kMultiOps) {
         for (uint32_t row = 0; row < config.m; ++row) {
             for (uint32_t col = 0; col < config.n; ++col) {
-                uint64_t d0 = c[row * config.n + col];
+                uint64_t d0 = ConvertRaw(c[row * config.n + col], config.c_dtype, config.accum_dtype);
                 for (uint32_t inner = 0; inner < config.k; ++inner) {
                     d0 = MulAdd(a[row * config.k + inner], config.a_dtype, b[inner * config.n + col], config.b_dtype,
                                 d0, config.accum_dtype);
@@ -651,7 +651,7 @@ RawValues ReferenceOutputRaw(const CaseConfig& config, const RawValues& a, const
                              size_t weight_offset, size_t bias_offset) {
             RawValues layer(output_width, ZeroRaw(config.accum_dtype));
             for (uint32_t col = 0; col < output_width; ++col) {
-                uint64_t acc = c[bias_offset + col];
+                uint64_t acc = ConvertRaw(c[bias_offset + col], config.c_dtype, config.accum_dtype);
                 for (uint32_t inner = 0; inner < input_width; ++inner) {
                     acc = MulAdd(input[inner], input_type, b[weight_offset + inner * output_width + col],
                                  config.b_dtype, acc, config.accum_dtype);
@@ -685,7 +685,8 @@ RawValues ReferenceOutputRaw(const CaseConfig& config, const RawValues& a, const
     for (uint32_t col = 0; col < config.n; ++col) {
         uint64_t acc = ZeroRaw(config.accum_dtype);
         if (config.kind == CaseKind::kVecMatmulAdd)
-            acc = HasConstBiasVariant(config) ? const_bias(col) : c[col];
+            acc =
+                HasConstBiasVariant(config) ? const_bias(col) : ConvertRaw(c[col], config.c_dtype, config.accum_dtype);
         for (uint32_t inner = 0; inner < config.k; ++inner) {
             const uint64_t weight =
                 HasConstWeightVariant(config) ? const_weight(inner, col) : b[inner * config.n + col];

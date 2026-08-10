@@ -21,6 +21,7 @@ def typed_meta(case, dtype, **kwargs):
         "dtype": dtype,
         "a_dtype": dtype,
         "b_dtype": dtype,
+        "c_dtype": dtype,
         "accum_dtype": dtype,
         **kwargs,
     }
@@ -33,7 +34,7 @@ def parse_case(path):
     else:
         stem = path.stem
 
-    suffix = r"(?:_(?:scalar|ssbo_direct|ubo|constbias|constw|constx|convert|arith))?"
+    suffix = r"(?:_(?:scalar|ssbo_direct|ubo|constbias|constw|constx|convert|biasconvert|arith))?"
 
     m = re.match(
         rf"reduce_(row|column)_(add|min|max)_({DTYPE_RE})(?:_(scalar))?_(\d+)x(\d+)$",
@@ -70,6 +71,7 @@ def parse_case(path):
             "dtype": accum_dtype,
             "a_dtype": a_dtype,
             "b_dtype": b_dtype,
+            "c_dtype": accum_dtype,
             "accum_dtype": accum_dtype,
             "m": rows,
             "n": cols,
@@ -87,16 +89,20 @@ def parse_case(path):
     )
     if m:
         case, a_dtype, b_dtype, accum_dtype, inner, cols = m.groups()
-        return {
+        result = {
             "case": case,
             "dtype": accum_dtype,
             "a_dtype": a_dtype,
             "b_dtype": b_dtype,
+            "c_dtype": accum_dtype,
             "accum_dtype": accum_dtype,
             "m": "1",
             "n": cols,
             "k": inner,
         }
+        if case == "vecmatmuladd" and "_biasconvert_" in stem:
+            result["c_dtype"] = a_dtype
+        return result
 
     m = re.match(rf"(vecmatmuladd|vecmatmul)_({DTYPE_RE}){suffix}_(\d+)x(\d+)$", stem)
     if m:
@@ -138,6 +144,8 @@ def run_case(runner, shader, warmup, repeat):
         meta["a_dtype"],
         "--b-dtype",
         meta["b_dtype"],
+        "--c-dtype",
+        meta["c_dtype"],
         "--accum-dtype",
         meta["accum_dtype"],
         "--m",
@@ -207,13 +215,13 @@ def write_reports(results, out_dir):
     lines = [
         "# HW Vulkan Functional Results",
         "",
-        "| Shader | Case | A | B | Accum | Axis | Operation | Shape | Status | Verify | Max Abs Error | Max Rel Error | Skip Reason |",
-        "|---|---|---|---|---|---|---|---:|---|---|---:|---:|---|",
+        "| Shader | Case | A | B | C/Bias | Accum | Axis | Operation | Shape | Status | Verify | Max Abs Error | Max Rel Error | Skip Reason |",
+        "|---|---|---|---|---|---|---|---|---:|---|---|---:|---:|---|",
     ]
     for result in results:
         lines.append(
             f"| {pathlib.Path(result['shader']).name} | {result['case']} | {result['a_dtype']} | "
-            f"{result['b_dtype']} | {result['accum_dtype']} | "
+            f"{result['b_dtype']} | {result['c_dtype']} | {result['accum_dtype']} | "
             f"{result.get('axis', '')} | {result.get('reduce_op', '')} | "
             f"{shape_string(result)} | {result.get('status', 'pass')} | {result['verify']} | "
             f"{result['max_abs_error']:.8g} | {result['max_rel_error']:.8g} | {result.get('skip_reason', '')} |"

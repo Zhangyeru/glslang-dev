@@ -20,11 +20,12 @@ enum class ReduceOp { kAdd, kMin, kMax };
 struct CaseConfig {
     CaseKind kind = CaseKind::kMatmul;
     // |dtype| is retained as the legacy, single-type spelling. Parsers set
-    // all three explicit fields from --dtype before applying any per-input
+    // all four explicit fields from --dtype before applying any per-input
     // overrides.
     DType dtype = DType::kF32;
     DType a_dtype = DType::kF32;
     DType b_dtype = DType::kF32;
+    DType c_dtype = DType::kF32;
     DType accum_dtype = DType::kF32;
     uint32_t m = 1;
     uint32_t n = 1;

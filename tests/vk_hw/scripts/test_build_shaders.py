@@ -35,6 +35,7 @@ class ParseReduceCaseTest(unittest.TestCase):
                 "dtype": "f16",
                 "a_dtype": "f16",
                 "b_dtype": "f16",
+                "c_dtype": "f16",
                 "accum_dtype": "f16",
                 "axis": "column",
                 "reduce_op": "min",
@@ -52,6 +53,7 @@ class ParseReduceCaseTest(unittest.TestCase):
                 "dtype": "f32",
                 "a_dtype": "f32",
                 "b_dtype": "f32",
+                "c_dtype": "f32",
                 "accum_dtype": "f32",
                 "axis": "row",
                 "reduce_op": "add",
@@ -83,6 +85,7 @@ class ParseReduceCaseTest(unittest.TestCase):
                 "dtype": "f32",
                 "a_dtype": "f32",
                 "b_dtype": "f32",
+                "c_dtype": "f32",
                 "accum_dtype": "f32",
                 "m": "5",
                 "n": "7",
@@ -120,6 +123,7 @@ class ParseReduceCaseTest(unittest.TestCase):
         command = run.call_args.args[0]
         self.assertEqual(command[command.index("--a-dtype") + 1], "i8")
         self.assertEqual(command[command.index("--b-dtype") + 1], "u8")
+        self.assertEqual(command[command.index("--c-dtype") + 1], "i32")
         self.assertEqual(command[command.index("--accum-dtype") + 1], "i32")
 
 

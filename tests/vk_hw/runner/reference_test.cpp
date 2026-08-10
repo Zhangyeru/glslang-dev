@@ -174,6 +174,7 @@ bool TestMixedSignedUnsignedIntegerMatmul()
     config.kind = vk_hw::CaseKind::kMatmul;
     config.a_dtype = vk_hw::DType::kI8;
     config.b_dtype = vk_hw::DType::kU8;
+    config.c_dtype = vk_hw::DType::kI32;
     config.accum_dtype = vk_hw::DType::kI32;
     config.m = config.n = config.k = 1;
     const vk_hw::RawValues output = vk_hw::ReferenceOutputRaw(config, {0xffu}, {2u}, {3u});
@@ -191,6 +192,7 @@ bool TestIntegerMatmulWrapsAt32Bits()
     config.kind = vk_hw::CaseKind::kMatmul;
     config.a_dtype = vk_hw::DType::kI32;
     config.b_dtype = vk_hw::DType::kI32;
+    config.c_dtype = vk_hw::DType::kI32;
     config.accum_dtype = vk_hw::DType::kI32;
     config.m = config.n = config.k = 1;
     const vk_hw::RawValues output = vk_hw::ReferenceOutputRaw(config, {0x7fffffffu}, {2u}, {3u});
@@ -203,12 +205,29 @@ bool TestMixedFloatUsesAccumulatorFma()
     config.kind = vk_hw::CaseKind::kMatmul;
     config.a_dtype = vk_hw::DType::kF16;
     config.b_dtype = vk_hw::DType::kF32;
+    config.c_dtype = vk_hw::DType::kF32;
     config.accum_dtype = vk_hw::DType::kF32;
     config.m = config.n = config.k = 1;
     const uint16_t a = vk_hw::FloatToHalfBits(1.25f);
     const uint64_t b = FloatRaw(0.75f);
     const uint64_t c = FloatRaw(-0.5f);
     const vk_hw::RawValues output = vk_hw::ReferenceOutputRaw(config, {a}, {b}, {c});
+    return output == vk_hw::RawValues{FloatRaw(std::fma(1.25f, 0.75f, -0.5f))};
+}
+
+bool TestConvertedF16BiasUsesAccumulatorType()
+{
+    vk_hw::CaseConfig config;
+    config.kind = vk_hw::CaseKind::kVecMatmulAdd;
+    config.a_dtype = vk_hw::DType::kF16;
+    config.b_dtype = vk_hw::DType::kF16;
+    config.c_dtype = vk_hw::DType::kF16;
+    config.accum_dtype = vk_hw::DType::kF32;
+    config.m = config.n = config.k = 1;
+    const uint16_t a = vk_hw::FloatToHalfBits(1.25f);
+    const uint16_t b = vk_hw::FloatToHalfBits(0.75f);
+    const uint16_t bias = vk_hw::FloatToHalfBits(-0.5f);
+    const vk_hw::RawValues output = vk_hw::ReferenceOutputRaw(config, {a}, {b}, {bias});
     return output == vk_hw::RawValues{FloatRaw(std::fma(1.25f, 0.75f, -0.5f))};
 }
 
@@ -245,8 +264,9 @@ int main()
     return TestRowAddBroadcast() && TestColumnMinBroadcast() && TestF16QuantizesEveryFoldStep() &&
                    TestF16UsesRoundToNearestEven() && TestF16FiniteRoundTrip() && TestAllTypedBufferRoundTrips() &&
                    TestMixedSignedUnsignedIntegerMatmul() && TestIntegerMatmulWrapsAt32Bits() &&
-                   TestMixedFloatUsesAccumulatorFma() && TestArbitraryDepthMlpReference() &&
-                   TestIntegerReduceUsesOperandSignedness() && TestFloatCompareDistinguishesSignedZeroAndAcceptsNaN()
+                   TestMixedFloatUsesAccumulatorFma() && TestConvertedF16BiasUsesAccumulatorType() &&
+                   TestArbitraryDepthMlpReference() && TestIntegerReduceUsesOperandSignedness() &&
+                   TestFloatCompareDistinguishesSignedZeroAndAcceptsNaN()
                ? 0
                : 1;
 }
