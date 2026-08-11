@@ -1,0 +1,30 @@
+#version 460 core
+#extension GL_HW_neural_shader : require
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA { float16_t data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float16_t data[]; } B;
+layout(set = 0, binding = 2) buffer InputC { float data[]; } C;
+layout(set = 0, binding = 3) buffer OutputD { float data[]; } D;
+
+void main()
+{
+    const ivec2 shapeA = ivec2(7, 3);
+    const ivec2 shapeB = ivec2(3, 5);
+    const ivec2 shapeD = ivec2(7, 5);
+    const ivec2 zeroOffset = ivec2(0);
+
+    coopmatHW<float16_t, 7, 3> a;
+    coopmatHW<float16_t, 3, 5> b;
+    coopmatHW<float, 7, 5> c;
+    coopmatHW<float, 7, 5> d;
+
+    coopMatLoadHW(a, A.data, shapeA, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(b, B.data, shapeB, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(c, C.data, shapeD, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatMulAddHW(d, a, b, c);
+    coopMatStoreHW(d, D.data, shapeD, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+}

@@ -49,6 +49,14 @@ class CaseParsingTest(unittest.TestCase):
         self.assertEqual((case["a_dtype"], case["b_dtype"], case["c_dtype"], case["accum_dtype"]),
                          ("f16", "f16", "f16", "f32"))
 
+    def test_converted_matrix_c_dtype_is_parsed_independently(self):
+        case = parse_case(
+            pathlib.Path("matmul_f16xf16_to_f32_cconvert_7x5x3.lowered.spv"))
+        self.assertEqual(case["case"], "matmul")
+        self.assertEqual((case["a_dtype"], case["b_dtype"], case["c_dtype"],
+                          case["accum_dtype"]),
+                         ("f16", "f16", "f16", "f32"))
+
     def test_every_dtype_is_accepted_for_load_store_and_reduce(self):
         for dtype in ("f16", "f32", "i8", "u8", "i16", "u16", "i32", "u32"):
             with self.subTest(dtype=dtype):

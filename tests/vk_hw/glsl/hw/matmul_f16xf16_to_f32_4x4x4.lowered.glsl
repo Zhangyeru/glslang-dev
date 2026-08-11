@@ -29,104 +29,73 @@ layout(set = 0, binding = 3, std430) buffer OutputD
     float data[];
 } D;
 
-f16vec4 _74(uint _75)
+vec4[4] _74()
 {
-    return f16vec4(A.data[_75], A.data[_75 + 1u], A.data[_75 + 2u], A.data[_75 + 3u]);
+    vec4 _92[4] = vec4[](vec4(0.0), vec4(0.0), vec4(0.0), vec4(0.0));
+    uint _93 = 0u;
+    uint _99;
+    for (;;)
+    {
+        _99 = _93;
+        if (_99 < 16u)
+        {
+            float _95 = 0.0;
+            uint _94 = 0u;
+            uint _101;
+            for (;;)
+            {
+                _101 = _94;
+                if (_101 < 4u)
+                {
+                    uint _106 = ((_99 / 4u) * 4u) + _101;
+                    uint _108 = (_101 * 4u) + (_99 % 4u);
+                    _95 = fma(float(A.data[((uint(0) + (_106 / 4u)) * uint(4)) + (uint(0) + (_106 % 4u))]), float(B.data[((uint(0) + (_108 / 4u)) * uint(4)) + (uint(0) + (_108 % 4u))]), _95);
+                    _94 = _101 + 1u;
+                    continue;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            uint _160 = _99 / 4u;
+            vec4 _165 = _92[_160];
+            _165[_99 % 4u] = _95 + C.data[((uint(0) + (_99 / 4u)) * uint(4)) + (uint(0) + (_99 % 4u))];
+            _92[_160] = _165;
+            _93 = _99 + 1u;
+            continue;
+        }
+        else
+        {
+            break;
+        }
+    }
+    return _92;
 }
 
-f16vec4 _124(uint _125)
+void _169(uint _170, vec4 _171)
 {
-    return f16vec4(B.data[_125], B.data[_125 + 1u], B.data[_125 + 2u], B.data[_125 + 3u]);
-}
-
-vec4 _166(uint _167)
-{
-    return vec4(C.data[_167], C.data[_167 + 1u], C.data[_167 + 2u], C.data[_167 + 3u]);
-}
-
-void _535(uint _536, vec4 _537)
-{
-    D.data[_536] = _537.x;
-    D.data[_536 + 1u] = _537.y;
-    D.data[_536 + 2u] = _537.z;
-    D.data[_536 + 3u] = _537.w;
+    D.data[_170] = _171.x;
+    D.data[_170 + 1u] = _171.y;
+    D.data[_170 + 2u] = _171.z;
+    D.data[_170 + 3u] = _171.w;
 }
 
 void main()
 {
-    uint _100 = 0u;
-    f16vec4 _99[4];
-    uint _105;
-    for (;;)
-    {
-        _105 = _100;
-        if (_105 < 16u)
-        {
-            _99[_105 / 4u] = _74(((uint(0) + (_105 / 4u)) * uint(4)) + (uint(0) + (_105 % 4u)));
-            _100 = _105 + 4u;
-            continue;
-        }
-        else
-        {
-            break;
-        }
-    }
-    f16vec4 _24[4] = _99;
-    f16vec4 tempArg[4] = _24;
-    f16vec4 a[4] = _24;
-    uint _141 = 0u;
-    f16vec4 _140[4];
-    uint _146;
-    for (;;)
-    {
-        _146 = _141;
-        if (_146 < 16u)
-        {
-            _140[_146 / 4u] = _124(((uint(0) + (_146 / 4u)) * uint(4)) + (uint(0) + (_146 % 4u)));
-            _141 = _146 + 4u;
-            continue;
-        }
-        else
-        {
-            break;
-        }
-    }
-    f16vec4 _36[4] = _140;
-    f16vec4 tempArg_1[4] = _36;
-    f16vec4 b[4] = _36;
-    uint _186 = 0u;
-    vec4 _185[4];
-    uint _191;
-    for (;;)
-    {
-        _191 = _186;
-        if (_191 < 16u)
-        {
-            _185[_191 / 4u] = _166(((uint(0) + (_191 / 4u)) * uint(4)) + (uint(0) + (_191 % 4u)));
-            _186 = _191 + 4u;
-            continue;
-        }
-        else
-        {
-            break;
-        }
-    }
-    vec4 _49[4] = _185;
-    vec4 tempArg_2[4] = _49;
-    vec4 bias[4] = _49;
-    vec4 _56[4] = vec4[](vec4(fma(float(_24[0].w), float(_36[3].x), fma(float(_24[0].z), float(_36[2].x), fma(float(_24[0].y), float(_36[1].x), fma(float(_24[0].x), float(_36[0].x), _49[0].x)))), fma(float(_24[0].w), float(_36[3].y), fma(float(_24[0].z), float(_36[2].y), fma(float(_24[0].y), float(_36[1].y), fma(float(_24[0].x), float(_36[0].y), _49[0].y)))), fma(float(_24[0].w), float(_36[3].z), fma(float(_24[0].z), float(_36[2].z), fma(float(_24[0].y), float(_36[1].z), fma(float(_24[0].x), float(_36[0].z), _49[0].z)))), fma(float(_24[0].w), float(_36[3].w), fma(float(_24[0].z), float(_36[2].w), fma(float(_24[0].y), float(_36[1].w), fma(float(_24[0].x), float(_36[0].w), _49[0].w))))), vec4(fma(float(_24[1].w), float(_36[3].x), fma(float(_24[1].z), float(_36[2].x), fma(float(_24[1].y), float(_36[1].x), fma(float(_24[1].x), float(_36[0].x), _49[1].x)))), fma(float(_24[1].w), float(_36[3].y), fma(float(_24[1].z), float(_36[2].y), fma(float(_24[1].y), float(_36[1].y), fma(float(_24[1].x), float(_36[0].y), _49[1].y)))), fma(float(_24[1].w), float(_36[3].z), fma(float(_24[1].z), float(_36[2].z), fma(float(_24[1].y), float(_36[1].z), fma(float(_24[1].x), float(_36[0].z), _49[1].z)))), fma(float(_24[1].w), float(_36[3].w), fma(float(_24[1].z), float(_36[2].w), fma(float(_24[1].y), float(_36[1].w), fma(float(_24[1].x), float(_36[0].w), _49[1].w))))), vec4(fma(float(_24[2].w), float(_36[3].x), fma(float(_24[2].z), float(_36[2].x), fma(float(_24[2].y), float(_36[1].x), fma(float(_24[2].x), float(_36[0].x), _49[2].x)))), fma(float(_24[2].w), float(_36[3].y), fma(float(_24[2].z), float(_36[2].y), fma(float(_24[2].y), float(_36[1].y), fma(float(_24[2].x), float(_36[0].y), _49[2].y)))), fma(float(_24[2].w), float(_36[3].z), fma(float(_24[2].z), float(_36[2].z), fma(float(_24[2].y), float(_36[1].z), fma(float(_24[2].x), float(_36[0].z), _49[2].z)))), fma(float(_24[2].w), float(_36[3].w), fma(float(_24[2].z), float(_36[2].w), fma(float(_24[2].y), float(_36[1].w), fma(float(_24[2].x), float(_36[0].w), _49[2].w))))), vec4(fma(float(_24[3].w), float(_36[3].x), fma(float(_24[3].z), float(_36[2].x), fma(float(_24[3].y), float(_36[1].x), fma(float(_24[3].x), float(_36[0].x), _49[3].x)))), fma(float(_24[3].w), float(_36[3].y), fma(float(_24[3].z), float(_36[2].y), fma(float(_24[3].y), float(_36[1].y), fma(float(_24[3].x), float(_36[0].y), _49[3].y)))), fma(float(_24[3].w), float(_36[3].z), fma(float(_24[3].z), float(_36[2].z), fma(float(_24[3].y), float(_36[1].z), fma(float(_24[3].x), float(_36[0].z), _49[3].z)))), fma(float(_24[3].w), float(_36[3].w), fma(float(_24[3].z), float(_36[2].w), fma(float(_24[3].y), float(_36[1].w), fma(float(_24[3].x), float(_36[0].w), _49[3].w))))));
-    vec4 tempArg_3[4] = _56;
+    vec4 _56[4] = _74();
+    vec4 tempArg[4] = _56;
     vec4 d[4] = _56;
-    vec4 _551[4] = _56;
-    uint _552 = 0u;
-    uint _557;
+    vec4 _187[4] = _56;
+    uint _188 = 0u;
+    uint _193;
     for (;;)
     {
-        _557 = _552;
-        if (_557 < 16u)
+        _193 = _188;
+        if (_193 < 16u)
         {
-            _535(((uint(0) + (_557 / 4u)) * uint(4)) + (uint(0) + (_557 % 4u)), _551[_557 / 4u]);
-            _552 = _557 + 4u;
+            _169(((uint(0) + (_193 / 4u)) * uint(4)) + (uint(0) + (_193 % 4u)), _187[_193 / 4u]);
+            _188 = _193 + 4u;
             continue;
         }
         else

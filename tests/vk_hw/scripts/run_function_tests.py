@@ -34,7 +34,7 @@ def parse_case(path):
     else:
         stem = path.stem
 
-    suffix = r"(?:_(?:scalar|ssbo_direct|ubo|constbias|constw|constx|convert|biasconvert|arith))?"
+    suffix = r"(?:_(?:scalar|ssbo_direct|ubo|constbias|constw|constx|convert|biasconvert|cconvert|arith))?"
 
     m = re.match(
         rf"reduce_(row|column)_(add|min|max)_({DTYPE_RE})(?:_(scalar))?_(\d+)x(\d+)$",
@@ -66,7 +66,7 @@ def parse_case(path):
     )
     if m:
         a_dtype, b_dtype, accum_dtype, rows, cols, inner = m.groups()
-        return {
+        result = {
             "case": "matmul",
             "dtype": accum_dtype,
             "a_dtype": a_dtype,
@@ -77,6 +77,9 @@ def parse_case(path):
             "n": cols,
             "k": inner,
         }
+        if "_cconvert_" in stem:
+            result["c_dtype"] = a_dtype
+        return result
 
     m = re.match(rf"matmul_({DTYPE_RE}){suffix}_(\d+)x(\d+)x(\d+)$", stem)
     if m:
