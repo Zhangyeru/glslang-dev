@@ -4,12 +4,12 @@
 
 当前 `hw-lower-to-standard` 已能完整处理本文定义的 cooperative matrix/vector 子集，将其转换为标准 SPIR-V array、vec4 或 scalar 代码；但还不能等价 lower 整个 `SPV_HW_neural_shader`。
 
-本文档描述 2026-08-10 的工作树状态，基线提交为：
+本文档描述 2026-08-17 的 `lower-0605` 分支状态，比较基线为：
 
 - glslang：`98791cac`
 - SPIRV-Tools：`121650c4`
 
-本文所述 P0 已提交；本轮浮点重结合、direct 路径和 golden 更新尚未提交。实现没有修改 `source/val`。
+本文所述 P0、浮点重结合、direct 路径和 golden 更新均按独立提交维护。实现没有修改 `source/val`。
 
 入口与 lowering 调度位于 [`hw_lower_to_standard_pass.cpp`](External/spirv-tools/source/opt/hw_lower_to_standard_pass.cpp)；类型、校验、aggregate、elementwise、memory、matmul 和 direct 路径分别拆分在同目录的 `hw_lower_to_standard_*.cpp` 中，共享内部 helper 位于 [`hw_lower_to_standard_pass_internal.h`](External/spirv-tools/source/opt/hw_lower_to_standard_pass_internal.h)。
 
@@ -227,6 +227,8 @@ matmul。它捕获可安全移动的原始 buffer pointer，在生成的 helper 
 | Vector input 来源 | `OpCooperativeVectorLoadHW`，offset 为常量 0，pointer 可捕获且 load 可移动 | 仅该 operand 改用 constant/value |
 | 普通 bias 来源 | 与 result 同型的 `OpCooperativeVectorLoadHW`，offset 为常量 0 | 仅 bias 改用 constant/value |
 | Converted bias 来源 | 仅 vector direct：`f16 OpCooperativeVectorLoadHW ->` 单个同 shape `OpFConvert -> f32`；load offset 可为任意可表示的常量 | conversion 形态不匹配或 offset 为动态值时仅 bias 改用 constant/value；已捕获链不封闭时取消整条 vector direct，走 generic 路径 |
+| Direct load 移动与别名 | load 与 matmul 之间不能存在可能写入同一内存的指令；不同 module root 只有在 pointer path 均无 `Aliased` / `AliasedPointer` 时才可视为不相交 | 仅该 operand 改用 constant/value |
+| Function transport | 可穿过无 MemoryAccess operand、pointer 未带 `Volatile` decoration 的 Function `OpStore` / `OpLoad`；`Volatile` 或其他带语义的 memory access 不可删除 | 至少该 operand 改用 constant/value 并保留 transport；删除闭包不成立时整条回退 |
 | Direct source 共享与删除闭包 | 已捕获 source 的其他 live user 只能经兼容 bitcast/封闭 Function transport 流向其他 HW op；待删除 load/transport 的 user 必须闭合 | 安全共享时保留原 source/transport 并继续 direct；存在 unsafe shared user 或 kill-chain 不闭合时，取消整条 Matrix/Vector direct，走 generic 路径 |
 | 尺寸预算 | 只受总体 `max_elements` / `max_matmul_macs` hard limit 约束，不受 `max_unrolled_matmul_macs` 约束 | hard limit 失败时 validation 拒绝 |
 
@@ -242,7 +244,8 @@ runtime structured helper，按逻辑 output element 和 K 维循环直接加载
 vec4 或 scalar aggregate。Vector direct 继续使用完整 4-lane N/K tile 和独立 K/N tail epilogue。
 
 Converted bias 的常量 offset 会合并到 helper 的 scalar/vec4 索引；原 bias conversion 的
-`FPFastMathMode` 会传播到 helper 内对应的 `OpFConvert`。
+`FPFastMathMode` 会传播到 helper 内对应的 `OpFConvert`，包括显式的 `FPFastMathMode None`，避免生成指令意外继承
+非零 `FPFastMathDefault`。
 
 这些路径可能与严格逐 K、以 C/bias 为初始 accumulator 的 Fma 链产生不同的 contraction、舍入、NaN/Inf
 或正负零行为。原指令完整的 `FPFastMathMode` 会传播到生成的 Fma、`OpFConvert`、`OpFAdd` 等浮点结果。
@@ -678,7 +681,7 @@ unroll-macs=N
 - `cmake --build build -j8`：通过
 - SPIRV-Tools CTest：32/32 通过
 - SPIRV-Tools `HwFuseTwoLayerVectorMatmulTest.*`：40/40 通过；覆盖四层双 pair、五层双 pair 加普通尾层 (2-2-1)、五层双 pair 夹单普通层 (2-1-2) 及 packed outer lowering
-- SPIRV-Tools `HwLowerToStandardTest.*`：208/208 通过
+- SPIRV-Tools `HwLowerToStandardTest.*`：212/212 通过
 - Optimizer API/CLI option 测试：2/2 通过
 - glslang lowering 集成测试：4/4 通过
 - `vk_hw` Python 单测：49/49 通过
@@ -693,18 +696,18 @@ unroll-macs=N
 - 顶层 CTest：8/8 通过
 - 完整 `vk_hw_function`：75/75 通过，无 skip；新增 converted-C Matrix 用例 `c_dtype=f16`、`accum_dtype=f32`，`max_abs_error=0`、`max_rel_error=0`
 - 7 个 MLP 功能用例全部 verify 通过；新增四层用例误差为 0，五层 2-2-1 用例 `max_abs_error=0.000244`、`max_rel_error=0.000576`，五层 2-1-2 用例 `max_abs_error=0.001953`、`max_rel_error=0.004315`
-- 2026-08-11 现场采样，`warmup=20`、`repeat=200` 的完整 `vk_hw_perf`：74/74 完成且 lowered/baseline verify 均通过，无 skip
-  - 四层 `mlp_f16_8x48_48x8_8x48_48x4`：ratio 0.6423；lowered 11319.2 ns，baseline 17622.6 ns
-  - 五层 2-2-1 `mlp_f16_8x48_48x8_8x48_48x8_8x4`：ratio 0.6299；lowered 13343.2 ns，baseline 21183.4 ns
-  - 五层 2-1-2 `mlp_f16_8x48_48x8_8x8_8x48_48x4`：ratio 0.6882；lowered 11841.2 ns，baseline 17206.8 ns；(L1,L2) 和 (L4,L5) 融合，L3 的输出宽度为 8，不满足 fusion 的 `N > 16`，因此保留为普通 lowering
-  - Matrix direct 相关用例 `matmul_f16_7x5x3`、`matmul_f16xf16_to_f32_4x4x4`、`matmul_f16xf16_to_f32_7x5x3` 的 ratio 分别为 0.8655、0.8975、0.8343
+- 2026-08-17 现场采样，`warmup=20`、`repeat=200` 的完整 `vk_hw_perf`：74/74 完成且 lowered/baseline verify 均通过，无 skip
+  - 四层 `mlp_f16_8x48_48x8_8x48_48x4`：ratio 0.6259；lowered 30701.6 ns，baseline 49048.2 ns
+  - 五层 2-2-1 `mlp_f16_8x48_48x8_8x48_48x8_8x4`：ratio 0.6801；lowered 36082.8 ns，baseline 53053.0 ns
+  - 五层 2-1-2 `mlp_f16_8x48_48x8_8x8_8x48_48x4`：ratio 0.6923；lowered 33554.0 ns，baseline 48469.8 ns；(L1,L2) 和 (L4,L5) 融合，L3 的输出宽度为 8，不满足 fusion 的 `N > 16`，因此保留为普通 lowering
+  - Matrix direct 相关用例 `matmul_f16_7x5x3`、`matmul_f16xf16_to_f32_4x4x4`、`matmul_f16xf16_to_f32_7x5x3` 的 ratio 分别为 0.9014、0.8939、0.8460
   - 除以下 4 个已解释超限项外，其余 70 个用例 ratio 均不超过 2
-  - `matmul_f16xf16_to_f32_cconvert_7x5x3`：ratio 2.7837；Matrix direct 按设计不吸收 C 的 cooperative `OpFConvert`，因此在 direct helper 前先用独立循环把 35 个 f16 C 元素物化并转换为 f32 aggregate；该小 shape 仅有 105 个 MAC，转换循环、aggregate 传参与两层 helper 循环开销超过 baseline 的静态展开计算
-  - `vecmatmuladd_f16_convert_32x16`：ratio 12.2333；f16/f32 往返转换物化并复制大型 aggregate，产生 4 KiB scratch 和大量 scratch load/store
-  - `load_store_f32_scalar_5x7`：ratio 5.2605；scalar aggregate 的 4 个动态循环和 private-array 动态索引被后端展开为大量分支/选择，baseline 则完全展开并向量化
-  - `matmul_f16_32x32x32`：ratio 3.6947；三层动态循环阻止后端展开和跨 output tile 复用 A/B，不是寄存器 spill
+  - `matmul_f16xf16_to_f32_cconvert_7x5x3`：ratio 2.7783；Matrix direct 按设计不吸收 C 的 cooperative `OpFConvert`，因此在 direct helper 前先用独立循环把 35 个 f16 C 元素物化并转换为 f32 aggregate；该小 shape 仅有 105 个 MAC，转换循环、aggregate 传参与两层 helper 循环开销超过 baseline 的静态展开计算
+  - `vecmatmuladd_f16_convert_32x16`：ratio 8.7871；f16/f32 往返转换物化并复制大型 aggregate，产生 4 KiB scratch 和大量 scratch load/store
+  - `load_store_f32_scalar_5x7`：ratio 5.1510；scalar aggregate 的 4 个动态循环和 private-array 动态索引被后端展开为大量分支/选择，baseline 则完全展开并向量化
+  - `matmul_f16_32x32x32`：ratio 3.7794；三层动态循环阻止后端展开和跨 output tile 复用 A/B，不是寄存器 spill
 
-两个仓库工作树均保留本次未提交修改。
+glslang 的 fixture/golden 与 SPIRV-Tools lowering 是跨仓配对修改，集成、推送或回放时必须使用匹配 revision。
 
 因此最准确的能力描述是：
 
