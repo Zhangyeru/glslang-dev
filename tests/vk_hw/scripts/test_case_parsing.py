@@ -90,6 +90,30 @@ class CaseParsingTest(unittest.TestCase):
         self.assertEqual(case_work(case), 8 * 48 + 48 * 8 + 8 * 48 + 48 * 4)
         self.assertEqual(shape_string(case), "8x48, 48x8, 8x48, 48x4")
 
+    def test_mixed_mlp_tracks_bias_accumulator_and_activation_types(self):
+        case = parse_case(pathlib.Path(
+            "mlp_f16xf16_to_f32_biasconvert_10x64_64x16.lowered.spv"))
+        self.assertEqual(case["case"], "mlp")
+        self.assertEqual(case["layer_dims"], ["10", "64", "16"])
+        self.assertEqual(
+            (case["a_dtype"], case["b_dtype"], case["c_dtype"],
+             case["accum_dtype"], case["activation_dtype"]),
+            ("f16", "f16", "f16", "f32", "f16"),
+        )
+        self.assertTrue(case["packed_mlp_params"])
+
+    def test_other_mixed_mlp_shape_keeps_separate_parameter_buffers(self):
+        case = parse_case(pathlib.Path(
+            "mlp_f16xf16_to_f32_biasconvert_8x32_32x4.lowered.spv"))
+        self.assertEqual(case["layer_dims"], ["8", "32", "4"])
+        self.assertFalse(case["packed_mlp_params"])
+
+    def test_non_biasconvert_mlp_keeps_separate_parameter_buffers(self):
+        case = parse_case(pathlib.Path(
+            "mlp_f16xf16_to_f32_10x64_64x16.lowered.spv"))
+        self.assertEqual(case["c_dtype"], "f32")
+        self.assertFalse(case["packed_mlp_params"])
+
     def test_five_layer_mlp_filename(self):
         case = parse_case(pathlib.Path("mlp_f16_8x48_48x8_8x48_48x8_8x4.lowered.spv"))
         self.assertEqual(case["layer_dims"], ["8", "48", "8", "48", "8", "4"])
@@ -140,6 +164,19 @@ class CaseParsingTest(unittest.TestCase):
         self.assertEqual(cmd[cmd.index("--layer-dims") + 1], "8,48,8,48,4")
         self.assertFalse(any(dim in cmd for dim in ("--d0", "--d1", "--d2", "--d3")))
 
+    @mock.patch("run_function_tests.subprocess.run", return_value=mock.Mock(stdout="{}"))
+    def test_function_runner_passes_mixed_mlp_activation_dtype(self, subprocess_run):
+        run_case(
+            "runner",
+            pathlib.Path(
+                "mlp_f16xf16_to_f32_biasconvert_10x64_64x16.lowered.spv"),
+            1,
+            2,
+        )
+        cmd = subprocess_run.call_args.args[0]
+        self.assertEqual(cmd[cmd.index("--activation-dtype") + 1], "f16")
+        self.assertIn("--packed-mlp-params", cmd)
+
     @mock.patch("run_perf_tests.subprocess.run", return_value=mock.Mock(stdout="{}"))
     def test_performance_runner_passes_generic_mlp_dimensions(self, subprocess_run):
         meta = parse_case(pathlib.Path("mlp_f16_8x48_48x8_8x48_48x8_8x4.lowered.spv"))
@@ -147,6 +184,15 @@ class CaseParsingTest(unittest.TestCase):
         cmd = subprocess_run.call_args.args[0]
         self.assertEqual(cmd[cmd.index("--layer-dims") + 1], "8,48,8,48,8,4")
         self.assertFalse(any(dim in cmd for dim in ("--d0", "--d1", "--d2", "--d3")))
+
+    @mock.patch("run_perf_tests.subprocess.run", return_value=mock.Mock(stdout="{}"))
+    def test_performance_runner_passes_mixed_mlp_activation_dtype(self, subprocess_run):
+        meta = parse_case(pathlib.Path(
+            "mlp_f16xf16_to_f32_biasconvert_10x64_64x16.lowered.spv"))
+        run_shader("runner", pathlib.Path("case.spv"), meta, 1, 2)
+        cmd = subprocess_run.call_args.args[0]
+        self.assertEqual(cmd[cmd.index("--activation-dtype") + 1], "f16")
+        self.assertIn("--packed-mlp-params", cmd)
 
     def test_structured_skip_is_reported_without_numeric_performance(self):
         functional = {

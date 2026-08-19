@@ -1,0 +1,62 @@
+#version 450 core
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#extension GL_EXT_spirv_intrinsics : require
+
+// GLSL has no source-level spelling for OpQuantizeToF16. Use the standard
+// SPIR-V instruction directly so the driver cannot fold a f32 -> f16 -> f32
+// conversion pair into an identity operation.
+spirv_instruction(id = 116)
+vec2 quantizeToF16Exact(vec2 value);
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputX {
+    float16_t x[10];
+} InX;
+
+layout(set = 0, binding = 1) buffer PackedParameters {
+    float16_t data[];
+} Params;
+
+layout(set = 0, binding = 3) buffer OutputY {
+    float y[16];
+} OutY;
+
+void main()
+{
+    vec2 outputPairs[8];
+    for (int outputPair = 0; outputPair < 8; ++outputPair) {
+        int outputCol = outputPair * 2;
+        outputPairs[outputPair] = vec2(Params.data[3584 + outputCol], Params.data[3584 + outputCol + 1]);
+    }
+
+    for (int hiddenPair = 0; hiddenPair < 32; ++hiddenPair) {
+        int hiddenCol = hiddenPair * 2;
+        vec2 hidden = vec2(Params.data[3456 + hiddenCol], Params.data[3456 + hiddenCol + 1]);
+        for (int k = 0; k < 10; ++k) {
+            vec2 weight = vec2(Params.data[16 + k * 64 + hiddenCol],
+                               Params.data[16 + k * 64 + hiddenCol + 1]);
+            hidden = fma(vec2(InX.x[k]), weight, hidden);
+        }
+        hidden = max(hidden, vec2(0.0));
+
+        vec2 activation = quantizeToF16Exact(hidden);
+        for (int outputPair = 0; outputPair < 8; ++outputPair) {
+            int outputCol = outputPair * 2;
+            vec2 weight0 = vec2(Params.data[656 + hiddenCol * 16 + outputCol],
+                                Params.data[656 + hiddenCol * 16 + outputCol + 1]);
+            vec2 weight1 = vec2(Params.data[656 + (hiddenCol + 1) * 16 + outputCol],
+                                Params.data[656 + (hiddenCol + 1) * 16 + outputCol + 1]);
+            outputPairs[outputPair] = fma(vec2(activation.x), weight0, outputPairs[outputPair]);
+            outputPairs[outputPair] = fma(vec2(activation.y), weight1, outputPairs[outputPair]);
+        }
+    }
+
+    for (int outputPair = 0; outputPair < 8; ++outputPair) {
+        vec2 result = max(outputPairs[outputPair], vec2(0.0));
+        int outputCol = outputPair * 2;
+        OutY.y[outputCol] = result.x;
+        OutY.y[outputCol + 1] = result.y;
+    }
+}

@@ -168,6 +168,28 @@ bool TestAllTypedBufferRoundTrips()
     return true;
 }
 
+bool TestNeuralMlpParameterPacking()
+{
+    vk_hw::RawValues weights(10 * 64 + 64 * 16, 0);
+    vk_hw::RawValues biases(64 + 16, 0);
+    weights[0] = 0x3c00u;
+    weights[639] = 0x4000u;
+    weights[640] = 0x4200u;
+    weights.back() = 0x4400u;
+    biases[0] = 0x4500u;
+    biases[63] = 0x4600u;
+    biases[64] = 0x4700u;
+    biases.back() = 0x4800u;
+
+    const vk_hw::RawValues packed =
+        vk_hw::DecodeRawBuffer(vk_hw::EncodeNeuralMlpParameterBuffer(weights, biases), vk_hw::DType::kF16);
+    const bool rejects_wrong_size = vk_hw::EncodeNeuralMlpParameterBuffer({0}, {0}).empty();
+    return rejects_wrong_size && packed.size() == 3600 && packed[15] == 0 && packed[16] == weights[0] &&
+           packed[655] == weights[639] && packed[656] == weights[640] && packed[1679] == weights.back() &&
+           packed[1680] == 0 && packed[3455] == 0 && packed[3456] == biases[0] && packed[3519] == biases[63] &&
+           packed[3520] == 0 && packed[3583] == 0 && packed[3584] == biases[64] && packed[3599] == biases.back();
+}
+
 bool TestMixedSignedUnsignedIntegerMatmul()
 {
     vk_hw::CaseConfig config;
@@ -231,6 +253,36 @@ bool TestConvertedF16BiasUsesAccumulatorType()
     return output == vk_hw::RawValues{FloatRaw(std::fma(1.25f, 0.75f, -0.5f))};
 }
 
+bool TestMixedMlpQuantizesIntermediateActivation()
+{
+    vk_hw::CaseConfig config;
+    config.kind = vk_hw::CaseKind::kMlp;
+    config.a_dtype = vk_hw::DType::kF16;
+    config.b_dtype = vk_hw::DType::kF16;
+    config.c_dtype = vk_hw::DType::kF16;
+    config.accum_dtype = vk_hw::DType::kF32;
+    config.activation_dtype = vk_hw::DType::kF16;
+    config.layer_dims = {1, 1, 1};
+
+    const uint16_t one = vk_hw::FloatToHalfBits(1.0f);
+    const uint16_t small_bias = vk_hw::FloatToHalfBits(0.0006f);
+    const uint16_t zero = vk_hw::FloatToHalfBits(0.0f);
+    const float first = std::fma(1.0f, 1.0f, vk_hw::HalfBitsToFloat(small_bias));
+    const float rounded = vk_hw::HalfBitsToFloat(vk_hw::FloatToHalfBits(first));
+    const vk_hw::RawValues rounded_output = vk_hw::ReferenceOutputRaw(config, {one}, {one, one}, {small_bias, zero});
+    if (rounded_output != vk_hw::RawValues{FloatRaw(rounded)})
+        return false;
+
+    // This is a semantic sentinel for the explicit f32 -> f16 bridge. The
+    // otherwise identical unrounded network must not pass f32 verification.
+    config.activation_dtype = vk_hw::DType::kF32;
+    const vk_hw::RawValues unrounded_output = vk_hw::ReferenceOutputRaw(config, {one}, {one, one}, {small_bias, zero});
+    if (unrounded_output == rounded_output)
+        return false;
+    config.activation_dtype = vk_hw::DType::kF16;
+    return !vk_hw::CompareOutputRaw(config, rounded_output, unrounded_output).pass;
+}
+
 bool TestIntegerReduceUsesOperandSignedness()
 {
     vk_hw::CaseConfig config;
@@ -263,8 +315,9 @@ int main()
 {
     return TestRowAddBroadcast() && TestColumnMinBroadcast() && TestF16QuantizesEveryFoldStep() &&
                    TestF16UsesRoundToNearestEven() && TestF16FiniteRoundTrip() && TestAllTypedBufferRoundTrips() &&
-                   TestMixedSignedUnsignedIntegerMatmul() && TestIntegerMatmulWrapsAt32Bits() &&
-                   TestMixedFloatUsesAccumulatorFma() && TestConvertedF16BiasUsesAccumulatorType() &&
+                   TestNeuralMlpParameterPacking() && TestMixedSignedUnsignedIntegerMatmul() &&
+                   TestIntegerMatmulWrapsAt32Bits() && TestMixedFloatUsesAccumulatorFma() &&
+                   TestConvertedF16BiasUsesAccumulatorType() && TestMixedMlpQuantizesIntermediateActivation() &&
                    TestArbitraryDepthMlpReference() && TestIntegerReduceUsesOperandSignedness() &&
                    TestFloatCompareDistinguishesSignedZeroAndAcceptsNaN()
                ? 0

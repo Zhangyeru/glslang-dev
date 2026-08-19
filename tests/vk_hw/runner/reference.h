@@ -27,6 +27,12 @@ struct CaseConfig {
     DType b_dtype = DType::kF32;
     DType c_dtype = DType::kF32;
     DType accum_dtype = DType::kF32;
+    // Type stored between MLP layers after activation. Defaults to the
+    // accumulator type at the command-line boundary.
+    DType activation_dtype = DType::kF32;
+    // Pack MLP weights and biases into the single parameter-buffer layout
+    // used by the neural.frag regression fixture.
+    bool packed_mlp_params = false;
     uint32_t m = 1;
     uint32_t n = 1;
     uint32_t k = 1;
@@ -65,6 +71,9 @@ using RawValues = std::vector<uint64_t>;
 RawValues MakeRawInput(size_t count, int seed, DType dtype);
 std::vector<uint8_t> EncodeRawBuffer(const RawValues& values, DType dtype);
 RawValues DecodeRawBuffer(const std::vector<uint8_t>& bytes, DType dtype);
+// Encode the exact single-f16-buffer layout used by evaluateNetwork2 in
+// neural.frag: W0 at 16, W1 at 656, B0 at 3456, and B1 at 3584.
+std::vector<uint8_t> EncodeNeuralMlpParameterBuffer(const RawValues& weights, const RawValues& biases);
 RawValues ReferenceOutputRaw(const CaseConfig& config, const RawValues& a, const RawValues& b, const RawValues& c);
 VerifyResult CompareOutputRaw(const CaseConfig& config, const RawValues& expected, const RawValues& actual);
 

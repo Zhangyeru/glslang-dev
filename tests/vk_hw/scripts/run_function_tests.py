@@ -112,6 +112,36 @@ def parse_case(path):
         case, dtype, inner, cols = m.groups()
         return typed_meta(case, dtype, m="1", n=cols, k=inner)
 
+    m = re.match(
+        rf"mlp_({DTYPE_RE})x({DTYPE_RE})_to_({DTYPE_RE})(_biasconvert)?_"
+        rf"(\d+x\d+(?:_\d+x\d+)*)$",
+        stem,
+    )
+    if m:
+        a_dtype, b_dtype, accum_dtype, biasconvert, encoded_layers = m.groups()
+        layers = [layer.split("x") for layer in encoded_layers.split("_")]
+        layer_dims = [layers[0][0]]
+        for input_dim, output_dim in layers:
+            if layer_dims[-1] != input_dim:
+                raise ValueError(f"inconsistent mlp dimensions in {path}")
+            layer_dims.append(output_dim)
+        if any(int(dim) == 0 for dim in layer_dims):
+            raise ValueError(f"mlp dimensions must be non-zero in {path}")
+        return {
+            "case": "mlp",
+            "dtype": accum_dtype,
+            "a_dtype": a_dtype,
+            "b_dtype": b_dtype,
+            "c_dtype": a_dtype if biasconvert else accum_dtype,
+            "accum_dtype": accum_dtype,
+            "activation_dtype": a_dtype,
+            "packed_mlp_params": bool(biasconvert) and layer_dims == ["10", "64", "16"],
+            "m": "1",
+            "n": layer_dims[-1],
+            "k": "0",
+            "layer_dims": layer_dims,
+        }
+
     m = re.match(rf"mlp_({DTYPE_RE})_(\d+x\d+(?:_\d+x\d+)*)$", stem)
     if m:
         dtype, encoded_layers = m.groups()
@@ -151,6 +181,8 @@ def run_case(runner, shader, warmup, repeat):
         meta["c_dtype"],
         "--accum-dtype",
         meta["accum_dtype"],
+        "--activation-dtype",
+        meta.get("activation_dtype", meta["accum_dtype"]),
         "--m",
         meta["m"],
         "--n",
@@ -166,6 +198,8 @@ def run_case(runner, shader, warmup, repeat):
     ]
     if "layer_dims" in meta:
         cmd.extend(["--layer-dims", ",".join(str(dim) for dim in meta["layer_dims"])])
+    if meta.get("packed_mlp_params"):
+        cmd.append("--packed-mlp-params")
     if meta["case"] == "reduce":
         cmd.extend(["--axis", meta["axis"], "--reduce-op", meta["reduce_op"]])
     proc = subprocess.run(cmd, check=True, text=True, capture_output=True)
@@ -218,13 +252,14 @@ def write_reports(results, out_dir):
     lines = [
         "# HW Vulkan Functional Results",
         "",
-        "| Shader | Case | A | B | C/Bias | Accum | Axis | Operation | Shape | Status | Verify | Max Abs Error | Max Rel Error | Skip Reason |",
-        "|---|---|---|---|---|---|---|---|---:|---|---|---:|---:|---|",
+        "| Shader | Case | A | B | C/Bias | Accum | Activation | Axis | Operation | Shape | Status | Verify | Max Abs Error | Max Rel Error | Skip Reason |",
+        "|---|---|---|---|---|---|---|---|---|---:|---|---|---:|---:|---|",
     ]
     for result in results:
         lines.append(
             f"| {pathlib.Path(result['shader']).name} | {result['case']} | {result['a_dtype']} | "
             f"{result['b_dtype']} | {result['c_dtype']} | {result['accum_dtype']} | "
+            f"{result.get('activation_dtype', result['accum_dtype'])} | "
             f"{result.get('axis', '')} | {result.get('reduce_op', '')} | "
             f"{shape_string(result)} | {result.get('status', 'pass')} | {result['verify']} | "
             f"{result['max_abs_error']:.8g} | {result['max_rel_error']:.8g} | {result.get('skip_reason', '')} |"

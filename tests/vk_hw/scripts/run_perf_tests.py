@@ -33,6 +33,8 @@ def run_shader(runner, shader, meta, warmup, repeat):
         meta["c_dtype"],
         "--accum-dtype",
         meta["accum_dtype"],
+        "--activation-dtype",
+        meta.get("activation_dtype", meta["accum_dtype"]),
         "--m",
         meta["m"],
         "--n",
@@ -48,6 +50,8 @@ def run_shader(runner, shader, meta, warmup, repeat):
     ]
     if "layer_dims" in meta:
         cmd.extend(["--layer-dims", ",".join(str(dim) for dim in meta["layer_dims"])])
+    if meta.get("packed_mlp_params"):
+        cmd.append("--packed-mlp-params")
     if meta["case"] == "reduce":
         cmd.extend(["--axis", meta["axis"], "--reduce-op", meta["reduce_op"]])
     proc = subprocess.run(cmd, check=True, text=True, capture_output=True)
@@ -75,6 +79,7 @@ def write_outputs(rows, out_json):
                 "b_dtype",
                 "c_dtype",
                 "accum_dtype",
+                "activation_dtype",
                 "axis",
                 "reduce_op",
                 "m",
@@ -100,8 +105,8 @@ def write_outputs(rows, out_json):
     lines = [
         "# HW Lowered Shader Vulkan Performance",
         "",
-        "| Shader | Case | A | B | C/Bias | Accum | Axis | Operation | Shape | Lowered ns | Baseline ns | Ratio | GOPS | Status | Verify | Baseline Verify | Skip Reason |",
-        "|---|---|---|---|---|---|---|---|---:|---:|---:|---:|---:|---|---|---|---|",
+        "| Shader | Case | A | B | C/Bias | Accum | Activation | Axis | Operation | Shape | Lowered ns | Baseline ns | Ratio | GOPS | Status | Verify | Baseline Verify | Skip Reason |",
+        "|---|---|---|---|---|---|---|---|---|---:|---:|---:|---:|---:|---|---|---|---|",
     ]
     def number(value, digits):
         return "" if value is None else f"{value:.{digits}f}"
@@ -109,7 +114,8 @@ def write_outputs(rows, out_json):
     for row in rows:
         lines.append(
             f"| {row['shader']} | {row['case']} | {row['a_dtype']} | {row['b_dtype']} | "
-            f"{row['c_dtype']} | {row['accum_dtype']} | {row.get('axis', '')} | "
+            f"{row['c_dtype']} | {row['accum_dtype']} | "
+            f"{row.get('activation_dtype', row['accum_dtype'])} | {row.get('axis', '')} | "
             f"{row.get('reduce_op', '')} | {shape_string(row)} | {number(row['lowered_ns'], 3)} | "
             f"{number(row['baseline_ns'], 3)} | {number(row['ratio'], 4)} | {number(row['gops_avg'], 4)} | "
             f"{row['status']} | {row['verify']} | {row['baseline_verify']} | {row['skip_reason']} |"
@@ -155,6 +161,8 @@ def main():
                 "b_dtype": lowered_result["b_dtype"],
                 "c_dtype": lowered_result["c_dtype"],
                 "accum_dtype": lowered_result["accum_dtype"],
+                "activation_dtype": lowered_result.get(
+                    "activation_dtype", lowered_result["accum_dtype"]),
                 "axis": lowered_result.get("axis", ""),
                 "reduce_op": lowered_result.get("reduce_op", ""),
                 "m": lowered_result["m"],

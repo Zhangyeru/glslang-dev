@@ -172,6 +172,7 @@ CaseConfig ParseArgs(int argc, char** argv)
     std::optional<DType> b_dtype;
     std::optional<DType> c_dtype;
     std::optional<DType> accum_dtype;
+    std::optional<DType> activation_dtype;
     std::optional<std::vector<uint32_t>> layer_dims;
     std::array<std::optional<uint32_t>, 4> legacy_layer_dims;
     for (int i = 1; i < argc; ++i) {
@@ -197,6 +198,10 @@ CaseConfig ParseArgs(int argc, char** argv)
             c_dtype = ParseDType(require_value("--c-dtype"));
         } else if (arg == "--accum-dtype") {
             accum_dtype = ParseDType(require_value("--accum-dtype"));
+        } else if (arg == "--activation-dtype") {
+            activation_dtype = ParseDType(require_value("--activation-dtype"));
+        } else if (arg == "--packed-mlp-params") {
+            config.packed_mlp_params = true;
         } else if (arg == "--m") {
             config.m = ParseU32(require_value("--m"), "--m");
         } else if (arg == "--n") {
@@ -257,6 +262,10 @@ CaseConfig ParseArgs(int argc, char** argv)
         throw std::runtime_error(
             "mlp case requires --layer-dims with at least two non-zero dimensions or --d0 --d1 --d2 --d3");
     }
+    if (config.packed_mlp_params &&
+        (config.kind != CaseKind::kMlp || config.layer_dims != std::vector<uint32_t>{10, 64, 16})) {
+        throw std::runtime_error("--packed-mlp-params requires the 10,64,16 MLP fixture");
+    }
     if (config.kind == CaseKind::kReduce && (config.m == 0 || config.n == 0)) {
         throw std::runtime_error("reduce case requires non-zero --m and --n");
     }
@@ -265,18 +274,23 @@ CaseConfig ParseArgs(int argc, char** argv)
     config.b_dtype = b_dtype.value_or(shorthand);
     config.accum_dtype = accum_dtype.value_or(shorthand);
     config.c_dtype = c_dtype.value_or(config.accum_dtype);
+    config.activation_dtype = activation_dtype.value_or(config.accum_dtype);
     config.dtype = config.accum_dtype;
 
     const bool float_inputs = IsFloatDType(config.a_dtype) && IsFloatDType(config.b_dtype) &&
-                              IsFloatDType(config.c_dtype) && IsFloatDType(config.accum_dtype);
+                              IsFloatDType(config.c_dtype) && IsFloatDType(config.accum_dtype) &&
+                              IsFloatDType(config.activation_dtype);
     const bool integer_inputs = !IsFloatDType(config.a_dtype) && !IsFloatDType(config.b_dtype) &&
-                                !IsFloatDType(config.c_dtype) && !IsFloatDType(config.accum_dtype);
+                                !IsFloatDType(config.c_dtype) && !IsFloatDType(config.accum_dtype) &&
+                                !IsFloatDType(config.activation_dtype);
     if (!float_inputs && !integer_inputs)
-        throw std::runtime_error("A, B, C, and accumulator types must all be floating-point or all be integer");
+        throw std::runtime_error(
+            "A, B, C, accumulator, and activation types must all be floating-point or all be integer");
     if (ElementBitWidth(config.accum_dtype) < ElementBitWidth(config.a_dtype) ||
         ElementBitWidth(config.accum_dtype) < ElementBitWidth(config.b_dtype) ||
-        ElementBitWidth(config.accum_dtype) < ElementBitWidth(config.c_dtype)) {
-        throw std::runtime_error("accumulator type must not be narrower than A, B, or C");
+        ElementBitWidth(config.accum_dtype) < ElementBitWidth(config.c_dtype) ||
+        ElementBitWidth(config.accum_dtype) < ElementBitWidth(config.activation_dtype)) {
+        throw std::runtime_error("accumulator type must not be narrower than A, B, C, or activation");
     }
     return config;
 }
@@ -397,6 +411,7 @@ void PrintJson(const CaseConfig& config, const TimeStats& stats, const VerifyRes
     std::cout << "  \"b_dtype\": \"" << DTypeName(config.b_dtype) << "\",\n";
     std::cout << "  \"c_dtype\": \"" << DTypeName(config.c_dtype) << "\",\n";
     std::cout << "  \"accum_dtype\": \"" << DTypeName(config.accum_dtype) << "\",\n";
+    std::cout << "  \"activation_dtype\": \"" << DTypeName(config.activation_dtype) << "\",\n";
     std::cout << "  \"status\": \"" << (verify.pass ? "pass" : "fail") << "\",\n";
     std::cout << "  \"skip_reason\": \"\",\n";
     std::cout << "  \"m\": " << config.m << ",\n";
@@ -436,6 +451,7 @@ void PrintSkipJson(const CaseConfig& config, const std::string& reason)
     std::cout << "  \"b_dtype\": \"" << DTypeName(config.b_dtype) << "\",\n";
     std::cout << "  \"c_dtype\": \"" << DTypeName(config.c_dtype) << "\",\n";
     std::cout << "  \"accum_dtype\": \"" << DTypeName(config.accum_dtype) << "\",\n";
+    std::cout << "  \"activation_dtype\": \"" << DTypeName(config.activation_dtype) << "\",\n";
     std::cout << "  \"status\": \"skip\",\n";
     std::cout << "  \"skip_reason\": \"" << JsonEscape(reason) << "\",\n";
     std::cout << "  \"m\": " << config.m << ",\n";
@@ -501,13 +517,22 @@ int Run(int argc, char** argv)
     const RawValues b = MakeRawInput(ElementCountB(config), 2, config.b_dtype);
     const RawValues c = MakeRawInput(ElementCountC(config), 3, config.c_dtype);
     const std::vector<uint8_t> a_bytes = EncodeRawBuffer(a, config.a_dtype);
-    const std::vector<uint8_t> b_bytes = EncodeRawBuffer(b, config.b_dtype);
+    std::vector<uint8_t> b_bytes;
     const std::vector<uint8_t> c_bytes = EncodeRawBuffer(c, config.c_dtype);
+    if (config.packed_mlp_params) {
+        if (config.b_dtype != DType::kF16 || config.c_dtype != DType::kF16) {
+            throw std::runtime_error("--packed-mlp-params requires f16 weights and biases");
+        }
+        b_bytes = EncodeNeuralMlpParameterBuffer(b, c);
+        if (b_bytes.empty())
+            throw std::runtime_error("invalid weight or bias count for packed neural MLP parameters");
+    } else
+        b_bytes = EncodeRawBuffer(b, config.b_dtype);
     const size_t d_bytes_size = ElementCountD(config) * ElementSize(config.accum_dtype);
     const std::vector<uint8_t> d_init(d_bytes_size, 0);
 
     VulkanContext context;
-    for (DType dtype : {config.a_dtype, config.b_dtype, config.c_dtype, config.accum_dtype}) {
+    for (DType dtype : {config.a_dtype, config.b_dtype, config.c_dtype, config.accum_dtype, config.activation_dtype}) {
         const std::string missing = MissingFeature(context, dtype);
         if (!missing.empty()) {
             PrintSkipJson(config, DTypeName(dtype) + " case requires Vulkan feature " + missing);

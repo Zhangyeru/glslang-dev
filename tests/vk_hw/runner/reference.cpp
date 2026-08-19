@@ -423,6 +423,31 @@ std::vector<uint8_t> EncodeRawBuffer(const RawValues& values, DType dtype)
     return bytes;
 }
 
+std::vector<uint8_t> EncodeNeuralMlpParameterBuffer(const RawValues& weights, const RawValues& biases)
+{
+    constexpr size_t kFirstWeightOffset = 16;
+    constexpr size_t kFirstWeightCount = 10 * 64;
+    constexpr size_t kSecondWeightOffset = 656;
+    constexpr size_t kSecondWeightCount = 64 * 16;
+    constexpr size_t kFirstBiasOffset = 3456;
+    constexpr size_t kFirstBiasCount = 64;
+    constexpr size_t kSecondBiasOffset = 3584;
+    constexpr size_t kSecondBiasCount = 16;
+    constexpr size_t kParameterCount = kSecondBiasOffset + kSecondBiasCount;
+
+    if (weights.size() != kFirstWeightCount + kSecondWeightCount ||
+        biases.size() != kFirstBiasCount + kSecondBiasCount) {
+        return {};
+    }
+
+    RawValues packed(kParameterCount, 0);
+    std::copy(weights.begin(), weights.begin() + kFirstWeightCount, packed.begin() + kFirstWeightOffset);
+    std::copy(weights.begin() + kFirstWeightCount, weights.end(), packed.begin() + kSecondWeightOffset);
+    std::copy(biases.begin(), biases.begin() + kFirstBiasCount, packed.begin() + kFirstBiasOffset);
+    std::copy(biases.begin() + kFirstBiasCount, biases.end(), packed.begin() + kSecondBiasOffset);
+    return EncodeRawBuffer(packed, DType::kF16);
+}
+
 RawValues DecodeRawBuffer(const std::vector<uint8_t>& bytes, DType dtype)
 {
     const size_t element_size = ElementSize(dtype);
@@ -674,8 +699,12 @@ RawValues ReferenceOutputRaw(const CaseConfig& config, const RawValues& a, const
         for (size_t layer = 0; layer + 1 < config.layer_dims.size(); ++layer) {
             const uint32_t input_width = config.layer_dims[layer];
             const uint32_t output_width = config.layer_dims[layer + 1];
-            const DType input_type = layer == 0 ? config.a_dtype : config.accum_dtype;
+            const DType input_type = layer == 0 ? config.a_dtype : config.activation_dtype;
             activation = run_layer(activation, input_type, input_width, output_width, weight_offset, bias_offset);
+            if (layer + 2 < config.layer_dims.size()) {
+                for (uint64_t& value : activation)
+                    value = ConvertRaw(value, config.accum_dtype, config.activation_dtype);
+            }
             weight_offset += static_cast<size_t>(input_width) * output_width;
             bias_offset += output_width;
         }
@@ -715,8 +744,12 @@ VerifyResult CompareOutputRaw(const CaseConfig& config, const RawValues& expecte
         return result;
     }
 
-    const double abs_threshold = config.accum_dtype == DType::kF16 ? 2e-2 : 1e-5;
-    const double rel_threshold = config.accum_dtype == DType::kF16 ? 2e-2 : 1e-4;
+    // The output buffer stores accumulator values. Intermediate f16 rounding
+    // changes the expected f32 result, but must not relax comparison of that
+    // result or a missing activation bridge would be accepted silently.
+    const bool use_f16_tolerance = config.accum_dtype == DType::kF16;
+    const double abs_threshold = use_f16_tolerance ? 2e-2 : 1e-5;
+    const double rel_threshold = use_f16_tolerance ? 2e-2 : 1e-4;
     for (size_t i = 0; i < count; ++i) {
         const long double expected_value = RawToFloat(expected[i], config.accum_dtype);
         const long double actual_value = RawToFloat(actual[i], config.accum_dtype);
@@ -828,7 +861,7 @@ std::vector<float> ReferenceOutput(const CaseConfig& config, const std::vector<f
     }
 
     if (config.kind == CaseKind::kMlp) {
-        auto relu_quantized = [&](float value) { return std::max(OutputQuantize(value, config.dtype), 0.0f); };
+        auto relu_quantized = [&](float value) { return std::max(OutputQuantize(value, config.accum_dtype), 0.0f); };
 
         auto run_layer = [&](const std::vector<float>& input, uint32_t input_width, uint32_t output_width,
                              size_t weight_offset, size_t bias_offset) {
@@ -852,6 +885,10 @@ std::vector<float> ReferenceOutput(const CaseConfig& config, const std::vector<f
             const uint32_t input_width = config.layer_dims[layer];
             const uint32_t output_width = config.layer_dims[layer + 1];
             activation = run_layer(activation, input_width, output_width, weight_offset, bias_offset);
+            if (layer + 2 < config.layer_dims.size()) {
+                for (float& value : activation)
+                    value = QuantizeForDType(value, config.activation_dtype);
+            }
             weight_offset += static_cast<size_t>(input_width) * output_width;
             bias_offset += output_width;
         }

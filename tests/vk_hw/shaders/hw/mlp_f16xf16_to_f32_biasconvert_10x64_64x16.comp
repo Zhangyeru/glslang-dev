@@ -1,0 +1,57 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputX {
+    float16_t x[10];
+} InX;
+
+layout(set = 0, binding = 1) buffer PackedParameters {
+    float16_t data[];
+} Params;
+
+layout(set = 0, binding = 3) buffer OutputY {
+    float y[16];
+} OutY;
+
+void main()
+{
+    const ivec2 shapeW0 = ivec2(10, 64);
+    const ivec2 shapeW1 = ivec2(64, 16);
+
+    coopvecHW<float16_t, 10> x;
+    coopmatHW<float16_t, 10, 64> w0;
+    coopvecHW<float16_t, 64> bias0_f16;
+    coopvecHW<float, 64> bias0;
+    coopvecHW<float, 64> hidden;
+
+    coopvecHW<float16_t, 64> activation;
+    coopmatHW<float16_t, 64, 16> w1;
+    coopvecHW<float16_t, 16> bias1_f16;
+    coopvecHW<float, 16> bias1;
+    coopvecHW<float, 16> outputValue;
+
+    coopVecLoadHW(x, InX.x, 0u);
+    coopmatHW<float16_t, 10, 64> loadedW0;
+    coopMatLoadHW(loadedW0, Params.data, shapeW0, ivec2(0, 16), gl_CooperativeMatrixLayoutRowMajorHW);
+    coopmatHW<float16_t, 10, 64> tempW0 = loadedW0;
+    w0 = tempW0;
+    // These are element offsets, matching neural.frag's nn_buf layout.
+    coopVecLoadHW(bias0_f16, Params.data, 3456u);
+    bias0 = coopvecHW<float, 64>(bias0_f16);
+    coopVecMatMulAddHW(hidden, x, w0, bias0);
+    hidden = max(hidden, coopvecHW<float, 64>(0.0));
+    activation = coopvecHW<float16_t, 64>(hidden);
+
+    coopmatHW<float16_t, 64, 16> loadedW1;
+    coopMatLoadHW(loadedW1, Params.data, shapeW1, ivec2(41, 0), gl_CooperativeMatrixLayoutRowMajorHW);
+    coopmatHW<float16_t, 64, 16> tempW1 = loadedW1;
+    w1 = tempW1;
+    coopVecLoadHW(bias1_f16, Params.data, 3584u);
+    bias1 = coopvecHW<float, 16>(bias1_f16);
+    coopVecMatMulAddHW(outputValue, activation, w1, bias1);
+    outputValue = max(outputValue, coopvecHW<float, 16>(0.0));
+    coopVecStoreHW(outputValue, OutY.y, 0u);
+}
