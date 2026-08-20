@@ -29,49 +29,64 @@ layout(set = 0, binding = 3, std430) buffer OutputY
     float data[];
 } Y;
 
-f16vec4 _91(uint _92)
+f16vec2 _90(uint _91)
 {
-    return f16vec4(X.data[_92], X.data[_92 + 1u], X.data[_92 + 2u], X.data[_92 + 3u]);
+    return f16vec2(X.data[_91], X.data[_91 + 1u]);
 }
 
-float[3] _109()
+f16vec2 _101(uint _102)
 {
-    vec4 _119 = vec4(0.0);
-    vec4 _120 = vec4(0.0);
-    vec4 _121 = vec4(0.0);
-    uint _118 = 0u;
-    uint _126;
+    return f16vec2(W.data[_102], W.data[_102 + 1u]);
+}
+
+vec2 _112(uint _113)
+{
+    return vec2(Bias.data[_113], Bias.data[_113 + 1u]);
+}
+
+float[3] _124()
+{
+    uint _141 = 0u;
+    float _140[3];
+    uint _142;
+    vec2 _143;
+    uint _148;
     for (;;)
     {
-        _126 = _118;
-        if (_126 < 2u)
+        _148 = _141;
+        if (_148 < 1u)
         {
-            uint _128 = _126 * 4u;
-            vec4 _130 = vec4(_91(_128));
-            uint _132 = (_128 * 3u) + 0u;
-            uint _149 = ((_128 + 1u) * 3u) + 0u;
-            uint _166 = ((_128 + 2u) * 3u) + 0u;
-            uint _183 = ((_128 + 3u) * 3u) + 0u;
-            _119 = fma(_130, vec4(f16vec4(W.data[((uint(0) + (_132 / 3u)) * uint(3)) + (uint(0) + (_132 % 3u))], W.data[((uint(0) + (_149 / 3u)) * uint(3)) + (uint(0) + (_149 % 3u))], W.data[((uint(0) + (_166 / 3u)) * uint(3)) + (uint(0) + (_166 % 3u))], W.data[((uint(0) + (_183 / 3u)) * uint(3)) + (uint(0) + (_183 % 3u))])), _119);
-            uint _202 = 0u + 1u;
-            uint _204 = (_128 * 3u) + _202;
-            uint _220 = 0u + 1u;
-            uint _222 = ((_128 + 1u) * 3u) + _220;
-            uint _238 = 0u + 1u;
-            uint _240 = ((_128 + 2u) * 3u) + _238;
-            uint _256 = 0u + 1u;
-            uint _258 = ((_128 + 3u) * 3u) + _256;
-            _120 = fma(_130, vec4(f16vec4(W.data[((uint(0) + (_204 / 3u)) * uint(3)) + (uint(0) + (_204 % 3u))], W.data[((uint(0) + (_222 / 3u)) * uint(3)) + (uint(0) + (_222 % 3u))], W.data[((uint(0) + (_240 / 3u)) * uint(3)) + (uint(0) + (_240 % 3u))], W.data[((uint(0) + (_258 / 3u)) * uint(3)) + (uint(0) + (_258 % 3u))])), _120);
-            uint _277 = 0u + 2u;
-            uint _279 = (_128 * 3u) + _277;
-            uint _295 = 0u + 2u;
-            uint _297 = ((_128 + 1u) * 3u) + _295;
-            uint _313 = 0u + 2u;
-            uint _315 = ((_128 + 2u) * 3u) + _313;
-            uint _331 = 0u + 2u;
-            uint _333 = ((_128 + 3u) * 3u) + _331;
-            _121 = fma(_130, vec4(f16vec4(W.data[((uint(0) + (_279 / 3u)) * uint(3)) + (uint(0) + (_279 % 3u))], W.data[((uint(0) + (_297 / 3u)) * uint(3)) + (uint(0) + (_297 % 3u))], W.data[((uint(0) + (_315 / 3u)) * uint(3)) + (uint(0) + (_315 % 3u))], W.data[((uint(0) + (_333 / 3u)) * uint(3)) + (uint(0) + (_333 % 3u))])), _121);
-            _118 = _126 + 1u;
+            _143 = vec2(0.0);
+            vec2 _144 = vec2(0.0);
+            _142 = 0u;
+            uint _150;
+            for (;;)
+            {
+                _150 = _142;
+                if (_150 < 5u)
+                {
+                    uint _152 = _150 * 2u;
+                    uint _153 = _148 * 2u;
+                    vec2 _155 = vec2(_90(_152));
+                    uint _157 = (_152 * 3u) + _153;
+                    f16vec2 _170 = _101(((uint(0) + (_157 / 3u)) * uint(3)) + (uint(0) + (_157 % 3u)));
+                    uint _173 = ((_152 + 1u) * 3u) + _153;
+                    f16vec2 _186 = _101(((uint(0) + (_173 / 3u)) * uint(3)) + (uint(0) + (_173 % 3u)));
+                    _143 = fma(_155, vec2(f16vec2(_170.x, _186.x)), _143);
+                    _144 = fma(_155, vec2(f16vec2(_170.y, _186.y)), _144);
+                    _142 = _150 + 1u;
+                    continue;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            uint _200 = _148 * 2u;
+            vec2 _211 = vec2(_143.x + _143.y, _144.x + _144.y) + _112(_200);
+            _140[_200] = _211.x;
+            _140[_200 + 1u] = _211.y;
+            _141 = _148 + 1u;
             continue;
         }
         else
@@ -79,46 +94,40 @@ float[3] _109()
             break;
         }
     }
-    uint _355 = 8u + 1u;
-    vec4 _359 = vec4(f16vec4(X.data[8u], X.data[_355], float16_t(0.0), float16_t(0.0)));
-    uint _360 = 8u * 3u;
-    uint _361 = _360 + 0u;
-    uint _376 = 8u + 1u;
-    uint _378 = (_376 * 3u) + 0u;
-    _119 = fma(_359, vec4(f16vec4(W.data[((uint(0) + (_361 / 3u)) * uint(3)) + (uint(0) + (_361 % 3u))], W.data[((uint(0) + (_378 / 3u)) * uint(3)) + (uint(0) + (_378 % 3u))], float16_t(0.0), float16_t(0.0))), _119);
-    uint _397 = 0u + 1u;
-    uint _398 = 8u * 3u;
-    uint _399 = _398 + _397;
-    uint _414 = 8u + 1u;
-    uint _415 = 0u + 1u;
-    uint _417 = (_414 * 3u) + _415;
-    _120 = fma(_359, vec4(f16vec4(W.data[((uint(0) + (_399 / 3u)) * uint(3)) + (uint(0) + (_399 % 3u))], W.data[((uint(0) + (_417 / 3u)) * uint(3)) + (uint(0) + (_417 % 3u))], float16_t(0.0), float16_t(0.0))), _120);
-    uint _436 = 0u + 2u;
-    uint _437 = 8u * 3u;
-    uint _438 = _437 + _436;
-    uint _453 = 8u + 1u;
-    uint _454 = 0u + 2u;
-    uint _456 = (_453 * 3u) + _454;
-    _121 = fma(_359, vec4(f16vec4(W.data[((uint(0) + (_438 / 3u)) * uint(3)) + (uint(0) + (_438 % 3u))], W.data[((uint(0) + (_456 / 3u)) * uint(3)) + (uint(0) + (_456 % 3u))], float16_t(0.0), float16_t(0.0))), _121);
-    float _117[3];
-    _117[0u] = (((_119.x + _119.y) + _119.z) + _119.w) + Bias.data[0u];
-    uint _496 = 0u + 1u;
-    _117[_496] = (((_120.x + _120.y) + _120.z) + _120.w) + Bias.data[_496];
-    uint _509 = 0u + 2u;
-    _117[_509] = (((_121.x + _121.y) + _121.z) + _121.w) + Bias.data[_509];
-    return _117;
+    _143 = vec2(0.0);
+    _142 = 0u;
+    uint _218;
+    for (;;)
+    {
+        _218 = _142;
+        if (_218 < 5u)
+        {
+            uint _220 = _218 * 2u;
+            uint _224 = (_220 * 3u) + 2u;
+            uint _241 = ((_220 + 1u) * 3u) + 2u;
+            _143 = fma(vec2(_90(_220)), vec2(f16vec2(W.data[((uint(0) + (_224 / 3u)) * uint(3)) + (uint(0) + (_224 % 3u))], W.data[((uint(0) + (_241 / 3u)) * uint(3)) + (uint(0) + (_241 % 3u))])), _143);
+            _142 = _218 + 1u;
+            continue;
+        }
+        else
+        {
+            break;
+        }
+    }
+    _140[2u] = (_143.x + _143.y) + Bias.data[2u];
+    return _140;
 }
 
 void main()
 {
-    float _59[3] = _109();
+    float _59[3] = _124();
     float tempArg[3] = _59;
     float y[3] = _59;
-    uint _516 = 0u + 0u;
-    Y.data[_516] = _59[0];
-    uint _519 = 0u + 1u;
-    Y.data[_519] = _59[1];
-    uint _522 = 0u + 2u;
-    Y.data[_522] = _59[2];
+    uint _271 = 0u + 0u;
+    Y.data[_271] = _59[0];
+    uint _274 = 0u + 1u;
+    Y.data[_274] = _59[1];
+    uint _277 = 0u + 2u;
+    Y.data[_277] = _59[2];
 }
 

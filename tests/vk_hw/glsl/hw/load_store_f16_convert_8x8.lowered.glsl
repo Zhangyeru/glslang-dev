@@ -29,31 +29,29 @@ layout(set = 0, binding = 2, std430) buffer InputC
     float16_t data[];
 } C;
 
-f16vec4 _59(uint _60)
+f16vec2 _59(uint _60)
 {
-    return f16vec4(A.data[_60], A.data[_60 + 1u], A.data[_60 + 2u], A.data[_60 + 3u]);
+    return f16vec2(A.data[_60], A.data[_60 + 1u]);
 }
 
-void _143(uint _144, f16vec4 _145)
+void _135(uint _136, f16vec2 _137)
 {
-    D.data[_144] = _145.x;
-    D.data[_144 + 1u] = _145.y;
-    D.data[_144 + 2u] = _145.z;
-    D.data[_144 + 3u] = _145.w;
+    D.data[_136] = _137.x;
+    D.data[_136 + 1u] = _137.y;
 }
 
 void main()
 {
-    uint _86 = 0u;
-    f16vec4 _85[16];
-    uint _91;
+    uint _78 = 0u;
+    f16vec2 _77[32];
+    uint _83;
     for (;;)
     {
-        _91 = _86;
-        if (_91 < 64u)
+        _83 = _78;
+        if (_83 < 64u)
         {
-            _85[_91 / 4u] = _59(((uint(0) + (_91 / 8u)) * uint(8)) + (uint(0) + (_91 % 8u)));
-            _86 = _91 + 4u;
+            _77[_83 / 2u] = _59(((uint(0) + (_83 / 8u)) * uint(8)) + (uint(0) + (_83 % 8u)));
+            _78 = _83 + 2u;
             continue;
         }
         else
@@ -61,20 +59,20 @@ void main()
             break;
         }
     }
-    f16vec4 _24[16] = _85;
-    f16vec4 tempArg[16] = _24;
-    f16vec4 value[16] = _24;
-    f16vec4 _115[16] = _24;
-    uint _114 = 0u;
-    vec4 _113[16];
-    uint _120;
+    f16vec2 _24[32] = _77;
+    f16vec2 tempArg[32] = _24;
+    f16vec2 value[32] = _24;
+    f16vec2 _107[32] = _24;
+    uint _106 = 0u;
+    vec2 _105[32];
+    uint _112;
     for (;;)
     {
-        _120 = _114;
-        if (_120 < 16u)
+        _112 = _106;
+        if (_112 < 32u)
         {
-            _113[_120] = vec4(_115[_120]);
-            _114 = _120 + 1u;
+            _105[_112] = vec2(_107[_112]);
+            _106 = _112 + 1u;
             continue;
         }
         else
@@ -82,18 +80,18 @@ void main()
             break;
         }
     }
-    vec4 widened[16] = _113;
-    vec4 _130[16] = _113;
-    uint _129 = 0u;
-    f16vec4 _128[16];
-    uint _135;
+    vec2 widened[32] = _105;
+    vec2 _122[32] = _105;
+    uint _121 = 0u;
+    f16vec2 _120[32];
+    uint _127;
     for (;;)
     {
-        _135 = _129;
-        if (_135 < 16u)
+        _127 = _121;
+        if (_127 < 32u)
         {
-            _128[_135] = f16vec4(_130[_135]);
-            _129 = _135 + 1u;
+            _120[_127] = f16vec2(_122[_127]);
+            _121 = _127 + 1u;
             continue;
         }
         else
@@ -101,17 +99,17 @@ void main()
             break;
         }
     }
-    value = _128;
-    f16vec4 _159[16] = _128;
-    uint _160 = 0u;
-    uint _165;
+    value = _120;
+    f16vec2 _145[32] = _120;
+    uint _146 = 0u;
+    uint _151;
     for (;;)
     {
-        _165 = _160;
-        if (_165 < 64u)
+        _151 = _146;
+        if (_151 < 64u)
         {
-            _143(((uint(0) + (_165 / 8u)) * uint(8)) + (uint(0) + (_165 % 8u)), _159[_165 / 4u]);
-            _160 = _165 + 4u;
+            _135(((uint(0) + (_151 / 8u)) * uint(8)) + (uint(0) + (_151 % 8u)), _145[_151 / 2u]);
+            _146 = _151 + 2u;
             continue;
         }
         else

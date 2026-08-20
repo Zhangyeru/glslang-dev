@@ -29,31 +29,29 @@ layout(set = 0, binding = 2, std430) buffer InputC
     float16_t data[];
 } C;
 
-f16vec4 _49(uint _50)
+f16vec2 _49(uint _50)
 {
-    return f16vec4(A.data[_50], A.data[_50 + 1u], A.data[_50 + 2u], A.data[_50 + 3u]);
+    return f16vec2(A.data[_50], A.data[_50 + 1u]);
 }
 
-void _101(uint _102, f16vec4 _103)
+void _93(uint _94, f16vec2 _95)
 {
-    D.data[_102] = _103.x;
-    D.data[_102 + 1u] = _103.y;
-    D.data[_102 + 2u] = _103.z;
-    D.data[_102 + 3u] = _103.w;
+    D.data[_94] = _95.x;
+    D.data[_94 + 1u] = _95.y;
 }
 
 void main()
 {
-    uint _76 = 0u;
-    f16vec4 _75[16];
-    uint _81;
+    uint _68 = 0u;
+    f16vec2 _67[32];
+    uint _73;
     for (;;)
     {
-        _81 = _76;
-        if (_81 < 64u)
+        _73 = _68;
+        if (_73 < 64u)
         {
-            _75[_81 / 4u] = _49(((uint(0) + (_81 / 8u)) * uint(8)) + (uint(0) + (_81 % 8u)));
-            _76 = _81 + 4u;
+            _67[_73 / 2u] = _49(((uint(0) + (_73 / 8u)) * uint(8)) + (uint(0) + (_73 % 8u)));
+            _68 = _73 + 2u;
             continue;
         }
         else
@@ -61,19 +59,19 @@ void main()
             break;
         }
     }
-    f16vec4 _24[16] = _75;
-    f16vec4 tempArg[16] = _24;
-    f16vec4 value[16] = _24;
-    f16vec4 _117[16] = _24;
-    uint _118 = 0u;
-    uint _123;
+    f16vec2 _24[32] = _67;
+    f16vec2 tempArg[32] = _24;
+    f16vec2 value[32] = _24;
+    f16vec2 _103[32] = _24;
+    uint _104 = 0u;
+    uint _109;
     for (;;)
     {
-        _123 = _118;
-        if (_123 < 64u)
+        _109 = _104;
+        if (_109 < 64u)
         {
-            _101(((uint(0) + (_123 / 8u)) * uint(8)) + (uint(0) + (_123 % 8u)), _117[_123 / 4u]);
-            _118 = _123 + 4u;
+            _93(((uint(0) + (_109 / 8u)) * uint(8)) + (uint(0) + (_109 % 8u)), _103[_109 / 2u]);
+            _104 = _109 + 2u;
             continue;
         }
         else
