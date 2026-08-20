@@ -80,6 +80,16 @@ class CaseParsingTest(unittest.TestCase):
         self.assertEqual(case["dtype"], "f32")
         self.assertEqual((case["m"], case["n"]), ("5", "7"))
 
+    def test_two_layer_mlp_filename_keeps_odd_tail_dimensions(self):
+        case = parse_case(
+            pathlib.Path("mlp_f16_3x17_17x7.lowered.spv"))
+        self.assertEqual(case["case"], "mlp")
+        self.assertEqual(case["layer_dims"], ["3", "17", "7"])
+        self.assertEqual((case["m"], case["n"], case["k"]),
+                         ("1", "7", "0"))
+        self.assertEqual(case_work(case), 3 * 17 + 17 * 7)
+        self.assertEqual(shape_string(case), "3x17, 17x7")
+
     def test_four_layer_mlp_filename(self):
         case = parse_case(pathlib.Path("mlp_f16_8x48_48x8_8x48_48x4.lowered.spv"))
         self.assertEqual(case["case"], "mlp")

@@ -1,0 +1,43 @@
+#version 450 core
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputX {
+    float16_t x[3];
+} InX;
+
+layout(set = 0, binding = 1) buffer PackedWeights {
+    float16_t w1[3 * 17];
+    float16_t w2[17 * 7];
+} Weights;
+
+layout(set = 0, binding = 2) buffer PackedBias {
+    float16_t b1[17];
+    float16_t b2[7];
+} Biases;
+
+layout(set = 0, binding = 3) buffer OutputY {
+    float16_t y[7];
+} OutY;
+
+void main()
+{
+    float16_t hidden[17];
+    for (int col = 0; col < 17; ++col) {
+        float16_t acc = Biases.b1[col];
+        for (int k = 0; k < 3; ++k) {
+            acc = fma(InX.x[k], Weights.w1[k * 17 + col], acc);
+        }
+        hidden[col] = max(acc, float16_t(0));
+    }
+
+    for (int col = 0; col < 7; ++col) {
+        float16_t acc = Biases.b2[col];
+        for (int k = 0; k < 17; ++k) {
+            acc = fma(hidden[k], Weights.w2[k * 7 + col], acc);
+        }
+        OutY.y[col] = max(acc, float16_t(0));
+    }
+}

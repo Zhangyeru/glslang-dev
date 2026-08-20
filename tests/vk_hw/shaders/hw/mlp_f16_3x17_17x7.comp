@@ -1,0 +1,56 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputX {
+    float16_t x[3];
+} InX;
+
+layout(set = 0, binding = 1) buffer PackedWeights {
+    float16_t w1[3 * 17];
+    float16_t w2[17 * 7];
+} Weights;
+
+layout(set = 0, binding = 2) buffer PackedBias {
+    float16_t b1[17];
+    float16_t b2[7];
+} Biases;
+
+layout(set = 0, binding = 3) buffer OutputY {
+    float16_t y[7];
+} OutY;
+
+void main()
+{
+    const ivec2 zeroOffset = ivec2(0, 0);
+    const ivec2 shapeW1 = ivec2(3, 17);
+    const ivec2 shapeW2 = ivec2(17, 7);
+
+    coopvecHW<float16_t, 3> x;
+    coopmatHW<float16_t, 3, 17> w1;
+    coopvecHW<float16_t, 17> bias1, hidden;
+
+    coopmatHW<float16_t, 17, 7> w2;
+    coopvecHW<float16_t, 7> bias2, y;
+
+    const coopvecHW<float16_t, 17> zeroHidden =
+        coopvecHW<float16_t, 17>(float16_t(0));
+    const coopvecHW<float16_t, 7> zeroOutput =
+        coopvecHW<float16_t, 7>(float16_t(0));
+
+    coopVecLoadHW(x, InX.x, 0u);
+    coopMatLoadHW(w1, Weights.w1, shapeW1, zeroOffset,
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias1, Biases.b1, 0u);
+    coopVecMatMulAddHW(hidden, x, w1, bias1);
+    hidden = max(hidden, zeroHidden);
+
+    coopMatLoadHW(w2, Weights.w2, shapeW2, zeroOffset,
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias2, Biases.b2, 0u);
+    coopVecMatMulAddHW(y, hidden, w2, bias2);
+    y = max(y, zeroOutput);
+    coopVecStoreHW(y, OutY.y, 0u);
+}
