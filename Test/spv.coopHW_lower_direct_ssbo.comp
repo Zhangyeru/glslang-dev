@@ -1,0 +1,47 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA { float16_t a[]; };
+layout(set = 0, binding = 1) buffer InputB { float16_t b[]; };
+layout(set = 0, binding = 2) buffer InputC { float16_t c[]; };
+layout(set = 0, binding = 3) buffer OutputD { float16_t d[]; };
+
+layout(set = 0, binding = 4) buffer VecInput { float16_t x[]; };
+layout(set = 0, binding = 5) buffer Weight  { float16_t w[]; };
+layout(set = 0, binding = 6) buffer VecBias { float16_t bias[]; };
+layout(set = 0, binding = 7) buffer VecOutput { float16_t y[]; };
+
+void main()
+{
+    // ── Matrix direct path: SSBO load → matmul → store ──
+    {
+        const ivec2 shape = ivec2(8, 8);
+        const ivec2 off   = ivec2(0);
+
+        coopmatHW<float16_t, 8, 8> ma, mb, mc, md;
+        coopMatLoadHW(ma, a, shape, off, gl_CooperativeMatrixLayoutRowMajorHW);
+        coopMatLoadHW(mb, b, shape, off, gl_CooperativeMatrixLayoutRowMajorHW);
+        coopMatLoadHW(mc, c, shape, off, gl_CooperativeMatrixLayoutRowMajorHW);
+        coopMatMulAddHW(md, ma, mb, mc);
+        coopMatStoreHW(md, d, shape, off, gl_CooperativeMatrixLayoutRowMajorHW);
+    }
+
+    // ── Vector direct path: SSBO load → vecmatmul+add → store ──
+    {
+        const ivec2 matShape = ivec2(16, 8);
+        const ivec2 off      = ivec2(0);
+
+        coopvecHW<float16_t, 16> vx;
+        coopmatHW<float16_t, 16, 8> vw;
+        coopvecHW<float16_t, 8>  vbias, vy;
+
+        coopVecLoadHW(vx, x, 0u);
+        coopMatLoadHW(vw, w, matShape, off, gl_CooperativeMatrixLayoutRowMajorHW);
+        coopVecLoadHW(vbias, bias, 0u);
+        coopVecMatMulAddHW(vy, vx, vw, vbias);
+        coopVecStoreHW(vy, y, 0u);
+    }
+}

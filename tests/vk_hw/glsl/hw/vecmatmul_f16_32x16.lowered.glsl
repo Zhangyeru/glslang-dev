@@ -29,55 +29,80 @@ layout(set = 0, binding = 2, std430) buffer InputC
     float16_t data[];
 } C;
 
-f16vec2 _72(uint _73)
+f16vec2[8] _72()
 {
-    return f16vec2(X.data[_73], X.data[_73 + 1u]);
+    f16vec2 _1693 = fma(f16vec2(X.data[12u], X.data[13u]), f16vec2(W.data[192u], W.data[208u]), fma(f16vec2(X.data[10u], X.data[11u]), f16vec2(W.data[160u], W.data[176u]), fma(f16vec2(X.data[8u], X.data[9u]), f16vec2(W.data[128u], W.data[144u]), fma(f16vec2(X.data[6u], X.data[7u]), f16vec2(W.data[96u], W.data[112u]), fma(f16vec2(X.data[4u], X.data[5u]), f16vec2(W.data[64u], W.data[80u]), fma(f16vec2(X.data[2u], X.data[3u]), f16vec2(W.data[32u], W.data[48u]), fma(f16vec2(X.data[0u], X.data[1u]), f16vec2(W.data[0u], W.data[16u]), f16vec2(float16_t(0.0)))))))));
+    f16vec2 _1714 = fma(f16vec2(X.data[26u], X.data[27u]), f16vec2(W.data[416u], W.data[432u]), fma(f16vec2(X.data[24u], X.data[25u]), f16vec2(W.data[384u], W.data[400u]), fma(f16vec2(X.data[22u], X.data[23u]), f16vec2(W.data[352u], W.data[368u]), fma(f16vec2(X.data[20u], X.data[21u]), f16vec2(W.data[320u], W.data[336u]), fma(f16vec2(X.data[18u], X.data[19u]), f16vec2(W.data[288u], W.data[304u]), fma(f16vec2(X.data[16u], X.data[17u]), f16vec2(W.data[256u], W.data[272u]), fma(f16vec2(X.data[14u], X.data[15u]), f16vec2(W.data[224u], W.data[240u]), _1693)))))));
+    f16vec2 _1720 = fma(f16vec2(X.data[30u], X.data[31u]), f16vec2(W.data[480u], W.data[496u]), fma(f16vec2(X.data[28u], X.data[29u]), f16vec2(W.data[448u], W.data[464u]), _1714));
+    f16vec2 _1744 = fma(f16vec2(X.data[12u], X.data[13u]), f16vec2(W.data[193u], W.data[209u]), fma(f16vec2(X.data[10u], X.data[11u]), f16vec2(W.data[161u], W.data[177u]), fma(f16vec2(X.data[8u], X.data[9u]), f16vec2(W.data[129u], W.data[145u]), fma(f16vec2(X.data[6u], X.data[7u]), f16vec2(W.data[97u], W.data[113u]), fma(f16vec2(X.data[4u], X.data[5u]), f16vec2(W.data[65u], W.data[81u]), fma(f16vec2(X.data[2u], X.data[3u]), f16vec2(W.data[33u], W.data[49u]), fma(f16vec2(X.data[0u], X.data[1u]), f16vec2(W.data[1u], W.data[17u]), f16vec2(float16_t(0.0)))))))));
+    f16vec2 _1765 = fma(f16vec2(X.data[26u], X.data[27u]), f16vec2(W.data[417u], W.data[433u]), fma(f16vec2(X.data[24u], X.data[25u]), f16vec2(W.data[385u], W.data[401u]), fma(f16vec2(X.data[22u], X.data[23u]), f16vec2(W.data[353u], W.data[369u]), fma(f16vec2(X.data[20u], X.data[21u]), f16vec2(W.data[321u], W.data[337u]), fma(f16vec2(X.data[18u], X.data[19u]), f16vec2(W.data[289u], W.data[305u]), fma(f16vec2(X.data[16u], X.data[17u]), f16vec2(W.data[257u], W.data[273u]), fma(f16vec2(X.data[14u], X.data[15u]), f16vec2(W.data[225u], W.data[241u]), _1744)))))));
+    f16vec2 _1771 = fma(f16vec2(X.data[30u], X.data[31u]), f16vec2(W.data[481u], W.data[497u]), fma(f16vec2(X.data[28u], X.data[29u]), f16vec2(W.data[449u], W.data[465u]), _1765));
+    f16vec2 _1795 = fma(f16vec2(X.data[12u], X.data[13u]), f16vec2(W.data[194u], W.data[210u]), fma(f16vec2(X.data[10u], X.data[11u]), f16vec2(W.data[162u], W.data[178u]), fma(f16vec2(X.data[8u], X.data[9u]), f16vec2(W.data[130u], W.data[146u]), fma(f16vec2(X.data[6u], X.data[7u]), f16vec2(W.data[98u], W.data[114u]), fma(f16vec2(X.data[4u], X.data[5u]), f16vec2(W.data[66u], W.data[82u]), fma(f16vec2(X.data[2u], X.data[3u]), f16vec2(W.data[34u], W.data[50u]), fma(f16vec2(X.data[0u], X.data[1u]), f16vec2(W.data[2u], W.data[18u]), f16vec2(float16_t(0.0)))))))));
+    f16vec2 _1816 = fma(f16vec2(X.data[26u], X.data[27u]), f16vec2(W.data[418u], W.data[434u]), fma(f16vec2(X.data[24u], X.data[25u]), f16vec2(W.data[386u], W.data[402u]), fma(f16vec2(X.data[22u], X.data[23u]), f16vec2(W.data[354u], W.data[370u]), fma(f16vec2(X.data[20u], X.data[21u]), f16vec2(W.data[322u], W.data[338u]), fma(f16vec2(X.data[18u], X.data[19u]), f16vec2(W.data[290u], W.data[306u]), fma(f16vec2(X.data[16u], X.data[17u]), f16vec2(W.data[258u], W.data[274u]), fma(f16vec2(X.data[14u], X.data[15u]), f16vec2(W.data[226u], W.data[242u]), _1795)))))));
+    f16vec2 _1822 = fma(f16vec2(X.data[30u], X.data[31u]), f16vec2(W.data[482u], W.data[498u]), fma(f16vec2(X.data[28u], X.data[29u]), f16vec2(W.data[450u], W.data[466u]), _1816));
+    f16vec2 _1846 = fma(f16vec2(X.data[12u], X.data[13u]), f16vec2(W.data[195u], W.data[211u]), fma(f16vec2(X.data[10u], X.data[11u]), f16vec2(W.data[163u], W.data[179u]), fma(f16vec2(X.data[8u], X.data[9u]), f16vec2(W.data[131u], W.data[147u]), fma(f16vec2(X.data[6u], X.data[7u]), f16vec2(W.data[99u], W.data[115u]), fma(f16vec2(X.data[4u], X.data[5u]), f16vec2(W.data[67u], W.data[83u]), fma(f16vec2(X.data[2u], X.data[3u]), f16vec2(W.data[35u], W.data[51u]), fma(f16vec2(X.data[0u], X.data[1u]), f16vec2(W.data[3u], W.data[19u]), f16vec2(float16_t(0.0)))))))));
+    f16vec2 _1867 = fma(f16vec2(X.data[26u], X.data[27u]), f16vec2(W.data[419u], W.data[435u]), fma(f16vec2(X.data[24u], X.data[25u]), f16vec2(W.data[387u], W.data[403u]), fma(f16vec2(X.data[22u], X.data[23u]), f16vec2(W.data[355u], W.data[371u]), fma(f16vec2(X.data[20u], X.data[21u]), f16vec2(W.data[323u], W.data[339u]), fma(f16vec2(X.data[18u], X.data[19u]), f16vec2(W.data[291u], W.data[307u]), fma(f16vec2(X.data[16u], X.data[17u]), f16vec2(W.data[259u], W.data[275u]), fma(f16vec2(X.data[14u], X.data[15u]), f16vec2(W.data[227u], W.data[243u]), _1846)))))));
+    f16vec2 _1873 = fma(f16vec2(X.data[30u], X.data[31u]), f16vec2(W.data[483u], W.data[499u]), fma(f16vec2(X.data[28u], X.data[29u]), f16vec2(W.data[451u], W.data[467u]), _1867));
+    f16vec2 _1897 = fma(f16vec2(X.data[12u], X.data[13u]), f16vec2(W.data[196u], W.data[212u]), fma(f16vec2(X.data[10u], X.data[11u]), f16vec2(W.data[164u], W.data[180u]), fma(f16vec2(X.data[8u], X.data[9u]), f16vec2(W.data[132u], W.data[148u]), fma(f16vec2(X.data[6u], X.data[7u]), f16vec2(W.data[100u], W.data[116u]), fma(f16vec2(X.data[4u], X.data[5u]), f16vec2(W.data[68u], W.data[84u]), fma(f16vec2(X.data[2u], X.data[3u]), f16vec2(W.data[36u], W.data[52u]), fma(f16vec2(X.data[0u], X.data[1u]), f16vec2(W.data[4u], W.data[20u]), f16vec2(float16_t(0.0)))))))));
+    f16vec2 _1918 = fma(f16vec2(X.data[26u], X.data[27u]), f16vec2(W.data[420u], W.data[436u]), fma(f16vec2(X.data[24u], X.data[25u]), f16vec2(W.data[388u], W.data[404u]), fma(f16vec2(X.data[22u], X.data[23u]), f16vec2(W.data[356u], W.data[372u]), fma(f16vec2(X.data[20u], X.data[21u]), f16vec2(W.data[324u], W.data[340u]), fma(f16vec2(X.data[18u], X.data[19u]), f16vec2(W.data[292u], W.data[308u]), fma(f16vec2(X.data[16u], X.data[17u]), f16vec2(W.data[260u], W.data[276u]), fma(f16vec2(X.data[14u], X.data[15u]), f16vec2(W.data[228u], W.data[244u]), _1897)))))));
+    f16vec2 _1924 = fma(f16vec2(X.data[30u], X.data[31u]), f16vec2(W.data[484u], W.data[500u]), fma(f16vec2(X.data[28u], X.data[29u]), f16vec2(W.data[452u], W.data[468u]), _1918));
+    f16vec2 _1948 = fma(f16vec2(X.data[12u], X.data[13u]), f16vec2(W.data[197u], W.data[213u]), fma(f16vec2(X.data[10u], X.data[11u]), f16vec2(W.data[165u], W.data[181u]), fma(f16vec2(X.data[8u], X.data[9u]), f16vec2(W.data[133u], W.data[149u]), fma(f16vec2(X.data[6u], X.data[7u]), f16vec2(W.data[101u], W.data[117u]), fma(f16vec2(X.data[4u], X.data[5u]), f16vec2(W.data[69u], W.data[85u]), fma(f16vec2(X.data[2u], X.data[3u]), f16vec2(W.data[37u], W.data[53u]), fma(f16vec2(X.data[0u], X.data[1u]), f16vec2(W.data[5u], W.data[21u]), f16vec2(float16_t(0.0)))))))));
+    f16vec2 _1969 = fma(f16vec2(X.data[26u], X.data[27u]), f16vec2(W.data[421u], W.data[437u]), fma(f16vec2(X.data[24u], X.data[25u]), f16vec2(W.data[389u], W.data[405u]), fma(f16vec2(X.data[22u], X.data[23u]), f16vec2(W.data[357u], W.data[373u]), fma(f16vec2(X.data[20u], X.data[21u]), f16vec2(W.data[325u], W.data[341u]), fma(f16vec2(X.data[18u], X.data[19u]), f16vec2(W.data[293u], W.data[309u]), fma(f16vec2(X.data[16u], X.data[17u]), f16vec2(W.data[261u], W.data[277u]), fma(f16vec2(X.data[14u], X.data[15u]), f16vec2(W.data[229u], W.data[245u]), _1948)))))));
+    f16vec2 _1975 = fma(f16vec2(X.data[30u], X.data[31u]), f16vec2(W.data[485u], W.data[501u]), fma(f16vec2(X.data[28u], X.data[29u]), f16vec2(W.data[453u], W.data[469u]), _1969));
+    f16vec2 _1999 = fma(f16vec2(X.data[12u], X.data[13u]), f16vec2(W.data[198u], W.data[214u]), fma(f16vec2(X.data[10u], X.data[11u]), f16vec2(W.data[166u], W.data[182u]), fma(f16vec2(X.data[8u], X.data[9u]), f16vec2(W.data[134u], W.data[150u]), fma(f16vec2(X.data[6u], X.data[7u]), f16vec2(W.data[102u], W.data[118u]), fma(f16vec2(X.data[4u], X.data[5u]), f16vec2(W.data[70u], W.data[86u]), fma(f16vec2(X.data[2u], X.data[3u]), f16vec2(W.data[38u], W.data[54u]), fma(f16vec2(X.data[0u], X.data[1u]), f16vec2(W.data[6u], W.data[22u]), f16vec2(float16_t(0.0)))))))));
+    f16vec2 _2020 = fma(f16vec2(X.data[26u], X.data[27u]), f16vec2(W.data[422u], W.data[438u]), fma(f16vec2(X.data[24u], X.data[25u]), f16vec2(W.data[390u], W.data[406u]), fma(f16vec2(X.data[22u], X.data[23u]), f16vec2(W.data[358u], W.data[374u]), fma(f16vec2(X.data[20u], X.data[21u]), f16vec2(W.data[326u], W.data[342u]), fma(f16vec2(X.data[18u], X.data[19u]), f16vec2(W.data[294u], W.data[310u]), fma(f16vec2(X.data[16u], X.data[17u]), f16vec2(W.data[262u], W.data[278u]), fma(f16vec2(X.data[14u], X.data[15u]), f16vec2(W.data[230u], W.data[246u]), _1999)))))));
+    f16vec2 _2026 = fma(f16vec2(X.data[30u], X.data[31u]), f16vec2(W.data[486u], W.data[502u]), fma(f16vec2(X.data[28u], X.data[29u]), f16vec2(W.data[454u], W.data[470u]), _2020));
+    f16vec2 _2050 = fma(f16vec2(X.data[12u], X.data[13u]), f16vec2(W.data[199u], W.data[215u]), fma(f16vec2(X.data[10u], X.data[11u]), f16vec2(W.data[167u], W.data[183u]), fma(f16vec2(X.data[8u], X.data[9u]), f16vec2(W.data[135u], W.data[151u]), fma(f16vec2(X.data[6u], X.data[7u]), f16vec2(W.data[103u], W.data[119u]), fma(f16vec2(X.data[4u], X.data[5u]), f16vec2(W.data[71u], W.data[87u]), fma(f16vec2(X.data[2u], X.data[3u]), f16vec2(W.data[39u], W.data[55u]), fma(f16vec2(X.data[0u], X.data[1u]), f16vec2(W.data[7u], W.data[23u]), f16vec2(float16_t(0.0)))))))));
+    f16vec2 _2071 = fma(f16vec2(X.data[26u], X.data[27u]), f16vec2(W.data[423u], W.data[439u]), fma(f16vec2(X.data[24u], X.data[25u]), f16vec2(W.data[391u], W.data[407u]), fma(f16vec2(X.data[22u], X.data[23u]), f16vec2(W.data[359u], W.data[375u]), fma(f16vec2(X.data[20u], X.data[21u]), f16vec2(W.data[327u], W.data[343u]), fma(f16vec2(X.data[18u], X.data[19u]), f16vec2(W.data[295u], W.data[311u]), fma(f16vec2(X.data[16u], X.data[17u]), f16vec2(W.data[263u], W.data[279u]), fma(f16vec2(X.data[14u], X.data[15u]), f16vec2(W.data[231u], W.data[247u]), _2050)))))));
+    f16vec2 _2077 = fma(f16vec2(X.data[30u], X.data[31u]), f16vec2(W.data[487u], W.data[503u]), fma(f16vec2(X.data[28u], X.data[29u]), f16vec2(W.data[455u], W.data[471u]), _2071));
+    f16vec2 _2101 = fma(f16vec2(X.data[12u], X.data[13u]), f16vec2(W.data[200u], W.data[216u]), fma(f16vec2(X.data[10u], X.data[11u]), f16vec2(W.data[168u], W.data[184u]), fma(f16vec2(X.data[8u], X.data[9u]), f16vec2(W.data[136u], W.data[152u]), fma(f16vec2(X.data[6u], X.data[7u]), f16vec2(W.data[104u], W.data[120u]), fma(f16vec2(X.data[4u], X.data[5u]), f16vec2(W.data[72u], W.data[88u]), fma(f16vec2(X.data[2u], X.data[3u]), f16vec2(W.data[40u], W.data[56u]), fma(f16vec2(X.data[0u], X.data[1u]), f16vec2(W.data[8u], W.data[24u]), f16vec2(float16_t(0.0)))))))));
+    f16vec2 _2122 = fma(f16vec2(X.data[26u], X.data[27u]), f16vec2(W.data[424u], W.data[440u]), fma(f16vec2(X.data[24u], X.data[25u]), f16vec2(W.data[392u], W.data[408u]), fma(f16vec2(X.data[22u], X.data[23u]), f16vec2(W.data[360u], W.data[376u]), fma(f16vec2(X.data[20u], X.data[21u]), f16vec2(W.data[328u], W.data[344u]), fma(f16vec2(X.data[18u], X.data[19u]), f16vec2(W.data[296u], W.data[312u]), fma(f16vec2(X.data[16u], X.data[17u]), f16vec2(W.data[264u], W.data[280u]), fma(f16vec2(X.data[14u], X.data[15u]), f16vec2(W.data[232u], W.data[248u]), _2101)))))));
+    f16vec2 _2128 = fma(f16vec2(X.data[30u], X.data[31u]), f16vec2(W.data[488u], W.data[504u]), fma(f16vec2(X.data[28u], X.data[29u]), f16vec2(W.data[456u], W.data[472u]), _2122));
+    f16vec2 _2152 = fma(f16vec2(X.data[12u], X.data[13u]), f16vec2(W.data[201u], W.data[217u]), fma(f16vec2(X.data[10u], X.data[11u]), f16vec2(W.data[169u], W.data[185u]), fma(f16vec2(X.data[8u], X.data[9u]), f16vec2(W.data[137u], W.data[153u]), fma(f16vec2(X.data[6u], X.data[7u]), f16vec2(W.data[105u], W.data[121u]), fma(f16vec2(X.data[4u], X.data[5u]), f16vec2(W.data[73u], W.data[89u]), fma(f16vec2(X.data[2u], X.data[3u]), f16vec2(W.data[41u], W.data[57u]), fma(f16vec2(X.data[0u], X.data[1u]), f16vec2(W.data[9u], W.data[25u]), f16vec2(float16_t(0.0)))))))));
+    f16vec2 _2173 = fma(f16vec2(X.data[26u], X.data[27u]), f16vec2(W.data[425u], W.data[441u]), fma(f16vec2(X.data[24u], X.data[25u]), f16vec2(W.data[393u], W.data[409u]), fma(f16vec2(X.data[22u], X.data[23u]), f16vec2(W.data[361u], W.data[377u]), fma(f16vec2(X.data[20u], X.data[21u]), f16vec2(W.data[329u], W.data[345u]), fma(f16vec2(X.data[18u], X.data[19u]), f16vec2(W.data[297u], W.data[313u]), fma(f16vec2(X.data[16u], X.data[17u]), f16vec2(W.data[265u], W.data[281u]), fma(f16vec2(X.data[14u], X.data[15u]), f16vec2(W.data[233u], W.data[249u]), _2152)))))));
+    f16vec2 _2179 = fma(f16vec2(X.data[30u], X.data[31u]), f16vec2(W.data[489u], W.data[505u]), fma(f16vec2(X.data[28u], X.data[29u]), f16vec2(W.data[457u], W.data[473u]), _2173));
+    f16vec2 _2203 = fma(f16vec2(X.data[12u], X.data[13u]), f16vec2(W.data[202u], W.data[218u]), fma(f16vec2(X.data[10u], X.data[11u]), f16vec2(W.data[170u], W.data[186u]), fma(f16vec2(X.data[8u], X.data[9u]), f16vec2(W.data[138u], W.data[154u]), fma(f16vec2(X.data[6u], X.data[7u]), f16vec2(W.data[106u], W.data[122u]), fma(f16vec2(X.data[4u], X.data[5u]), f16vec2(W.data[74u], W.data[90u]), fma(f16vec2(X.data[2u], X.data[3u]), f16vec2(W.data[42u], W.data[58u]), fma(f16vec2(X.data[0u], X.data[1u]), f16vec2(W.data[10u], W.data[26u]), f16vec2(float16_t(0.0)))))))));
+    f16vec2 _2224 = fma(f16vec2(X.data[26u], X.data[27u]), f16vec2(W.data[426u], W.data[442u]), fma(f16vec2(X.data[24u], X.data[25u]), f16vec2(W.data[394u], W.data[410u]), fma(f16vec2(X.data[22u], X.data[23u]), f16vec2(W.data[362u], W.data[378u]), fma(f16vec2(X.data[20u], X.data[21u]), f16vec2(W.data[330u], W.data[346u]), fma(f16vec2(X.data[18u], X.data[19u]), f16vec2(W.data[298u], W.data[314u]), fma(f16vec2(X.data[16u], X.data[17u]), f16vec2(W.data[266u], W.data[282u]), fma(f16vec2(X.data[14u], X.data[15u]), f16vec2(W.data[234u], W.data[250u]), _2203)))))));
+    f16vec2 _2230 = fma(f16vec2(X.data[30u], X.data[31u]), f16vec2(W.data[490u], W.data[506u]), fma(f16vec2(X.data[28u], X.data[29u]), f16vec2(W.data[458u], W.data[474u]), _2224));
+    f16vec2 _2254 = fma(f16vec2(X.data[12u], X.data[13u]), f16vec2(W.data[203u], W.data[219u]), fma(f16vec2(X.data[10u], X.data[11u]), f16vec2(W.data[171u], W.data[187u]), fma(f16vec2(X.data[8u], X.data[9u]), f16vec2(W.data[139u], W.data[155u]), fma(f16vec2(X.data[6u], X.data[7u]), f16vec2(W.data[107u], W.data[123u]), fma(f16vec2(X.data[4u], X.data[5u]), f16vec2(W.data[75u], W.data[91u]), fma(f16vec2(X.data[2u], X.data[3u]), f16vec2(W.data[43u], W.data[59u]), fma(f16vec2(X.data[0u], X.data[1u]), f16vec2(W.data[11u], W.data[27u]), f16vec2(float16_t(0.0)))))))));
+    f16vec2 _2275 = fma(f16vec2(X.data[26u], X.data[27u]), f16vec2(W.data[427u], W.data[443u]), fma(f16vec2(X.data[24u], X.data[25u]), f16vec2(W.data[395u], W.data[411u]), fma(f16vec2(X.data[22u], X.data[23u]), f16vec2(W.data[363u], W.data[379u]), fma(f16vec2(X.data[20u], X.data[21u]), f16vec2(W.data[331u], W.data[347u]), fma(f16vec2(X.data[18u], X.data[19u]), f16vec2(W.data[299u], W.data[315u]), fma(f16vec2(X.data[16u], X.data[17u]), f16vec2(W.data[267u], W.data[283u]), fma(f16vec2(X.data[14u], X.data[15u]), f16vec2(W.data[235u], W.data[251u]), _2254)))))));
+    f16vec2 _2281 = fma(f16vec2(X.data[30u], X.data[31u]), f16vec2(W.data[491u], W.data[507u]), fma(f16vec2(X.data[28u], X.data[29u]), f16vec2(W.data[459u], W.data[475u]), _2275));
+    f16vec2 _2305 = fma(f16vec2(X.data[12u], X.data[13u]), f16vec2(W.data[204u], W.data[220u]), fma(f16vec2(X.data[10u], X.data[11u]), f16vec2(W.data[172u], W.data[188u]), fma(f16vec2(X.data[8u], X.data[9u]), f16vec2(W.data[140u], W.data[156u]), fma(f16vec2(X.data[6u], X.data[7u]), f16vec2(W.data[108u], W.data[124u]), fma(f16vec2(X.data[4u], X.data[5u]), f16vec2(W.data[76u], W.data[92u]), fma(f16vec2(X.data[2u], X.data[3u]), f16vec2(W.data[44u], W.data[60u]), fma(f16vec2(X.data[0u], X.data[1u]), f16vec2(W.data[12u], W.data[28u]), f16vec2(float16_t(0.0)))))))));
+    f16vec2 _2326 = fma(f16vec2(X.data[26u], X.data[27u]), f16vec2(W.data[428u], W.data[444u]), fma(f16vec2(X.data[24u], X.data[25u]), f16vec2(W.data[396u], W.data[412u]), fma(f16vec2(X.data[22u], X.data[23u]), f16vec2(W.data[364u], W.data[380u]), fma(f16vec2(X.data[20u], X.data[21u]), f16vec2(W.data[332u], W.data[348u]), fma(f16vec2(X.data[18u], X.data[19u]), f16vec2(W.data[300u], W.data[316u]), fma(f16vec2(X.data[16u], X.data[17u]), f16vec2(W.data[268u], W.data[284u]), fma(f16vec2(X.data[14u], X.data[15u]), f16vec2(W.data[236u], W.data[252u]), _2305)))))));
+    f16vec2 _2332 = fma(f16vec2(X.data[30u], X.data[31u]), f16vec2(W.data[492u], W.data[508u]), fma(f16vec2(X.data[28u], X.data[29u]), f16vec2(W.data[460u], W.data[476u]), _2326));
+    f16vec2 _2356 = fma(f16vec2(X.data[12u], X.data[13u]), f16vec2(W.data[205u], W.data[221u]), fma(f16vec2(X.data[10u], X.data[11u]), f16vec2(W.data[173u], W.data[189u]), fma(f16vec2(X.data[8u], X.data[9u]), f16vec2(W.data[141u], W.data[157u]), fma(f16vec2(X.data[6u], X.data[7u]), f16vec2(W.data[109u], W.data[125u]), fma(f16vec2(X.data[4u], X.data[5u]), f16vec2(W.data[77u], W.data[93u]), fma(f16vec2(X.data[2u], X.data[3u]), f16vec2(W.data[45u], W.data[61u]), fma(f16vec2(X.data[0u], X.data[1u]), f16vec2(W.data[13u], W.data[29u]), f16vec2(float16_t(0.0)))))))));
+    f16vec2 _2377 = fma(f16vec2(X.data[26u], X.data[27u]), f16vec2(W.data[429u], W.data[445u]), fma(f16vec2(X.data[24u], X.data[25u]), f16vec2(W.data[397u], W.data[413u]), fma(f16vec2(X.data[22u], X.data[23u]), f16vec2(W.data[365u], W.data[381u]), fma(f16vec2(X.data[20u], X.data[21u]), f16vec2(W.data[333u], W.data[349u]), fma(f16vec2(X.data[18u], X.data[19u]), f16vec2(W.data[301u], W.data[317u]), fma(f16vec2(X.data[16u], X.data[17u]), f16vec2(W.data[269u], W.data[285u]), fma(f16vec2(X.data[14u], X.data[15u]), f16vec2(W.data[237u], W.data[253u]), _2356)))))));
+    f16vec2 _2383 = fma(f16vec2(X.data[30u], X.data[31u]), f16vec2(W.data[493u], W.data[509u]), fma(f16vec2(X.data[28u], X.data[29u]), f16vec2(W.data[461u], W.data[477u]), _2377));
+    f16vec2 _2407 = fma(f16vec2(X.data[12u], X.data[13u]), f16vec2(W.data[206u], W.data[222u]), fma(f16vec2(X.data[10u], X.data[11u]), f16vec2(W.data[174u], W.data[190u]), fma(f16vec2(X.data[8u], X.data[9u]), f16vec2(W.data[142u], W.data[158u]), fma(f16vec2(X.data[6u], X.data[7u]), f16vec2(W.data[110u], W.data[126u]), fma(f16vec2(X.data[4u], X.data[5u]), f16vec2(W.data[78u], W.data[94u]), fma(f16vec2(X.data[2u], X.data[3u]), f16vec2(W.data[46u], W.data[62u]), fma(f16vec2(X.data[0u], X.data[1u]), f16vec2(W.data[14u], W.data[30u]), f16vec2(float16_t(0.0)))))))));
+    f16vec2 _2428 = fma(f16vec2(X.data[26u], X.data[27u]), f16vec2(W.data[430u], W.data[446u]), fma(f16vec2(X.data[24u], X.data[25u]), f16vec2(W.data[398u], W.data[414u]), fma(f16vec2(X.data[22u], X.data[23u]), f16vec2(W.data[366u], W.data[382u]), fma(f16vec2(X.data[20u], X.data[21u]), f16vec2(W.data[334u], W.data[350u]), fma(f16vec2(X.data[18u], X.data[19u]), f16vec2(W.data[302u], W.data[318u]), fma(f16vec2(X.data[16u], X.data[17u]), f16vec2(W.data[270u], W.data[286u]), fma(f16vec2(X.data[14u], X.data[15u]), f16vec2(W.data[238u], W.data[254u]), _2407)))))));
+    f16vec2 _2434 = fma(f16vec2(X.data[30u], X.data[31u]), f16vec2(W.data[494u], W.data[510u]), fma(f16vec2(X.data[28u], X.data[29u]), f16vec2(W.data[462u], W.data[478u]), _2428));
+    f16vec2 _2458 = fma(f16vec2(X.data[12u], X.data[13u]), f16vec2(W.data[207u], W.data[223u]), fma(f16vec2(X.data[10u], X.data[11u]), f16vec2(W.data[175u], W.data[191u]), fma(f16vec2(X.data[8u], X.data[9u]), f16vec2(W.data[143u], W.data[159u]), fma(f16vec2(X.data[6u], X.data[7u]), f16vec2(W.data[111u], W.data[127u]), fma(f16vec2(X.data[4u], X.data[5u]), f16vec2(W.data[79u], W.data[95u]), fma(f16vec2(X.data[2u], X.data[3u]), f16vec2(W.data[47u], W.data[63u]), fma(f16vec2(X.data[0u], X.data[1u]), f16vec2(W.data[15u], W.data[31u]), f16vec2(float16_t(0.0)))))))));
+    f16vec2 _2479 = fma(f16vec2(X.data[26u], X.data[27u]), f16vec2(W.data[431u], W.data[447u]), fma(f16vec2(X.data[24u], X.data[25u]), f16vec2(W.data[399u], W.data[415u]), fma(f16vec2(X.data[22u], X.data[23u]), f16vec2(W.data[367u], W.data[383u]), fma(f16vec2(X.data[20u], X.data[21u]), f16vec2(W.data[335u], W.data[351u]), fma(f16vec2(X.data[18u], X.data[19u]), f16vec2(W.data[303u], W.data[319u]), fma(f16vec2(X.data[16u], X.data[17u]), f16vec2(W.data[271u], W.data[287u]), fma(f16vec2(X.data[14u], X.data[15u]), f16vec2(W.data[239u], W.data[255u]), _2458)))))));
+    f16vec2 _2485 = fma(f16vec2(X.data[30u], X.data[31u]), f16vec2(W.data[495u], W.data[511u]), fma(f16vec2(X.data[28u], X.data[29u]), f16vec2(W.data[463u], W.data[479u]), _2479));
+    return f16vec2[](f16vec2(_1720.x + _1720.y, _1771.x + _1771.y), f16vec2(_1822.x + _1822.y, _1873.x + _1873.y), f16vec2(_1924.x + _1924.y, _1975.x + _1975.y), f16vec2(_2026.x + _2026.y, _2077.x + _2077.y), f16vec2(_2128.x + _2128.y, _2179.x + _2179.y), f16vec2(_2230.x + _2230.y, _2281.x + _2281.y), f16vec2(_2332.x + _2332.y, _2383.x + _2383.y), f16vec2(_2434.x + _2434.y, _2485.x + _2485.y));
 }
 
-f16vec2 _83(uint _84)
+void _2499(uint _2500, f16vec2 _2501)
 {
-    return f16vec2(W.data[_84], W.data[_84 + 1u]);
+    Y.data[_2500] = _2501.x;
+    Y.data[_2500 + 1u] = _2501.y;
 }
 
-void _94(uint _95, f16vec2 _96)
+void main()
 {
-    Y.data[_95] = _96.x;
-    Y.data[_95 + 1u] = _96.y;
-}
-
-void _109()
-{
-    uint _119 = 0u;
-    uint _123;
+    f16vec2 _47[8] = _72();
+    f16vec2 tempArg[8] = _47;
+    f16vec2 y[8] = _47;
+    f16vec2 _2513[8] = _47;
+    uint _2514 = 0u;
+    uint _2519;
     for (;;)
     {
-        _123 = _119;
-        if (_123 < 16u)
+        _2519 = _2514;
+        if (_2519 < 16u)
         {
-            f16vec2 _121 = f16vec2(float16_t(0.0));
-            f16vec2 _122 = f16vec2(float16_t(0.0));
-            uint _120 = 0u;
-            uint _125;
-            for (;;)
-            {
-                _125 = _120;
-                if (_125 < 32u)
-                {
-                    f16vec2 _127 = _72(_125);
-                    f16vec2 _131 = _83(((_125 + 0u) * 16u) + _123);
-                    f16vec2 _135 = _83(((_125 + 1u) * 16u) + _123);
-                    _121 = fma(_127, f16vec2(_131.x, _135.x), _121);
-                    _122 = fma(_127, f16vec2(_131.y, _135.y), _122);
-                    _120 = _125 + 2u;
-                    continue;
-                }
-                else
-                {
-                    break;
-                }
-            }
-            _94(_123, f16vec2(_121.x + _121.y, _122.x + _122.y));
-            _119 = _123 + 2u;
+            _2499(0u + _2519, _2513[_2519 / 2u]);
+            _2514 = _2519 + 2u;
             continue;
         }
         else
@@ -85,10 +110,5 @@ void _109()
             break;
         }
     }
-}
-
-void main()
-{
-    _109();
 }
 

@@ -1,0 +1,25 @@
+#version 460 core
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA { float16_t data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float16_t data[]; } B;
+layout(set = 0, binding = 2) buffer InputC { float16_t data[]; } C;
+layout(set = 0, binding = 3) buffer OutputD { float16_t data[]; } D;
+layout(set = 0, binding = 4) buffer OutputE { float16_t data[]; } E;
+
+void main()
+{
+    for (int row = 0; row < 32; ++row) {
+        for (int col = 0; col < 32; ++col) {
+            float16_t acc = C.data[row * 32 + col];
+            for (int inner = 0; inner < 32; ++inner)
+                acc = fma(A.data[row * 32 + inner], B.data[inner * 32 + col], acc);
+            D.data[row * 32 + col] = acc;
+        }
+    }
+    for (int i = 0; i < 1024; ++i)
+        E.data[i] = B.data[i];
+}

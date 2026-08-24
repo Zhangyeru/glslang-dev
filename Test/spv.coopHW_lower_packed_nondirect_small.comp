@@ -1,0 +1,52 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA { float16_t a[]; };
+layout(set = 0, binding = 1) buffer InputB { float16_t b[]; };
+layout(set = 0, binding = 2) buffer InputC { float16_t c[]; };
+layout(set = 0, binding = 3) buffer OutputD { float16_t d[]; };
+layout(set = 0, binding = 4) buffer OutputE { float16_t e[]; };
+
+void main()
+{
+    const ivec2 shape8 = ivec2(8, 8);
+    const ivec2 zeroOff = ivec2(0);
+
+    // ── Condition 1 (unrolled, 8×8×8 = 512 MAC): ──
+    // Shared matrix load used as B in one matmul and A in another.
+    {
+        coopmatHW<float16_t, 8, 8> a1, c1, d1;
+        coopmatHW<float16_t, 8, 8> b2, c2, d2;
+        coopmatHW<float16_t, 8, 8> shared_w;
+
+        coopMatLoadHW(a1, a, shape8, zeroOff, gl_CooperativeMatrixLayoutRowMajorHW);
+        coopMatLoadHW(shared_w, b, shape8, zeroOff, gl_CooperativeMatrixLayoutRowMajorHW);
+        coopMatLoadHW(c1, c, shape8, zeroOff, gl_CooperativeMatrixLayoutRowMajorHW);
+        coopMatLoadHW(b2, c, shape8, zeroOff, gl_CooperativeMatrixLayoutRowMajorHW);
+        coopMatLoadHW(c2, d, shape8, zeroOff, gl_CooperativeMatrixLayoutRowMajorHW);
+
+        coopMatMulAddHW(d1, a1, shared_w, c1);
+        coopMatMulAddHW(d2, shared_w, b2, c2);
+
+        coopMatStoreHW(d1, d, shape8, zeroOff, gl_CooperativeMatrixLayoutRowMajorHW);
+        coopMatStoreHW(d2, e, shape8, zeroOff, gl_CooperativeMatrixLayoutRowMajorHW);
+    }
+
+    // ── Condition 2 (unrolled, 8×8×8 = 512 MAC): ──
+    // Matrix load used both in matmul and an extra coopMatStore.
+    {
+        coopmatHW<float16_t, 8, 8> a2, w, c3, d3;
+
+        coopMatLoadHW(a2, a, shape8, zeroOff, gl_CooperativeMatrixLayoutRowMajorHW);
+        coopMatLoadHW(w, b, shape8, zeroOff, gl_CooperativeMatrixLayoutRowMajorHW);
+        coopMatLoadHW(c3, c, shape8, zeroOff, gl_CooperativeMatrixLayoutRowMajorHW);
+
+        coopMatMulAddHW(d3, a2, w, c3);
+
+        coopMatStoreHW(d3, d, shape8, zeroOff, gl_CooperativeMatrixLayoutRowMajorHW);
+        coopMatStoreHW(w, e, shape8, zeroOff, gl_CooperativeMatrixLayoutRowMajorHW);
+    }
+}

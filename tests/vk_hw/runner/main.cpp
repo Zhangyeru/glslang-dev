@@ -57,14 +57,12 @@ std::string JsonEscape(const std::string& value)
     return escaped;
 }
 
-std::array<VkDescriptorType, 4> DescriptorTypesForShader(const std::string& shader_path)
+std::vector<VkDescriptorType> DescriptorTypesForShader(const std::string& shader_path)
 {
-    std::array<VkDescriptorType, 4> descriptor_types = {
-        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-    };
+    const bool has_extra_store = shader_path.find("_extrastore_") != std::string::npos;
+    const bool has_shared_load = shader_path.find("_shared_load_") != std::string::npos;
+    const uint32_t binding_count = has_shared_load ? 6u : (has_extra_store ? 5u : 4u);
+    std::vector<VkDescriptorType> descriptor_types(binding_count, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
     if (shader_path.find("_ubo_") != std::string::npos) {
         descriptor_types[1] = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     }
@@ -87,6 +85,8 @@ CaseKind ParseCaseKind(const std::string& value)
         return CaseKind::kMlp;
     if (value == "reduce")
         return CaseKind::kReduce;
+    if (value == "extrastore")
+        return CaseKind::kExtraStore;
     throw std::runtime_error("unknown case: " + value);
 }
 
@@ -549,15 +549,36 @@ int Run(int argc, char** argv)
     Buffer buffer_c(&context, c_bytes.size());
     Buffer buffer_d(&context, d_init.size());
 
+    const bool has_extra_store = config.kind == CaseKind::kExtraStore;
+    const bool has_shared_load = config.shader_path.find("_shared_load_") != std::string::npos;
+    const bool has_value_arg = config.shader_path.find("_value_arg_") != std::string::npos;
+    // Extra-store writes B to E. Shared-load writes its second result to E.
+    const size_t e_bytes_size = has_extra_store ? b_bytes.size() : (has_shared_load ? d_bytes_size : 0);
+    const std::vector<uint8_t> e_init(e_bytes_size, 0);
+    Buffer buffer_e(&context, e_bytes_size == 0 ? 1 : e_bytes_size);
+
     ComputePipeline pipeline(&context, spirv, DescriptorTypesForShader(config.shader_path));
-    pipeline.UpdateDescriptors(
-        {buffer_a.descriptor(), buffer_b.descriptor(), buffer_c.descriptor(), buffer_d.descriptor()});
+    std::vector<VkDescriptorBufferInfo> desc_infos;
+    if (has_shared_load) {
+        desc_infos = {buffer_a.descriptor(), buffer_b.descriptor(), buffer_c.descriptor(),
+                      buffer_c.descriptor(), buffer_d.descriptor(), buffer_e.descriptor()};
+    } else if (has_value_arg) {
+        desc_infos = {buffer_a.descriptor(), buffer_c.descriptor(), buffer_d.descriptor(), buffer_b.descriptor()};
+    } else {
+        desc_infos = {buffer_a.descriptor(), buffer_b.descriptor(), buffer_c.descriptor(), buffer_d.descriptor()};
+    }
+    if (has_extra_store) {
+        desc_infos.push_back(buffer_e.descriptor());
+    }
+    pipeline.UpdateDescriptors(desc_infos);
 
     auto reset_buffers = [&]() {
         buffer_a.Upload(a_bytes);
         buffer_b.Upload(b_bytes);
         buffer_c.Upload(c_bytes);
         buffer_d.Upload(d_init);
+        if (has_extra_store || has_shared_load)
+            buffer_e.Upload(e_init);
     };
 
     DispatchTimer timer(&context);
@@ -578,6 +599,14 @@ int Run(int argc, char** argv)
         const RawValues expected = ReferenceOutputRaw(config, a, b, c);
         const RawValues actual = DecodeRawBuffer(buffer_d.Download(d_bytes_size), config.accum_dtype);
         verify = CompareOutputRaw(config, expected, actual);
+        if (has_extra_store && verify.pass) {
+            const RawValues expected_e = b;
+            const RawValues actual_e = DecodeRawBuffer(buffer_e.Download(e_bytes_size), config.b_dtype);
+            verify = CompareOutputRaw(config, expected_e, actual_e);
+        } else if (has_shared_load && verify.pass) {
+            const RawValues actual_e = DecodeRawBuffer(buffer_e.Download(e_bytes_size), config.accum_dtype);
+            verify = CompareOutputRaw(config, expected, actual_e);
+        }
     }
 
     PrintJson(config, ComputeStats(samples), verify);

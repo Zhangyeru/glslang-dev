@@ -12,7 +12,7 @@
 
 namespace vk_hw {
 
-enum class CaseKind { kMatmul, kVecMatmul, kVecMatmulAdd, kLoadStore, kMultiOps, kMlp, kReduce };
+enum class CaseKind { kMatmul, kVecMatmul, kVecMatmulAdd, kLoadStore, kMultiOps, kMlp, kReduce, kExtraStore };
 enum class DType { kF16, kF32, kI8, kU8, kI16, kU16, kI32, kU32 };
 enum class ReduceAxis { kRow, kColumn };
 enum class ReduceOp { kAdd, kMin, kMax };

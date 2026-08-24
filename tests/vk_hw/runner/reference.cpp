@@ -173,6 +173,16 @@ bool HasConstBiasVariant(const CaseConfig& config)
 
 bool HasConstWeightVariant(const CaseConfig& config) { return config.shader_path.find("_constw") != std::string::npos; }
 
+bool HasSharedLoadVariant(const CaseConfig& config)
+{
+    return config.shader_path.find("_shared_load_") != std::string::npos;
+}
+
+bool HasValueArgVariant(const CaseConfig& config)
+{
+    return config.shader_path.find("_value_arg_") != std::string::npos;
+}
+
 float ConstBiasValue(uint32_t index, DType dtype)
 {
     const int signed_value = static_cast<int>(index % 7u) - 3;
@@ -327,6 +337,8 @@ std::string CaseName(CaseKind kind)
         return "mlp";
     case CaseKind::kReduce:
         return "reduce";
+    case CaseKind::kExtraStore:
+        return "extrastore";
     }
     return "unknown";
 }
@@ -371,8 +383,9 @@ std::string ReduceOpName(ReduceOp op)
 
 uint64_t FlopCount(const CaseConfig& config)
 {
-    if (config.kind == CaseKind::kMatmul) {
-        return 2ull * config.m * config.n * config.k;
+    if (config.kind == CaseKind::kMatmul || config.kind == CaseKind::kExtraStore) {
+        const uint64_t matmul_count = HasSharedLoadVariant(config) ? 2ull : 1ull;
+        return 2ull * matmul_count * config.m * config.n * config.k;
     }
     if (config.kind == CaseKind::kVecMatmul || config.kind == CaseKind::kVecMatmulAdd) {
         return 2ull * config.k * config.n;
@@ -504,6 +517,7 @@ size_t ElementCountA(const CaseConfig& config)
 {
     switch (config.kind) {
     case CaseKind::kMatmul:
+    case CaseKind::kExtraStore:
     case CaseKind::kMultiOps:
         return static_cast<size_t>(config.m) * config.k;
     case CaseKind::kVecMatmul:
@@ -522,6 +536,7 @@ size_t ElementCountB(const CaseConfig& config)
 {
     switch (config.kind) {
     case CaseKind::kMatmul:
+    case CaseKind::kExtraStore:
     case CaseKind::kMultiOps:
         return static_cast<size_t>(config.k) * config.n;
     case CaseKind::kVecMatmul:
@@ -543,6 +558,7 @@ size_t ElementCountC(const CaseConfig& config)
 {
     switch (config.kind) {
     case CaseKind::kMatmul:
+    case CaseKind::kExtraStore:
     case CaseKind::kMultiOps:
         return static_cast<size_t>(config.m) * config.n;
     case CaseKind::kVecMatmulAdd:
@@ -564,6 +580,7 @@ size_t ElementCountD(const CaseConfig& config)
 {
     switch (config.kind) {
     case CaseKind::kMatmul:
+    case CaseKind::kExtraStore:
     case CaseKind::kMultiOps:
         return static_cast<size_t>(config.m) * config.n;
     case CaseKind::kVecMatmul:
@@ -627,13 +644,14 @@ RawValues ReferenceOutputRaw(const CaseConfig& config, const RawValues& a, const
                WidthMask(ElementBitWidth(config.accum_dtype));
     };
 
-    if (config.kind == CaseKind::kMatmul) {
+    if (config.kind == CaseKind::kMatmul || config.kind == CaseKind::kExtraStore) {
         for (uint32_t row = 0; row < config.m; ++row) {
             for (uint32_t col = 0; col < config.n; ++col) {
                 uint64_t acc = ConvertRaw(c[row * config.n + col], config.c_dtype, config.accum_dtype);
                 for (uint32_t inner = 0; inner < config.k; ++inner) {
-                    const uint64_t b_value =
-                        HasConstWeightVariant(config) ? const_weight(inner, col) : b[inner * config.n + col];
+                    const uint64_t b_value = HasConstWeightVariant(config) ? const_weight(inner, col)
+                                             : HasValueArgVariant(config)  ? b[0]
+                                                                           : b[inner * config.n + col];
                     acc = MulAdd(a[row * config.k + inner], config.a_dtype, b_value, config.b_dtype, acc,
                                  config.accum_dtype);
                 }
@@ -817,12 +835,13 @@ std::vector<float> ReferenceOutput(const CaseConfig& config, const std::vector<f
         return out;
     }
 
-    if (config.kind == CaseKind::kMatmul) {
+    if (config.kind == CaseKind::kMatmul || config.kind == CaseKind::kExtraStore) {
         for (uint32_t row = 0; row < config.m; ++row) {
             for (uint32_t col = 0; col < config.n; ++col) {
                 float acc = c[row * config.n + col];
                 for (uint32_t inner = 0; inner < config.k; ++inner) {
                     const float b_value = HasConstWeightVariant(config) ? ConstWeightValue(inner, col, config.dtype)
+                                          : HasValueArgVariant(config)  ? b[0]
                                                                         : b[inner * config.n + col];
                     acc += a[row * config.k + inner] * b_value;
                 }

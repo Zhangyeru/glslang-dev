@@ -36,106 +36,38 @@ layout(set = 0, binding = 3, std430) buffer OutputY
     float16_t y[4];
 } OutY;
 
-f16vec2 _4031(uint _4032)
+f16vec2 _3647(uint _3648)
 {
-    return f16vec2(InX.x[_4032], InX.x[_4032 + 1u]);
+    return f16vec2(InX.x[_3648], InX.x[_3648 + 1u]);
 }
 
 f16vec2[2] _3485(f16vec2 _3486[4])
 {
-    uint _3512 = 0u / 4u;
-    uint _3513 = 0u % 4u;
-    uint _3526 = 1u / 4u;
-    uint _3527 = 1u % 4u;
-    uint _3540 = 2u / 4u;
-    uint _3541 = 2u % 4u;
-    uint _3554 = 3u / 4u;
-    uint _3555 = 3u % 4u;
-    uint _3568 = 4u / 4u;
-    uint _3569 = 4u % 4u;
-    uint _3582 = 5u / 4u;
-    uint _3583 = 5u % 4u;
-    uint _3596 = 6u / 4u;
-    uint _3597 = 6u % 4u;
-    uint _3610 = 7u / 4u;
-    uint _3611 = 7u % 4u;
-    uint _3624 = 8u / 4u;
-    uint _3625 = 8u % 4u;
-    uint _3638 = 9u / 4u;
-    uint _3639 = 9u % 4u;
-    uint _3652 = 10u / 4u;
-    uint _3653 = 10u % 4u;
-    uint _3666 = 11u / 4u;
-    uint _3667 = 11u % 4u;
-    uint _3680 = 12u / 4u;
-    uint _3681 = 12u % 4u;
-    uint _3694 = 13u / 4u;
-    uint _3695 = 13u % 4u;
-    uint _3708 = 14u / 4u;
-    uint _3709 = 14u % 4u;
-    uint _3722 = 15u / 4u;
-    uint _3723 = 15u % 4u;
-    uint _3736 = 16u / 4u;
-    uint _3737 = 16u % 4u;
-    uint _3750 = 17u / 4u;
-    uint _3751 = 17u % 4u;
-    uint _3764 = 18u / 4u;
-    uint _3765 = 18u % 4u;
-    uint _3778 = 19u / 4u;
-    uint _3779 = 19u % 4u;
-    uint _3792 = 20u / 4u;
-    uint _3793 = 20u % 4u;
-    uint _3806 = 21u / 4u;
-    uint _3807 = 21u % 4u;
-    uint _3820 = 22u / 4u;
-    uint _3821 = 22u % 4u;
-    uint _3834 = 23u / 4u;
-    uint _3835 = 23u % 4u;
-    uint _3848 = 24u / 4u;
-    uint _3849 = 24u % 4u;
-    uint _3862 = 25u / 4u;
-    uint _3863 = 25u % 4u;
-    uint _3876 = 26u / 4u;
-    uint _3877 = 26u % 4u;
-    uint _3890 = 27u / 4u;
-    uint _3891 = 27u % 4u;
-    uint _3904 = 28u / 4u;
-    uint _3905 = 28u % 4u;
-    uint _3918 = 29u / 4u;
-    uint _3919 = 29u % 4u;
-    uint _3932 = 30u / 4u;
-    uint _3933 = 30u % 4u;
-    uint _3946 = 31u / 4u;
-    uint _3947 = 31u % 4u;
-    f16vec2 _3962 = fma(f16vec2(_3486[2].x, _3486[2].y), f16vec2(Weights.w3[((uint(0) + _3736) * uint(4)) + (uint(0) + _3737)], Weights.w3[((uint(0) + _3792) * uint(4)) + (uint(0) + _3793)]), fma(f16vec2(_3486[1].x, _3486[1].y), f16vec2(Weights.w3[((uint(0) + _3624) * uint(4)) + (uint(0) + _3625)], Weights.w3[((uint(0) + _3680) * uint(4)) + (uint(0) + _3681)]), fma(f16vec2(_3486[0].x, _3486[0].y), f16vec2(Weights.w3[((uint(0) + _3512) * uint(4)) + (uint(0) + _3513)], Weights.w3[((uint(0) + _3568) * uint(4)) + (uint(0) + _3569)]), f16vec2(float16_t(0.0)))));
-    f16vec2 _3965 = fma(f16vec2(_3486[3].x, _3486[3].y), f16vec2(Weights.w3[((uint(0) + _3848) * uint(4)) + (uint(0) + _3849)], Weights.w3[((uint(0) + _3904) * uint(4)) + (uint(0) + _3905)]), _3962);
-    f16vec2 _3980 = fma(f16vec2(_3486[2].x, _3486[2].y), f16vec2(Weights.w3[((uint(0) + _3750) * uint(4)) + (uint(0) + _3751)], Weights.w3[((uint(0) + _3806) * uint(4)) + (uint(0) + _3807)]), fma(f16vec2(_3486[1].x, _3486[1].y), f16vec2(Weights.w3[((uint(0) + _3638) * uint(4)) + (uint(0) + _3639)], Weights.w3[((uint(0) + _3694) * uint(4)) + (uint(0) + _3695)]), fma(f16vec2(_3486[0].x, _3486[0].y), f16vec2(Weights.w3[((uint(0) + _3526) * uint(4)) + (uint(0) + _3527)], Weights.w3[((uint(0) + _3582) * uint(4)) + (uint(0) + _3583)]), f16vec2(float16_t(0.0)))));
-    f16vec2 _3983 = fma(f16vec2(_3486[3].x, _3486[3].y), f16vec2(Weights.w3[((uint(0) + _3862) * uint(4)) + (uint(0) + _3863)], Weights.w3[((uint(0) + _3918) * uint(4)) + (uint(0) + _3919)]), _3980);
-    f16vec2 _3998 = fma(f16vec2(_3486[2].x, _3486[2].y), f16vec2(Weights.w3[((uint(0) + _3764) * uint(4)) + (uint(0) + _3765)], Weights.w3[((uint(0) + _3820) * uint(4)) + (uint(0) + _3821)]), fma(f16vec2(_3486[1].x, _3486[1].y), f16vec2(Weights.w3[((uint(0) + _3652) * uint(4)) + (uint(0) + _3653)], Weights.w3[((uint(0) + _3708) * uint(4)) + (uint(0) + _3709)]), fma(f16vec2(_3486[0].x, _3486[0].y), f16vec2(Weights.w3[((uint(0) + _3540) * uint(4)) + (uint(0) + _3541)], Weights.w3[((uint(0) + _3596) * uint(4)) + (uint(0) + _3597)]), f16vec2(float16_t(0.0)))));
-    f16vec2 _4001 = fma(f16vec2(_3486[3].x, _3486[3].y), f16vec2(Weights.w3[((uint(0) + _3876) * uint(4)) + (uint(0) + _3877)], Weights.w3[((uint(0) + _3932) * uint(4)) + (uint(0) + _3933)]), _3998);
-    f16vec2 _4016 = fma(f16vec2(_3486[2].x, _3486[2].y), f16vec2(Weights.w3[((uint(0) + _3778) * uint(4)) + (uint(0) + _3779)], Weights.w3[((uint(0) + _3834) * uint(4)) + (uint(0) + _3835)]), fma(f16vec2(_3486[1].x, _3486[1].y), f16vec2(Weights.w3[((uint(0) + _3666) * uint(4)) + (uint(0) + _3667)], Weights.w3[((uint(0) + _3722) * uint(4)) + (uint(0) + _3723)]), fma(f16vec2(_3486[0].x, _3486[0].y), f16vec2(Weights.w3[((uint(0) + _3554) * uint(4)) + (uint(0) + _3555)], Weights.w3[((uint(0) + _3610) * uint(4)) + (uint(0) + _3611)]), f16vec2(float16_t(0.0)))));
-    f16vec2 _4019 = fma(f16vec2(_3486[3].x, _3486[3].y), f16vec2(Weights.w3[((uint(0) + _3890) * uint(4)) + (uint(0) + _3891)], Weights.w3[((uint(0) + _3946) * uint(4)) + (uint(0) + _3947)]), _4016);
-    return f16vec2[](f16vec2((_3965.x + _3965.y) + Biases.b3[0u], (_3983.x + _3983.y) + Biases.b3[1u]), f16vec2((_4001.x + _4001.y) + Biases.b3[2u], (_4019.x + _4019.y) + Biases.b3[3u]));
+    f16vec2 _3581 = fma(f16vec2(_3486[3].x, _3486[3].y), f16vec2(Weights.w3[24u], Weights.w3[28u]), fma(f16vec2(_3486[2].x, _3486[2].y), f16vec2(Weights.w3[16u], Weights.w3[20u]), fma(f16vec2(_3486[1].x, _3486[1].y), f16vec2(Weights.w3[8u], Weights.w3[12u]), fma(f16vec2(_3486[0].x, _3486[0].y), f16vec2(Weights.w3[0u], Weights.w3[4u]), f16vec2(float16_t(0.0))))));
+    f16vec2 _3599 = fma(f16vec2(_3486[3].x, _3486[3].y), f16vec2(Weights.w3[25u], Weights.w3[29u]), fma(f16vec2(_3486[2].x, _3486[2].y), f16vec2(Weights.w3[17u], Weights.w3[21u]), fma(f16vec2(_3486[1].x, _3486[1].y), f16vec2(Weights.w3[9u], Weights.w3[13u]), fma(f16vec2(_3486[0].x, _3486[0].y), f16vec2(Weights.w3[1u], Weights.w3[5u]), f16vec2(float16_t(0.0))))));
+    f16vec2 _3617 = fma(f16vec2(_3486[3].x, _3486[3].y), f16vec2(Weights.w3[26u], Weights.w3[30u]), fma(f16vec2(_3486[2].x, _3486[2].y), f16vec2(Weights.w3[18u], Weights.w3[22u]), fma(f16vec2(_3486[1].x, _3486[1].y), f16vec2(Weights.w3[10u], Weights.w3[14u]), fma(f16vec2(_3486[0].x, _3486[0].y), f16vec2(Weights.w3[2u], Weights.w3[6u]), f16vec2(float16_t(0.0))))));
+    f16vec2 _3635 = fma(f16vec2(_3486[3].x, _3486[3].y), f16vec2(Weights.w3[27u], Weights.w3[31u]), fma(f16vec2(_3486[2].x, _3486[2].y), f16vec2(Weights.w3[19u], Weights.w3[23u]), fma(f16vec2(_3486[1].x, _3486[1].y), f16vec2(Weights.w3[11u], Weights.w3[15u]), fma(f16vec2(_3486[0].x, _3486[0].y), f16vec2(Weights.w3[3u], Weights.w3[7u]), f16vec2(float16_t(0.0))))));
+    return f16vec2[](f16vec2((_3581.x + _3581.y) + Biases.b3[0u], (_3599.x + _3599.y) + Biases.b3[1u]), f16vec2((_3617.x + _3617.y) + Biases.b3[2u], (_3635.x + _3635.y) + Biases.b3[3u]));
 }
 
-void _4100(uint _4101, f16vec2 _4102)
+void _3716(uint _3717, f16vec2 _3718)
 {
-    OutY.y[_4101] = _4102.x;
-    OutY.y[_4101 + 1u] = _4102.y;
+    OutY.y[_3717] = _3718.x;
+    OutY.y[_3717 + 1u] = _3718.y;
 }
 
 void main()
 {
-    uint _4046 = 0u;
-    f16vec2 _4045[4];
-    uint _4051;
+    uint _3662 = 0u;
+    f16vec2 _3661[4];
+    uint _3667;
     for (;;)
     {
-        _4051 = _4046;
-        if (_4051 < 8u)
+        _3667 = _3662;
+        if (_3667 < 8u)
         {
-            _4045[_4051 / 2u] = _4031(0u + _4051);
-            _4046 = _4051 + 2u;
+            _3661[_3667 / 2u] = _3647(0u + _3667);
+            _3662 = _3667 + 2u;
             continue;
         }
         else
@@ -143,7 +75,7 @@ void main()
             break;
         }
     }
-    f16vec2 _22[4] = _4045;
+    f16vec2 _22[4] = _3661;
     f16vec2 tempArg[4] = _22;
     f16vec2 x[4] = _22;
     f16vec2 _247 = max(fma(f16vec2(_22[3].y), f16vec2(Weights.w1[336u], Weights.w1[337u]), fma(f16vec2(_22[3].x), f16vec2(Weights.w1[288u], Weights.w1[289u]), fma(f16vec2(_22[2].y), f16vec2(Weights.w1[240u], Weights.w1[241u]), fma(f16vec2(_22[2].x), f16vec2(Weights.w1[192u], Weights.w1[193u]), fma(f16vec2(_22[1].y), f16vec2(Weights.w1[144u], Weights.w1[145u]), fma(f16vec2(_22[1].x), f16vec2(Weights.w1[96u], Weights.w1[97u]), fma(f16vec2(_22[0].y), f16vec2(Weights.w1[48u], Weights.w1[49u]), fma(f16vec2(_22[0].x), f16vec2(Weights.w1[0u], Weights.w1[1u]), f16vec2(Biases.b1[0u], Biases.b1[1u]))))))))), f16vec2(float16_t(0.0)));
@@ -237,17 +169,17 @@ void main()
     f16vec2 _92[4] = f16vec2[](f16vec2(fma(_3417, f16vec2(Weights.w2[376u], Weights.w2[377u]), fma(_3416, f16vec2(Weights.w2[368u], Weights.w2[369u]), fma(_3293, f16vec2(Weights.w2[360u], Weights.w2[361u]), fma(_3292, f16vec2(Weights.w2[352u], Weights.w2[353u]), fma(_3169, f16vec2(Weights.w2[344u], Weights.w2[345u]), fma(_3168, f16vec2(Weights.w2[336u], Weights.w2[337u]), fma(_3039, f16vec2(Weights.w2[328u], Weights.w2[329u]), fma(_3038, f16vec2(Weights.w2[320u], Weights.w2[321u]), _2925))))))))), f16vec2(fma(_3417, f16vec2(Weights.w2[378u], Weights.w2[379u]), fma(_3416, f16vec2(Weights.w2[370u], Weights.w2[371u]), fma(_3293, f16vec2(Weights.w2[362u], Weights.w2[363u]), fma(_3292, f16vec2(Weights.w2[354u], Weights.w2[355u]), fma(_3169, f16vec2(Weights.w2[346u], Weights.w2[347u]), fma(_3168, f16vec2(Weights.w2[338u], Weights.w2[339u]), fma(_3039, f16vec2(Weights.w2[330u], Weights.w2[331u]), fma(_3038, f16vec2(Weights.w2[322u], Weights.w2[323u]), _2937))))))))), f16vec2(fma(_3417, f16vec2(Weights.w2[380u], Weights.w2[381u]), fma(_3416, f16vec2(Weights.w2[372u], Weights.w2[373u]), fma(_3293, f16vec2(Weights.w2[364u], Weights.w2[365u]), fma(_3292, f16vec2(Weights.w2[356u], Weights.w2[357u]), fma(_3169, f16vec2(Weights.w2[348u], Weights.w2[349u]), fma(_3168, f16vec2(Weights.w2[340u], Weights.w2[341u]), fma(_3039, f16vec2(Weights.w2[332u], Weights.w2[333u]), fma(_3038, f16vec2(Weights.w2[324u], Weights.w2[325u]), _2949))))))))), f16vec2(fma(_3417, f16vec2(Weights.w2[382u], Weights.w2[383u]), fma(_3416, f16vec2(Weights.w2[374u], Weights.w2[375u]), fma(_3293, f16vec2(Weights.w2[366u], Weights.w2[367u]), fma(_3292, f16vec2(Weights.w2[358u], Weights.w2[359u]), fma(_3169, f16vec2(Weights.w2[350u], Weights.w2[351u]), fma(_3168, f16vec2(Weights.w2[342u], Weights.w2[343u]), fma(_3039, f16vec2(Weights.w2[334u], Weights.w2[335u]), fma(_3038, f16vec2(Weights.w2[326u], Weights.w2[327u]), _2961))))))))));
     f16vec2 tempArg_1[4] = _92;
     f16vec2 h2[4] = _92;
-    f16vec2 _4066[4] = _92;
-    uint _4065 = 0u;
-    f16vec2 _4064[4];
-    uint _4072;
+    f16vec2 _3682[4] = _92;
+    uint _3681 = 0u;
+    f16vec2 _3680[4];
+    uint _3688;
     for (;;)
     {
-        _4072 = _4065;
-        if (_4072 < 4u)
+        _3688 = _3681;
+        if (_3688 < 4u)
         {
-            _4064[_4072] = max(_4066[_4072], _96[_4072]);
-            _4065 = _4072 + 1u;
+            _3680[_3688] = max(_3682[_3688], _96[_3688]);
+            _3681 = _3688 + 1u;
             continue;
         }
         else
@@ -255,21 +187,21 @@ void main()
             break;
         }
     }
-    h2 = _4064;
-    f16vec2 _121[2] = _3485(_4064);
+    h2 = _3680;
+    f16vec2 _121[2] = _3485(_3680);
     f16vec2 tempArg_2[2] = _121;
     f16vec2 y[2] = _121;
-    f16vec2 _4084[2] = _121;
-    uint _4083 = 0u;
-    f16vec2 _4082[2];
-    uint _4090;
+    f16vec2 _3700[2] = _121;
+    uint _3699 = 0u;
+    f16vec2 _3698[2];
+    uint _3706;
     for (;;)
     {
-        _4090 = _4083;
-        if (_4090 < 2u)
+        _3706 = _3699;
+        if (_3706 < 2u)
         {
-            _4082[_4090] = max(_4084[_4090], _125[_4090]);
-            _4083 = _4090 + 1u;
+            _3698[_3706] = max(_3700[_3706], _125[_3706]);
+            _3699 = _3706 + 1u;
             continue;
         }
         else
@@ -277,17 +209,17 @@ void main()
             break;
         }
     }
-    y = _4082;
-    f16vec2 _4110[2] = _4082;
-    uint _4111 = 0u;
-    uint _4116;
+    y = _3698;
+    f16vec2 _3726[2] = _3698;
+    uint _3727 = 0u;
+    uint _3732;
     for (;;)
     {
-        _4116 = _4111;
-        if (_4116 < 4u)
+        _3732 = _3727;
+        if (_3732 < 4u)
         {
-            _4100(0u + _4116, _4110[_4116 / 2u]);
-            _4111 = _4116 + 2u;
+            _3716(0u + _3732, _3726[_3732 / 2u]);
+            _3727 = _3732 + 2u;
             continue;
         }
         else

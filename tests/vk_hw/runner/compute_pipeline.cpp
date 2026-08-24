@@ -10,7 +10,7 @@
 namespace vk_hw {
 
 ComputePipeline::ComputePipeline(VulkanContext* context, const std::vector<uint32_t>& code,
-                                 const std::array<VkDescriptorType, 4>& descriptor_types)
+                                 const std::vector<VkDescriptorType>& descriptor_types)
     : context_(context), descriptor_types_(descriptor_types)
 {
     VkShaderModuleCreateInfo module_info = {};
@@ -19,7 +19,7 @@ ComputePipeline::ComputePipeline(VulkanContext* context, const std::vector<uint3
     module_info.pCode = code.data();
     Check(vkCreateShaderModule(context_->device(), &module_info, nullptr, &shader_module_), "vkCreateShaderModule");
 
-    std::array<VkDescriptorSetLayoutBinding, 4> bindings = {};
+    std::vector<VkDescriptorSetLayoutBinding> bindings(descriptor_types_.size());
     for (uint32_t i = 0; i < bindings.size(); ++i) {
         bindings[i].binding = i;
         bindings[i].descriptorType = descriptor_types_[i];
@@ -54,18 +54,15 @@ ComputePipeline::ComputePipeline(VulkanContext* context, const std::vector<uint3
     Check(vkCreateComputePipelines(context_->device(), VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &pipeline_),
           "vkCreateComputePipelines");
 
-    std::array<VkDescriptorPoolSize, 2> pool_sizes = {};
-    uint32_t pool_size_count = 0;
+    std::vector<VkDescriptorPoolSize> pool_sizes;
     auto append_pool_size = [&](VkDescriptorType type) {
-        for (uint32_t i = 0; i < pool_size_count; ++i) {
-            if (pool_sizes[i].type == type) {
-                ++pool_sizes[i].descriptorCount;
+        for (auto& pool_size : pool_sizes) {
+            if (pool_size.type == type) {
+                ++pool_size.descriptorCount;
                 return;
             }
         }
-        pool_sizes[pool_size_count].type = type;
-        pool_sizes[pool_size_count].descriptorCount = 1;
-        ++pool_size_count;
+        pool_sizes.push_back({type, 1});
     };
     for (VkDescriptorType type : descriptor_types_) {
         append_pool_size(type);
@@ -74,7 +71,7 @@ ComputePipeline::ComputePipeline(VulkanContext* context, const std::vector<uint3
     VkDescriptorPoolCreateInfo pool_info = {};
     pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     pool_info.maxSets = 1;
-    pool_info.poolSizeCount = pool_size_count;
+    pool_info.poolSizeCount = static_cast<uint32_t>(pool_sizes.size());
     pool_info.pPoolSizes = pool_sizes.data();
     Check(vkCreateDescriptorPool(context_->device(), &pool_info, nullptr, &descriptor_pool_), "vkCreateDescriptorPool");
 
@@ -105,9 +102,9 @@ ComputePipeline::~ComputePipeline()
     }
 }
 
-void ComputePipeline::UpdateDescriptors(const std::array<VkDescriptorBufferInfo, 4>& descriptors)
+void ComputePipeline::UpdateDescriptors(const std::vector<VkDescriptorBufferInfo>& descriptors)
 {
-    std::array<VkWriteDescriptorSet, 4> writes = {};
+    std::vector<VkWriteDescriptorSet> writes(descriptors.size());
     for (uint32_t i = 0; i < writes.size(); ++i) {
         writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writes[i].dstSet = descriptor_set_;

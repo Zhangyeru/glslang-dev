@@ -1,0 +1,35 @@
+#version 460 core
+#extension GL_HW_neural_shader : require
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA { float16_t data[]; } A;
+layout(set = 0, binding = 1) buffer Weight { float16_t data[]; } W;
+layout(set = 0, binding = 2) buffer InputC0 { float16_t data[]; } C0;
+layout(set = 0, binding = 3) buffer InputC1 { float16_t data[]; } C1;
+layout(set = 0, binding = 4) buffer OutputD0 { float16_t data[]; } D0;
+layout(set = 0, binding = 5) buffer OutputD1 { float16_t data[]; } D1;
+
+void main()
+{
+    const ivec2 shape = ivec2(8);
+    const ivec2 off   = ivec2(0);
+
+    // Shared weight: W is loaded once and used by both matmuls.
+    // Direct path should keep the shared load alive for both.
+    coopmatHW<float16_t, 8, 8> a0, a1, w, c0, c1, d0, d1;
+
+    coopMatLoadHW(a0, A.data,  shape, off, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(w,  W.data,  shape, off, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(c0, C0.data, shape, off, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(c1, C1.data, shape, off, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(a1, A.data,  shape, off, gl_CooperativeMatrixLayoutRowMajorHW);
+
+    coopMatMulAddHW(d0, a0, w, c0);
+    coopMatMulAddHW(d1, a1, w, c1);
+
+    coopMatStoreHW(d0, D0.data, shape, off, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatStoreHW(d1, D1.data, shape, off, gl_CooperativeMatrixLayoutRowMajorHW);
+}

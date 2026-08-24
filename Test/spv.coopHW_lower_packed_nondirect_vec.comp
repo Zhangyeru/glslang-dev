@@ -1,0 +1,50 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputX { float16_t x[]; };
+layout(set = 0, binding = 1) buffer InputW { float16_t w[]; };
+layout(set = 0, binding = 2) buffer InputC { float16_t c[]; };
+layout(set = 0, binding = 3) buffer OutputY { float16_t y[]; };
+layout(set = 0, binding = 4) buffer OutputE { float16_t e[]; };
+
+void main()
+{
+    const ivec2 zeroOff = ivec2(0);
+
+    // ── Condition 1 (vector unrolled, 16×8 = 128 MAC): ──
+    // Shared matrix load used in two vector-matmuls.
+    {
+        coopvecHW<float16_t, 16> x1, x2;
+        coopvecHW<float16_t, 8> y1, y2;
+        coopmatHW<float16_t, 16, 8> shared_w;
+
+        coopVecLoadHW(x1, x, 0u);
+        coopMatLoadHW(shared_w, w, ivec2(16, 8), zeroOff, gl_CooperativeMatrixLayoutRowMajorHW);
+        coopVecLoadHW(x2, x, 0u);
+
+        coopVecMatMulHW(y1, x1, shared_w);
+        coopVecMatMulHW(y2, x2, shared_w);
+
+        coopVecStoreHW(y1, y, 0u);
+        coopVecStoreHW(y2, e, 0u);
+    }
+
+    // ── Condition 2 (vector rolled, 128×64 = 8192 MAC): ──
+    // Matrix load used in vector-matmul and extra store.
+    {
+        coopvecHW<float16_t, 128> x3;
+        coopvecHW<float16_t, 64> y3;
+        coopmatHW<float16_t, 128, 64> w2;
+
+        coopVecLoadHW(x3, x, 0u);
+        coopMatLoadHW(w2, w, ivec2(128, 64), zeroOff, gl_CooperativeMatrixLayoutRowMajorHW);
+
+        coopVecMatMulHW(y3, x3, w2);
+
+        coopVecStoreHW(y3, y, 0u);
+        coopMatStoreHW(w2, e, ivec2(128, 64), zeroOff, gl_CooperativeMatrixLayoutRowMajorHW);
+    }
+}

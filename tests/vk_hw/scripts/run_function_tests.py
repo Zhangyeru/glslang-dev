@@ -81,6 +81,19 @@ def parse_case(path):
             result["c_dtype"] = a_dtype
         return result
 
+    m = re.match(rf"matmul_extrastore_({DTYPE_RE}){suffix}_(\d+)x(\d+)x(\d+)$", stem)
+    if m:
+        dtype, rows, cols, inner = m.groups()
+        return typed_meta("extrastore", dtype, m=rows, n=cols, k=inner)
+
+    m = re.match(
+        rf"matmul_(?:shared_load|value_arg)_({DTYPE_RE}){suffix}_(\d+)x(\d+)x(\d+)$",
+        stem,
+    )
+    if m:
+        dtype, rows, cols, inner = m.groups()
+        return typed_meta("matmul", dtype, m=rows, n=cols, k=inner)
+
     m = re.match(rf"matmul_({DTYPE_RE}){suffix}_(\d+)x(\d+)x(\d+)$", stem)
     if m:
         dtype, rows, cols, inner = m.groups()

@@ -1,0 +1,48 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA { float16_t a[]; };
+layout(set = 0, binding = 1) buffer InputB { float b[]; };
+layout(set = 0, binding = 2) buffer InputC { float c[]; };
+layout(set = 0, binding = 3) buffer OutputD { float d[]; };
+
+void main()
+{
+    const ivec2 shape8 = ivec2(8, 8);
+    const ivec2 zeroOff = ivec2(0);
+
+    // ── Condition 4 (unrolled): f16 A × f32 B → f32 result ──
+    // 8×8×8 matrix: MAC=512 ≤ 4096 → generic unrolled packed vec2.
+    // CanUseDirectMatrixMulAdd returns false because A is f16 but B is f32
+    // (not same-component and not f16×f16→f32).
+    {
+        coopmatHW<float16_t, 8, 8> a16;
+        coopmatHW<float, 8, 8> b32, c32, d32;
+
+        coopMatLoadHW(a16, a, shape8, zeroOff, gl_CooperativeMatrixLayoutRowMajorHW);
+        coopMatLoadHW(b32, b, shape8, zeroOff, gl_CooperativeMatrixLayoutRowMajorHW);
+        coopMatLoadHW(c32, c, shape8, zeroOff, gl_CooperativeMatrixLayoutRowMajorHW);
+
+        coopMatMulAddHW(d32, a16, b32, c32);
+
+        coopMatStoreHW(d32, d, shape8, zeroOff, gl_CooperativeMatrixLayoutRowMajorHW);
+    }
+
+    // ── Condition 4 vector (unrolled): f16 input × f32 matrix → f32 result ──
+    // K=8, N=16: MAC=128 ≤ 4096 → generic unrolled packed vec2.
+    {
+        coopvecHW<float16_t, 8> x16;
+        coopmatHW<float, 8, 16> w32;
+        coopvecHW<float, 16> y32;
+
+        coopVecLoadHW(x16, a, 0u);
+        coopMatLoadHW(w32, b, ivec2(8, 16), zeroOff, gl_CooperativeMatrixLayoutRowMajorHW);
+
+        coopVecMatMulHW(y32, x16, w32);
+
+        coopVecStoreHW(y32, d, 0u);
+    }
+}

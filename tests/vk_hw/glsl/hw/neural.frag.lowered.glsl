@@ -361,147 +361,48 @@ vec2 dir2polar(vec3 dir)
 
 float[3] _10092(f16vec2 _10093[8])
 {
-    uint _10135 = 0u / 3u;
-    uint _10136 = 0u % 3u;
-    uint _10149 = 1u / 3u;
-    uint _10150 = 1u % 3u;
-    uint _10163 = 2u / 3u;
-    uint _10164 = 2u % 3u;
-    uint _10177 = 3u / 3u;
-    uint _10178 = 3u % 3u;
-    uint _10191 = 4u / 3u;
-    uint _10192 = 4u % 3u;
-    uint _10205 = 5u / 3u;
-    uint _10206 = 5u % 3u;
-    uint _10219 = 6u / 3u;
-    uint _10220 = 6u % 3u;
-    uint _10234 = 7u / 3u;
-    uint _10235 = 7u % 3u;
-    uint _10248 = 8u / 3u;
-    uint _10249 = 8u % 3u;
-    uint _10262 = 9u / 3u;
-    uint _10263 = 9u % 3u;
-    uint _10276 = 10u / 3u;
-    uint _10277 = 10u % 3u;
-    uint _10291 = 11u / 3u;
-    uint _10292 = 11u % 3u;
-    uint _10306 = 12u / 3u;
-    uint _10307 = 12u % 3u;
-    uint _10321 = 13u / 3u;
-    uint _10322 = 13u % 3u;
-    uint _10335 = 14u / 3u;
-    uint _10336 = 14u % 3u;
-    uint _10349 = 15u / 3u;
-    uint _10350 = 15u % 3u;
-    uint _10363 = 16u / 3u;
-    uint _10364 = 16u % 3u;
-    uint _10377 = 17u / 3u;
-    uint _10378 = 17u % 3u;
-    uint _10391 = 18u / 3u;
-    uint _10392 = 18u % 3u;
-    uint _10405 = 19u / 3u;
-    uint _10406 = 19u % 3u;
-    uint _10419 = 20u / 3u;
-    uint _10420 = 20u % 3u;
-    uint _10433 = 21u / 3u;
-    uint _10434 = 21u % 3u;
-    uint _10447 = 22u / 3u;
-    uint _10448 = 22u % 3u;
-    uint _10461 = 23u / 3u;
-    uint _10462 = 23u % 3u;
-    uint _10475 = 24u / 3u;
-    uint _10476 = 24u % 3u;
-    uint _10489 = 25u / 3u;
-    uint _10490 = 25u % 3u;
-    uint _10503 = 26u / 3u;
-    uint _10504 = 26u % 3u;
-    uint _10517 = 27u / 3u;
-    uint _10518 = 27u % 3u;
-    uint _10531 = 28u / 3u;
-    uint _10532 = 28u % 3u;
-    uint _10545 = 29u / 3u;
-    uint _10546 = 29u % 3u;
-    uint _10559 = 30u / 3u;
-    uint _10560 = 30u % 3u;
-    uint _10573 = 31u / 3u;
-    uint _10574 = 31u % 3u;
-    uint _10587 = 32u / 3u;
-    uint _10588 = 32u % 3u;
-    uint _10601 = 33u / 3u;
-    uint _10602 = 33u % 3u;
-    uint _10615 = 34u / 3u;
-    uint _10616 = 34u % 3u;
-    uint _10629 = 35u / 3u;
-    uint _10630 = 35u % 3u;
-    uint _10643 = 36u / 3u;
-    uint _10644 = 36u % 3u;
-    uint _10657 = 37u / 3u;
-    uint _10658 = 37u % 3u;
-    uint _10671 = 38u / 3u;
-    uint _10672 = 38u % 3u;
-    uint _10685 = 39u / 3u;
-    uint _10686 = 39u % 3u;
-    uint _10699 = 40u / 3u;
-    uint _10700 = 40u % 3u;
-    uint _10713 = 41u / 3u;
-    uint _10714 = 41u % 3u;
-    uint _10727 = 42u / 3u;
-    uint _10728 = 42u % 3u;
-    uint _10741 = 43u / 3u;
-    uint _10742 = 43u % 3u;
-    uint _10755 = 44u / 3u;
-    uint _10756 = 44u % 3u;
-    uint _10769 = 45u / 3u;
-    uint _10770 = 45u % 3u;
-    uint _10783 = 46u / 3u;
-    uint _10784 = 46u % 3u;
-    uint _10797 = 47u / 3u;
-    uint _10798 = 47u % 3u;
-    vec2 _10819 = fma(vec2(f16vec2(_10093[2].x, _10093[2].y)), vec2(f16vec2(nn_buf.data[((uint(560) + _10306) * uint(3)) + (uint(0) + _10307)], nn_buf.data[((uint(560) + _10349) * uint(3)) + (uint(0) + _10350)])), fma(vec2(f16vec2(_10093[1].x, _10093[1].y)), vec2(f16vec2(nn_buf.data[((uint(560) + _10219) * uint(3)) + (uint(0) + _10220)], nn_buf.data[((uint(560) + _10262) * uint(3)) + (uint(0) + _10263)])), fma(vec2(f16vec2(_10093[0].x, _10093[0].y)), vec2(f16vec2(nn_buf.data[((uint(560) + _10135) * uint(3)) + (uint(0) + _10136)], nn_buf.data[((uint(560) + _10177) * uint(3)) + (uint(0) + _10178)])), vec2(0.0))));
-    vec2 _10834 = fma(vec2(f16vec2(_10093[5].x, _10093[5].y)), vec2(f16vec2(nn_buf.data[((uint(560) + _10559) * uint(3)) + (uint(0) + _10560)], nn_buf.data[((uint(560) + _10601) * uint(3)) + (uint(0) + _10602)])), fma(vec2(f16vec2(_10093[4].x, _10093[4].y)), vec2(f16vec2(nn_buf.data[((uint(560) + _10475) * uint(3)) + (uint(0) + _10476)], nn_buf.data[((uint(560) + _10517) * uint(3)) + (uint(0) + _10518)])), fma(vec2(f16vec2(_10093[3].x, _10093[3].y)), vec2(f16vec2(nn_buf.data[((uint(560) + _10391) * uint(3)) + (uint(0) + _10392)], nn_buf.data[((uint(560) + _10433) * uint(3)) + (uint(0) + _10434)])), _10819)));
-    vec2 _10844 = fma(vec2(f16vec2(_10093[7].x, _10093[7].y)), vec2(f16vec2(nn_buf.data[((uint(560) + _10727) * uint(3)) + (uint(0) + _10728)], nn_buf.data[((uint(560) + _10769) * uint(3)) + (uint(0) + _10770)])), fma(vec2(f16vec2(_10093[6].x, _10093[6].y)), vec2(f16vec2(nn_buf.data[((uint(560) + _10643) * uint(3)) + (uint(0) + _10644)], nn_buf.data[((uint(560) + _10685) * uint(3)) + (uint(0) + _10686)])), _10834));
-    vec2 _10866 = fma(vec2(f16vec2(_10093[2].x, _10093[2].y)), vec2(f16vec2(nn_buf.data[((uint(560) + _10321) * uint(3)) + (uint(0) + _10322)], nn_buf.data[((uint(560) + _10363) * uint(3)) + (uint(0) + _10364)])), fma(vec2(f16vec2(_10093[1].x, _10093[1].y)), vec2(f16vec2(nn_buf.data[((uint(560) + _10234) * uint(3)) + (uint(0) + _10235)], nn_buf.data[((uint(560) + _10276) * uint(3)) + (uint(0) + _10277)])), fma(vec2(f16vec2(_10093[0].x, _10093[0].y)), vec2(f16vec2(nn_buf.data[((uint(560) + _10149) * uint(3)) + (uint(0) + _10150)], nn_buf.data[((uint(560) + _10191) * uint(3)) + (uint(0) + _10192)])), vec2(0.0))));
-    vec2 _10881 = fma(vec2(f16vec2(_10093[5].x, _10093[5].y)), vec2(f16vec2(nn_buf.data[((uint(560) + _10573) * uint(3)) + (uint(0) + _10574)], nn_buf.data[((uint(560) + _10615) * uint(3)) + (uint(0) + _10616)])), fma(vec2(f16vec2(_10093[4].x, _10093[4].y)), vec2(f16vec2(nn_buf.data[((uint(560) + _10489) * uint(3)) + (uint(0) + _10490)], nn_buf.data[((uint(560) + _10531) * uint(3)) + (uint(0) + _10532)])), fma(vec2(f16vec2(_10093[3].x, _10093[3].y)), vec2(f16vec2(nn_buf.data[((uint(560) + _10405) * uint(3)) + (uint(0) + _10406)], nn_buf.data[((uint(560) + _10447) * uint(3)) + (uint(0) + _10448)])), _10866)));
-    vec2 _10891 = fma(vec2(f16vec2(_10093[7].x, _10093[7].y)), vec2(f16vec2(nn_buf.data[((uint(560) + _10741) * uint(3)) + (uint(0) + _10742)], nn_buf.data[((uint(560) + _10783) * uint(3)) + (uint(0) + _10784)])), fma(vec2(f16vec2(_10093[6].x, _10093[6].y)), vec2(f16vec2(nn_buf.data[((uint(560) + _10657) * uint(3)) + (uint(0) + _10658)], nn_buf.data[((uint(560) + _10699) * uint(3)) + (uint(0) + _10700)])), _10881));
-    vec2 _10914 = fma(vec2(f16vec2(_10093[2].x, _10093[2].y)), vec2(f16vec2(nn_buf.data[((uint(560) + _10335) * uint(3)) + (uint(0) + _10336)], nn_buf.data[((uint(560) + _10377) * uint(3)) + (uint(0) + _10378)])), fma(vec2(f16vec2(_10093[1].x, _10093[1].y)), vec2(f16vec2(nn_buf.data[((uint(560) + _10248) * uint(3)) + (uint(0) + _10249)], nn_buf.data[((uint(560) + _10291) * uint(3)) + (uint(0) + _10292)])), fma(vec2(f16vec2(_10093[0].x, _10093[0].y)), vec2(f16vec2(nn_buf.data[((uint(560) + _10163) * uint(3)) + (uint(0) + _10164)], nn_buf.data[((uint(560) + _10205) * uint(3)) + (uint(0) + _10206)])), vec2(0.0))));
-    vec2 _10929 = fma(vec2(f16vec2(_10093[5].x, _10093[5].y)), vec2(f16vec2(nn_buf.data[((uint(560) + _10587) * uint(3)) + (uint(0) + _10588)], nn_buf.data[((uint(560) + _10629) * uint(3)) + (uint(0) + _10630)])), fma(vec2(f16vec2(_10093[4].x, _10093[4].y)), vec2(f16vec2(nn_buf.data[((uint(560) + _10503) * uint(3)) + (uint(0) + _10504)], nn_buf.data[((uint(560) + _10545) * uint(3)) + (uint(0) + _10546)])), fma(vec2(f16vec2(_10093[3].x, _10093[3].y)), vec2(f16vec2(nn_buf.data[((uint(560) + _10419) * uint(3)) + (uint(0) + _10420)], nn_buf.data[((uint(560) + _10461) * uint(3)) + (uint(0) + _10462)])), _10914)));
-    vec2 _10939 = fma(vec2(f16vec2(_10093[7].x, _10093[7].y)), vec2(f16vec2(nn_buf.data[((uint(560) + _10755) * uint(3)) + (uint(0) + _10756)], nn_buf.data[((uint(560) + _10797) * uint(3)) + (uint(0) + _10798)])), fma(vec2(f16vec2(_10093[6].x, _10093[6].y)), vec2(f16vec2(nn_buf.data[((uint(560) + _10671) * uint(3)) + (uint(0) + _10672)], nn_buf.data[((uint(560) + _10713) * uint(3)) + (uint(0) + _10714)])), _10929));
-    return float[]((_10844.x + _10844.y) + float(nn_buf.data[3616u]), (_10891.x + _10891.y) + float(nn_buf.data[3617u]), (_10939.x + _10939.y) + float(nn_buf.data[3618u]));
+    vec2 _10306 = fma(vec2(f16vec2(_10093[5].x, _10093[5].y)), vec2(f16vec2(nn_buf.data[1710u], nn_buf.data[1713u])), fma(vec2(f16vec2(_10093[4].x, _10093[4].y)), vec2(f16vec2(nn_buf.data[1704u], nn_buf.data[1707u])), fma(vec2(f16vec2(_10093[3].x, _10093[3].y)), vec2(f16vec2(nn_buf.data[1698u], nn_buf.data[1701u])), fma(vec2(f16vec2(_10093[2].x, _10093[2].y)), vec2(f16vec2(nn_buf.data[1692u], nn_buf.data[1695u])), fma(vec2(f16vec2(_10093[1].x, _10093[1].y)), vec2(f16vec2(nn_buf.data[1686u], nn_buf.data[1689u])), fma(vec2(f16vec2(_10093[0].x, _10093[0].y)), vec2(f16vec2(nn_buf.data[1680u], nn_buf.data[1683u])), vec2(0.0)))))));
+    vec2 _10316 = fma(vec2(f16vec2(_10093[7].x, _10093[7].y)), vec2(f16vec2(nn_buf.data[1722u], nn_buf.data[1725u])), fma(vec2(f16vec2(_10093[6].x, _10093[6].y)), vec2(f16vec2(nn_buf.data[1716u], nn_buf.data[1719u])), _10306));
+    vec2 _10353 = fma(vec2(f16vec2(_10093[5].x, _10093[5].y)), vec2(f16vec2(nn_buf.data[1711u], nn_buf.data[1714u])), fma(vec2(f16vec2(_10093[4].x, _10093[4].y)), vec2(f16vec2(nn_buf.data[1705u], nn_buf.data[1708u])), fma(vec2(f16vec2(_10093[3].x, _10093[3].y)), vec2(f16vec2(nn_buf.data[1699u], nn_buf.data[1702u])), fma(vec2(f16vec2(_10093[2].x, _10093[2].y)), vec2(f16vec2(nn_buf.data[1693u], nn_buf.data[1696u])), fma(vec2(f16vec2(_10093[1].x, _10093[1].y)), vec2(f16vec2(nn_buf.data[1687u], nn_buf.data[1690u])), fma(vec2(f16vec2(_10093[0].x, _10093[0].y)), vec2(f16vec2(nn_buf.data[1681u], nn_buf.data[1684u])), vec2(0.0)))))));
+    vec2 _10363 = fma(vec2(f16vec2(_10093[7].x, _10093[7].y)), vec2(f16vec2(nn_buf.data[1723u], nn_buf.data[1726u])), fma(vec2(f16vec2(_10093[6].x, _10093[6].y)), vec2(f16vec2(nn_buf.data[1717u], nn_buf.data[1720u])), _10353));
+    vec2 _10401 = fma(vec2(f16vec2(_10093[5].x, _10093[5].y)), vec2(f16vec2(nn_buf.data[1712u], nn_buf.data[1715u])), fma(vec2(f16vec2(_10093[4].x, _10093[4].y)), vec2(f16vec2(nn_buf.data[1706u], nn_buf.data[1709u])), fma(vec2(f16vec2(_10093[3].x, _10093[3].y)), vec2(f16vec2(nn_buf.data[1700u], nn_buf.data[1703u])), fma(vec2(f16vec2(_10093[2].x, _10093[2].y)), vec2(f16vec2(nn_buf.data[1694u], nn_buf.data[1697u])), fma(vec2(f16vec2(_10093[1].x, _10093[1].y)), vec2(f16vec2(nn_buf.data[1688u], nn_buf.data[1691u])), fma(vec2(f16vec2(_10093[0].x, _10093[0].y)), vec2(f16vec2(nn_buf.data[1682u], nn_buf.data[1685u])), vec2(0.0)))))));
+    vec2 _10411 = fma(vec2(f16vec2(_10093[7].x, _10093[7].y)), vec2(f16vec2(nn_buf.data[1724u], nn_buf.data[1727u])), fma(vec2(f16vec2(_10093[6].x, _10093[6].y)), vec2(f16vec2(nn_buf.data[1718u], nn_buf.data[1721u])), _10401));
+    return float[]((_10316.x + _10316.y) + float(nn_buf.data[3616u]), (_10363.x + _10363.y) + float(nn_buf.data[3617u]), (_10411.x + _10411.y) + float(nn_buf.data[3618u]));
 }
 
 mediump vec3 evaluateNetwork2(mediump vec3 envmap, mediump vec3 dirmap, mediump vec3 specular, mediump float nDir)
 {
-    int _10950 = 0 / 2;
-    int _10951 = 0 - 2 * (0 / 2);
+    int _10422 = 0 / 2;
+    int _10423 = 0 - 2 * (0 / 2);
     f16vec2 inVec[5];
-    inVec[_10950][_10951] = float16_t(envmap.x);
-    int _10952 = 1 / 2;
-    int _10953 = 1 - 2 * (1 / 2);
-    inVec[_10952][_10953] = float16_t(envmap.y);
-    int _10954 = 2 / 2;
-    int _10955 = 2 - 2 * (2 / 2);
-    inVec[_10954][_10955] = float16_t(envmap.z);
-    int _10956 = 3 / 2;
-    int _10957 = 3 - 2 * (3 / 2);
-    inVec[_10956][_10957] = float16_t(dirmap.x);
-    int _10958 = 4 / 2;
-    int _10959 = 4 - 2 * (4 / 2);
-    inVec[_10958][_10959] = float16_t(dirmap.y);
-    int _10960 = 5 / 2;
-    int _10961 = 5 - 2 * (5 / 2);
-    inVec[_10960][_10961] = float16_t(dirmap.z);
-    int _10962 = 6 / 2;
-    int _10963 = 6 - 2 * (6 / 2);
-    inVec[_10962][_10963] = float16_t(specular.x);
-    int _10964 = 7 / 2;
-    int _10965 = 7 - 2 * (7 / 2);
-    inVec[_10964][_10965] = float16_t(specular.y);
-    int _10966 = 8 / 2;
-    int _10967 = 8 - 2 * (8 / 2);
-    inVec[_10966][_10967] = float16_t(specular.z);
-    int _10968 = 9 / 2;
-    int _10969 = 9 - 2 * (9 / 2);
-    inVec[_10968][_10969] = float16_t(nDir);
+    inVec[_10422][_10423] = float16_t(envmap.x);
+    int _10424 = 1 / 2;
+    int _10425 = 1 - 2 * (1 / 2);
+    inVec[_10424][_10425] = float16_t(envmap.y);
+    int _10426 = 2 / 2;
+    int _10427 = 2 - 2 * (2 / 2);
+    inVec[_10426][_10427] = float16_t(envmap.z);
+    int _10428 = 3 / 2;
+    int _10429 = 3 - 2 * (3 / 2);
+    inVec[_10428][_10429] = float16_t(dirmap.x);
+    int _10430 = 4 / 2;
+    int _10431 = 4 - 2 * (4 / 2);
+    inVec[_10430][_10431] = float16_t(dirmap.y);
+    int _10432 = 5 / 2;
+    int _10433 = 5 - 2 * (5 / 2);
+    inVec[_10432][_10433] = float16_t(dirmap.z);
+    int _10434 = 6 / 2;
+    int _10435 = 6 - 2 * (6 / 2);
+    inVec[_10434][_10435] = float16_t(specular.x);
+    int _10436 = 7 / 2;
+    int _10437 = 7 - 2 * (7 / 2);
+    inVec[_10436][_10437] = float16_t(specular.y);
+    int _10438 = 8 / 2;
+    int _10439 = 8 - 2 * (8 / 2);
+    inVec[_10438][_10439] = float16_t(specular.z);
+    int _10440 = 9 / 2;
+    int _10441 = 9 - 2 * (9 / 2);
+    inVec[_10440][_10441] = float16_t(nDir);
     vec2 _1225 = fma(vec2(f16vec2(inVec[3].x)), vec2(f16vec2(nn_buf.data[400u], nn_buf.data[401u])), fma(vec2(f16vec2(inVec[2].y)), vec2(f16vec2(nn_buf.data[336u], nn_buf.data[337u])), fma(vec2(f16vec2(inVec[2].x)), vec2(f16vec2(nn_buf.data[272u], nn_buf.data[273u])), fma(vec2(f16vec2(inVec[1].y)), vec2(f16vec2(nn_buf.data[208u], nn_buf.data[209u])), fma(vec2(f16vec2(inVec[1].x)), vec2(f16vec2(nn_buf.data[144u], nn_buf.data[145u])), fma(vec2(f16vec2(inVec[0].y)), vec2(f16vec2(nn_buf.data[80u], nn_buf.data[81u])), fma(vec2(f16vec2(inVec[0].x)), vec2(f16vec2(nn_buf.data[16u], nn_buf.data[17u])), vec2(float(nn_buf.data[3456u]), float(nn_buf.data[3457u])))))))));
     vec2 _1263 = unpackHalf2x16(packHalf2x16(max(fma(vec2(f16vec2(inVec[4].y)), vec2(f16vec2(nn_buf.data[592u], nn_buf.data[593u])), fma(vec2(f16vec2(inVec[4].x)), vec2(f16vec2(nn_buf.data[528u], nn_buf.data[529u])), fma(vec2(f16vec2(inVec[3].y)), vec2(f16vec2(nn_buf.data[464u], nn_buf.data[465u])), _1225))), vec2(0.0))));
     vec2 _1266 = vec2(_1263.x);
@@ -691,17 +592,17 @@ mediump vec3 evaluateNetwork2(mediump vec3 envmap, mediump vec3 dirmap, mediump 
     vec2 _RESERVED_IDENTIFIER_FIXUP_325[8] = _390;
     vec2 tempArg_5[8] = _390;
     vec2 out1[8] = _390;
-    vec2 _10981[8] = _390;
-    uint _10980 = 0u;
-    vec2 _10979[8];
-    uint _10987;
+    vec2 _10453[8] = _390;
+    uint _10452 = 0u;
+    vec2 _10451[8];
+    uint _10459;
     for (;;)
     {
-        _10987 = _10980;
-        if (_10987 < 8u)
+        _10459 = _10452;
+        if (_10459 < 8u)
         {
-            _10979[_10987] = max(_10981[_10987], _398[_10987]);
-            _10980 = _10987 + 1u;
+            _10451[_10459] = max(_10453[_10459], _398[_10459]);
+            _10452 = _10459 + 1u;
             continue;
         }
         else
@@ -709,18 +610,18 @@ mediump vec3 evaluateNetwork2(mediump vec3 envmap, mediump vec3 dirmap, mediump 
             break;
         }
     }
-    out1 = _10979;
-    vec2 _11000[8] = _10979;
-    uint _10999 = 0u;
-    f16vec2 _10998[8];
-    uint _11005;
+    out1 = _10451;
+    vec2 _10472[8] = _10451;
+    uint _10471 = 0u;
+    f16vec2 _10470[8];
+    uint _10477;
     for (;;)
     {
-        _11005 = _10999;
-        if (_11005 < 8u)
+        _10477 = _10471;
+        if (_10477 < 8u)
         {
-            _10998[_11005] = f16vec2(_11000[_11005]);
-            _10999 = _11005 + 1u;
+            _10470[_10477] = f16vec2(_10472[_10477]);
+            _10471 = _10477 + 1u;
             continue;
         }
         else
@@ -728,8 +629,8 @@ mediump vec3 evaluateNetwork2(mediump vec3 envmap, mediump vec3 dirmap, mediump 
             break;
         }
     }
-    f16vec2 inVec2[8] = _10998;
-    float _441[3] = _10092(_10998);
+    f16vec2 inVec2[8] = _10470;
+    float _441[3] = _10092(_10470);
     float tempArg_1[3] = _441;
     float _RESERVED_IDENTIFIER_FIXUP_361[3] = _441;
     float tempArg_8[3] = _441;

@@ -1,0 +1,30 @@
+#version 460 core
+#extension GL_HW_neural_shader : require
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA  { float16_t data[]; } A;
+layout(set = 0, binding = 1) buffer InputC  { float16_t data[]; } C;
+layout(set = 0, binding = 2) buffer OutputD { float16_t data[]; } D;
+layout(set = 0, binding = 3) buffer ScaleBuf { float16_t data[]; } S;
+
+void main()
+{
+    const ivec2 shape = ivec2(8);
+    const ivec2 off   = ivec2(0);
+
+    // A and C are SSBO loads (direct source).
+    // B is a broadcast of a dynamically loaded scalar (value argument).
+    coopmatHW<float16_t, 8, 8> ma, mc, md;
+    coopMatLoadHW(ma, A.data, shape, off, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(mc, C.data, shape, off, gl_CooperativeMatrixLayoutRowMajorHW);
+
+    coopvecHW<float16_t, 1> sv;
+    coopVecLoadHW(sv, S.data, 0u);
+    coopmatHW<float16_t, 8, 8> mb = coopmatHW<float16_t, 8, 8>(sv[0]);
+
+    coopMatMulAddHW(md, ma, mb, mc);
+    coopMatStoreHW(md, D.data, shape, off, gl_CooperativeMatrixLayoutRowMajorHW);
+}

@@ -80,6 +80,16 @@ class CaseParsingTest(unittest.TestCase):
         self.assertEqual(case["dtype"], "f32")
         self.assertEqual((case["m"], case["n"]), ("5", "7"))
 
+    def test_direct_matmul_regression_variants(self):
+        for variant in ("shared_load", "value_arg"):
+            with self.subTest(variant=variant):
+                case = parse_case(pathlib.Path(
+                    f"matmul_{variant}_f16_8x8x8.lowered.spv"))
+                self.assertEqual(case["case"], "matmul")
+                self.assertEqual(case["dtype"], "f16")
+                self.assertEqual((case["m"], case["n"], case["k"]),
+                                 ("8", "8", "8"))
+
     def test_two_layer_mlp_filename_keeps_odd_tail_dimensions(self):
         case = parse_case(
             pathlib.Path("mlp_f16_3x17_17x7.lowered.spv"))
