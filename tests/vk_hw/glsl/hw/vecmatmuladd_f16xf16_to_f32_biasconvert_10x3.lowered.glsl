@@ -31,10 +31,10 @@ layout(set = 0, binding = 3, std430) buffer OutputY
 
 float[3] _85()
 {
-    vec2 _223 = fma(vec2(f16vec2(X.data[8u], X.data[9u])), vec2(f16vec2(W.data[24u], W.data[27u])), fma(vec2(f16vec2(X.data[6u], X.data[7u])), vec2(f16vec2(W.data[18u], W.data[21u])), fma(vec2(f16vec2(X.data[4u], X.data[5u])), vec2(f16vec2(W.data[12u], W.data[15u])), fma(vec2(f16vec2(X.data[2u], X.data[3u])), vec2(f16vec2(W.data[6u], W.data[9u])), fma(vec2(f16vec2(X.data[0u], X.data[1u])), vec2(f16vec2(W.data[0u], W.data[3u])), vec2(0.0))))));
-    vec2 _255 = fma(vec2(f16vec2(X.data[8u], X.data[9u])), vec2(f16vec2(W.data[25u], W.data[28u])), fma(vec2(f16vec2(X.data[6u], X.data[7u])), vec2(f16vec2(W.data[19u], W.data[22u])), fma(vec2(f16vec2(X.data[4u], X.data[5u])), vec2(f16vec2(W.data[13u], W.data[16u])), fma(vec2(f16vec2(X.data[2u], X.data[3u])), vec2(f16vec2(W.data[7u], W.data[10u])), fma(vec2(f16vec2(X.data[0u], X.data[1u])), vec2(f16vec2(W.data[1u], W.data[4u])), vec2(0.0))))));
-    vec2 _287 = fma(vec2(f16vec2(X.data[8u], X.data[9u])), vec2(f16vec2(W.data[26u], W.data[29u])), fma(vec2(f16vec2(X.data[6u], X.data[7u])), vec2(f16vec2(W.data[20u], W.data[23u])), fma(vec2(f16vec2(X.data[4u], X.data[5u])), vec2(f16vec2(W.data[14u], W.data[17u])), fma(vec2(f16vec2(X.data[2u], X.data[3u])), vec2(f16vec2(W.data[8u], W.data[11u])), fma(vec2(f16vec2(X.data[0u], X.data[1u])), vec2(f16vec2(W.data[2u], W.data[5u])), vec2(0.0))))));
-    return float[]((_223.x + _223.y) + float(Bias.data[0u]), (_255.x + _255.y) + float(Bias.data[1u]), (_287.x + _287.y) + float(Bias.data[2u]));
+    vec2 _253 = fma(vec2(f16vec2(X.data[5u])), vec2(f16vec2(W.data[15u], W.data[16u])), fma(vec2(f16vec2(X.data[4u])), vec2(f16vec2(W.data[12u], W.data[13u])), fma(vec2(f16vec2(X.data[3u])), vec2(f16vec2(W.data[9u], W.data[10u])), fma(vec2(f16vec2(X.data[2u])), vec2(f16vec2(W.data[6u], W.data[7u])), fma(vec2(f16vec2(X.data[1u])), vec2(f16vec2(W.data[3u], W.data[4u])), fma(vec2(f16vec2(X.data[0u])), vec2(f16vec2(W.data[0u], W.data[1u])), vec2(float(Bias.data[0u]), float(Bias.data[1u]))))))));
+    vec2 _285 = fma(vec2(f16vec2(X.data[9u])), vec2(f16vec2(W.data[27u], W.data[28u])), fma(vec2(f16vec2(X.data[8u])), vec2(f16vec2(W.data[24u], W.data[25u])), fma(vec2(f16vec2(X.data[7u])), vec2(f16vec2(W.data[21u], W.data[22u])), fma(vec2(f16vec2(X.data[6u])), vec2(f16vec2(W.data[18u], W.data[19u])), _253))));
+    float _288 = fma(float(X.data[9u]), float(W.data[29u]), fma(float(X.data[8u]), float(W.data[26u]), fma(float(X.data[7u]), float(W.data[23u]), fma(float(X.data[6u]), float(W.data[20u]), fma(float(X.data[5u]), float(W.data[17u]), fma(float(X.data[4u]), float(W.data[14u]), fma(float(X.data[3u]), float(W.data[11u]), fma(float(X.data[2u]), float(W.data[8u]), fma(float(X.data[1u]), float(W.data[5u]), fma(float(X.data[0u]), float(W.data[2u]), float(Bias.data[2u])))))))))));
+    return float[](_285.x, _285.y, _288);
 }
 
 void main()
@@ -42,11 +42,11 @@ void main()
     float _64[3] = _85();
     float tempArg[3] = _64;
     float y[3] = _64;
-    uint _297 = 0u + 0u;
-    Y.data[_297] = _64[0];
-    uint _301 = 0u + 1u;
-    Y.data[_301] = _64[1];
-    uint _304 = 0u + 2u;
-    Y.data[_304] = _64[2];
+    uint _293 = 0u + 0u;
+    Y.data[_293] = _64[0];
+    uint _297 = 0u + 1u;
+    Y.data[_297] = _64[1];
+    uint _300 = 0u + 2u;
+    Y.data[_300] = _64[2];
 }
 

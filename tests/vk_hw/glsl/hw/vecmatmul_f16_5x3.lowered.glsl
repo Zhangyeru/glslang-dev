@@ -31,10 +31,8 @@ layout(set = 0, binding = 2, std430) buffer InputC
 
 float16_t[3] _69()
 {
-    f16vec2 _136 = fma(f16vec2(X.data[4u], float16_t(0.0)), f16vec2(W.data[12u], float16_t(0.0)), fma(f16vec2(X.data[2u], X.data[3u]), f16vec2(W.data[6u], W.data[9u]), fma(f16vec2(X.data[0u], X.data[1u]), f16vec2(W.data[0u], W.data[3u]), f16vec2(float16_t(0.0)))));
-    f16vec2 _148 = fma(f16vec2(X.data[4u], float16_t(0.0)), f16vec2(W.data[13u], float16_t(0.0)), fma(f16vec2(X.data[2u], X.data[3u]), f16vec2(W.data[7u], W.data[10u]), fma(f16vec2(X.data[0u], X.data[1u]), f16vec2(W.data[1u], W.data[4u]), f16vec2(float16_t(0.0)))));
-    f16vec2 _160 = fma(f16vec2(X.data[4u], float16_t(0.0)), f16vec2(W.data[14u], float16_t(0.0)), fma(f16vec2(X.data[2u], X.data[3u]), f16vec2(W.data[8u], W.data[11u]), fma(f16vec2(X.data[0u], X.data[1u]), f16vec2(W.data[2u], W.data[5u]), f16vec2(float16_t(0.0)))));
-    return float16_t[](_136.x + _136.y, _148.x + _148.y, _160.x + _160.y);
+    f16vec2 _146 = fma(f16vec2(X.data[4u]), f16vec2(W.data[12u], W.data[13u]), fma(f16vec2(X.data[3u]), f16vec2(W.data[9u], W.data[10u]), fma(f16vec2(X.data[2u]), f16vec2(W.data[6u], W.data[7u]), fma(f16vec2(X.data[1u]), f16vec2(W.data[3u], W.data[4u]), fma(f16vec2(X.data[0u]), f16vec2(W.data[0u], W.data[1u]), f16vec2(float16_t(0.0)))))));
+    return float16_t[](_146.x, _146.y, fma(X.data[4u], W.data[14u], fma(X.data[3u], W.data[11u], fma(X.data[2u], W.data[8u], fma(X.data[1u], W.data[5u], fma(X.data[0u], W.data[2u], float16_t(0.0)))))));
 }
 
 void main()
@@ -42,11 +40,11 @@ void main()
     float16_t _47[3] = _69();
     float16_t tempArg[3] = _47;
     float16_t y[3] = _47;
-    uint _166 = 0u + 0u;
-    Y.data[_166] = _47[0];
-    uint _169 = 0u + 1u;
-    Y.data[_169] = _47[1];
-    uint _172 = 0u + 2u;
-    Y.data[_172] = _47[2];
+    uint _152 = 0u + 0u;
+    Y.data[_152] = _47[0];
+    uint _155 = 0u + 1u;
+    Y.data[_155] = _47[1];
+    uint _158 = 0u + 2u;
+    Y.data[_158] = _47[2];
 }
 

@@ -29,68 +29,68 @@ layout(set = 0, binding = 3, std430) buffer OutputD
     float16_t data[];
 } D;
 
-f16vec2 _72(uint _73)
+f16vec2[512] _72()
 {
-    return f16vec2(A.data[_73], A.data[_73 + 1u]);
-}
-
-f16vec2 _84(uint _85)
-{
-    return f16vec2(B.data[_85], B.data[_85 + 1u]);
-}
-
-f16vec2 _94(uint _95)
-{
-    return f16vec2(C.data[_95], C.data[_95 + 1u]);
-}
-
-f16vec2[512] _112()
-{
-    uint _127 = 0u;
-    f16vec2 _126[512];
-    uint _132;
+    uint _108 = uint(32);
+    uint _110 = uint(0);
+    uint _112 = uint(0);
+    uint _114 = uint(32);
+    uint _116 = uint(0);
+    uint _118 = uint(0);
+    uint _120 = uint(32);
+    uint _122 = uint(0);
+    uint _124 = uint(0);
+    f16vec2 _93[512] = f16vec2[](f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)));
+    uint _94 = 0u;
+    uint _125;
     for (;;)
     {
-        _132 = _127;
-        if (_132 < 32u)
+        _125 = _94;
+        if (_125 < 64u)
         {
-            uint _128 = 0u;
-            uint _134;
+            uint _127 = _125 / 2u;
+            uint _129 = (_125 % 2u) * 16u;
+            uint _130 = _127 * 32u;
+            f16vec2 _96 = f16vec2(C.data[((_122 + _127) * _120) + (_124 + _129)], C.data[((_122 + _127) * _120) + (_124 + (_129 + 1u))]);
+            uint _148 = _129 + 2u;
+            f16vec2 _97 = f16vec2(C.data[((_122 + _127) * _120) + (_124 + _148)], C.data[((_122 + _127) * _120) + (_124 + (_148 + 1u))]);
+            uint _166 = _129 + 4u;
+            f16vec2 _98 = f16vec2(C.data[((_122 + _127) * _120) + (_124 + _166)], C.data[((_122 + _127) * _120) + (_124 + (_166 + 1u))]);
+            uint _184 = _129 + 6u;
+            f16vec2 _99 = f16vec2(C.data[((_122 + _127) * _120) + (_124 + _184)], C.data[((_122 + _127) * _120) + (_124 + (_184 + 1u))]);
+            uint _202 = _129 + 8u;
+            f16vec2 _100 = f16vec2(C.data[((_122 + _127) * _120) + (_124 + _202)], C.data[((_122 + _127) * _120) + (_124 + (_202 + 1u))]);
+            uint _220 = _129 + 10u;
+            f16vec2 _101 = f16vec2(C.data[((_122 + _127) * _120) + (_124 + _220)], C.data[((_122 + _127) * _120) + (_124 + (_220 + 1u))]);
+            uint _238 = _129 + 12u;
+            f16vec2 _102 = f16vec2(C.data[((_122 + _127) * _120) + (_124 + _238)], C.data[((_122 + _127) * _120) + (_124 + (_238 + 1u))]);
+            uint _256 = _129 + 14u;
+            f16vec2 _103 = f16vec2(C.data[((_122 + _127) * _120) + (_124 + _256)], C.data[((_122 + _127) * _120) + (_124 + (_256 + 1u))]);
+            uint _95 = 0u;
+            uint _273;
             for (;;)
             {
-                _134 = _128;
-                if (_134 < 16u)
+                _273 = _95;
+                if (_273 < 32u)
                 {
-                    f16vec2 _130 = f16vec2(float16_t(0.0));
-                    f16vec2 _131 = f16vec2(float16_t(0.0));
-                    uint _129 = 0u;
-                    uint _136;
-                    for (;;)
-                    {
-                        _136 = _129;
-                        if (_136 < 16u)
-                        {
-                            uint _138 = _136 * 2u;
-                            uint _140 = (_132 * 32u) + _138;
-                            f16vec2 _153 = _72(((uint(0) + (_140 / 32u)) * uint(32)) + (uint(0) + (_140 % 32u)));
-                            uint _157 = ((_138 + 0u) * 32u) + (_134 * 2u);
-                            f16vec2 _170 = _84(((uint(0) + (_157 / 32u)) * uint(32)) + (uint(0) + (_157 % 32u)));
-                            uint _174 = ((_138 + 1u) * 32u) + (_134 * 2u);
-                            f16vec2 _187 = _84(((uint(0) + (_174 / 32u)) * uint(32)) + (uint(0) + (_174 % 32u)));
-                            _130 = fma(_153, f16vec2(_170.x, _187.x), _130);
-                            _131 = fma(_153, f16vec2(_170.y, _187.y), _131);
-                            _129 = _136 + 1u;
-                            continue;
-                        }
-                        else
-                        {
-                            break;
-                        }
-                    }
-                    uint _203 = (_132 * 32u) + (_134 * 2u);
-                    f16vec2 _216 = _94(((uint(0) + (_203 / 32u)) * uint(32)) + (uint(0) + (_203 % 32u)));
-                    _126[(_132 * 16u) + _134] = f16vec2(_216.x + (_130.x + _130.y), _216.y + (_131.x + _131.y));
-                    _128 = _134 + 1u;
+                    f16vec2 _283 = f16vec2(A.data[((_110 + _127) * _108) + (_112 + _273)]);
+                    uint _284 = _273 * 32u;
+                    _96 = fma(_283, f16vec2(B.data[((_116 + _273) * _114) + (_118 + _129)], B.data[((_116 + _273) * _114) + (_118 + (_129 + 1u))]), _96);
+                    uint _303 = _129 + 2u;
+                    _97 = fma(_283, f16vec2(B.data[((_116 + _273) * _114) + (_118 + _303)], B.data[((_116 + _273) * _114) + (_118 + (_303 + 1u))]), _97);
+                    uint _322 = _129 + 4u;
+                    _98 = fma(_283, f16vec2(B.data[((_116 + _273) * _114) + (_118 + _322)], B.data[((_116 + _273) * _114) + (_118 + (_322 + 1u))]), _98);
+                    uint _341 = _129 + 6u;
+                    _99 = fma(_283, f16vec2(B.data[((_116 + _273) * _114) + (_118 + _341)], B.data[((_116 + _273) * _114) + (_118 + (_341 + 1u))]), _99);
+                    uint _360 = _129 + 8u;
+                    _100 = fma(_283, f16vec2(B.data[((_116 + _273) * _114) + (_118 + _360)], B.data[((_116 + _273) * _114) + (_118 + (_360 + 1u))]), _100);
+                    uint _379 = _129 + 10u;
+                    _101 = fma(_283, f16vec2(B.data[((_116 + _273) * _114) + (_118 + _379)], B.data[((_116 + _273) * _114) + (_118 + (_379 + 1u))]), _101);
+                    uint _398 = _129 + 12u;
+                    _102 = fma(_283, f16vec2(B.data[((_116 + _273) * _114) + (_118 + _398)], B.data[((_116 + _273) * _114) + (_118 + (_398 + 1u))]), _102);
+                    uint _417 = _129 + 14u;
+                    _103 = fma(_283, f16vec2(B.data[((_116 + _273) * _114) + (_118 + _417)], B.data[((_116 + _273) * _114) + (_118 + (_417 + 1u))]), _103);
+                    _95 = _273 + 1u;
                     continue;
                 }
                 else
@@ -98,7 +98,15 @@ f16vec2[512] _112()
                     break;
                 }
             }
-            _127 = _132 + 1u;
+            _93[_125 * 8u] = _96;
+            _93[(_125 * 8u) + 1u] = _97;
+            _93[(_125 * 8u) + 2u] = _98;
+            _93[(_125 * 8u) + 3u] = _99;
+            _93[(_125 * 8u) + 4u] = _100;
+            _93[(_125 * 8u) + 5u] = _101;
+            _93[(_125 * 8u) + 6u] = _102;
+            _93[(_125 * 8u) + 7u] = _103;
+            _94 = _125 + 1u;
             continue;
         }
         else
@@ -106,30 +114,30 @@ f16vec2[512] _112()
             break;
         }
     }
-    return _126;
+    return _93;
 }
 
-void _235(uint _236, f16vec2 _237)
+void _474(uint _475, f16vec2 _476)
 {
-    D.data[_236] = _237.x;
-    D.data[_236 + 1u] = _237.y;
+    D.data[_475] = _476.x;
+    D.data[_475 + 1u] = _476.y;
 }
 
 void main()
 {
-    f16vec2 _55[512] = _112();
+    f16vec2 _55[512] = _72();
     f16vec2 tempArg[512] = _55;
     f16vec2 d[512] = _55;
-    f16vec2 _246[512] = _55;
-    uint _247 = 0u;
-    uint _252;
+    f16vec2 _485[512] = _55;
+    uint _486 = 0u;
+    uint _491;
     for (;;)
     {
-        _252 = _247;
-        if (_252 < 1024u)
+        _491 = _486;
+        if (_491 < 1024u)
         {
-            _235(((uint(0) + (_252 / 32u)) * uint(32)) + (uint(0) + (_252 % 32u)), _246[_252 / 2u]);
-            _247 = _252 + 2u;
+            _474(((uint(0) + (_491 / 32u)) * uint(32)) + (uint(0) + (_491 % 32u)), _485[_491 / 2u]);
+            _486 = _491 + 2u;
             continue;
         }
         else
