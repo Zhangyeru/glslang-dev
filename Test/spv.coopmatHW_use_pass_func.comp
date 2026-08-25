@@ -37,6 +37,10 @@ coopmatHW<float16_t, 16, 16> passThrough(coopmatHW<float16_t, 16, 16> X)
     return Y;
 }
 
+void acceptFloat(coopmatHW<float, 16, 16> X)
+{
+}
+
 void main()
 {
     const ivec2 shape = ivec2(16, 16);
