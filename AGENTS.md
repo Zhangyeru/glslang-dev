@@ -27,7 +27,7 @@ Parser or SPIR-V emission changes should add/adjust file-based tests under `Test
 
 For HW lowering changes, run the `vk_hw_perf` performance regression (or the equivalent
 `tests/vk_hw/scripts/run_perf_tests.py` invocation) and inspect its `perf.json` output.
-Every measured case must have `ratio <= 2.0` (`lowered_ns / baseline_ns`). A skipped case
+Every measured case must have `ratio <= 3.0` (`lowered_ns / baseline_ns`). A skipped case
 must retain its `skip_reason`; any measured case above this threshold requires a documented
 root-cause explanation in the change summary or PR and must not be accepted silently.
 

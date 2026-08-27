@@ -123,6 +123,15 @@ def write_outputs(rows, out_json):
     md_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def find_ratio_regressions(rows, max_ratio):
+    return [
+        row
+        for row in rows
+        if row.get("status") != "skip"
+        and (row.get("ratio") is None or row["ratio"] > max_ratio)
+    ]
+
+
 def main():
     parser = argparse.ArgumentParser(description="Run HW Vulkan performance tests")
     parser.add_argument("--runner", required=True)
@@ -133,7 +142,11 @@ def main():
     parser.add_argument("--include", action="append", default=[], help="fnmatch pattern for lowered SPIR-V names")
     parser.add_argument("--exclude", action="append", default=[], help="fnmatch pattern for lowered SPIR-V names")
     parser.add_argument("--max-work", type=int, default=0, help="skip cases with M*N*K above this value")
+    parser.add_argument("--max-ratio", type=float, default=3.0,
+                        help="fail when lowered_ns / baseline_ns exceeds this value")
     args = parser.parse_args()
+    if args.max_ratio <= 0:
+        raise ValueError("--max-ratio must be positive")
 
     rows = []
     for lowered in select_shaders(args.spv_dir, args.include, args.exclude, args.max_work):
@@ -184,10 +197,18 @@ def main():
     if not rows:
         raise RuntimeError(f"no lowered shaders found in {args.spv_dir}")
     write_outputs(rows, pathlib.Path(args.out))
-    return 0 if all(
+    ratio_regressions = find_ratio_regressions(rows, args.max_ratio)
+    for row in ratio_regressions:
+        print(
+            f"performance regression: {row['shader']} ratio={row.get('ratio')} "
+            f"exceeds {args.max_ratio}",
+            file=sys.stderr,
+        )
+    verification_ok = all(
         row["status"] == "skip" or (row["verify"] == "pass" and row["baseline_verify"] == "pass")
         for row in rows
-    ) else 1
+    )
+    return 0 if verification_ok and not ratio_regressions else 1
 
 
 if __name__ == "__main__":

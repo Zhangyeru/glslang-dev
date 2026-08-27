@@ -15,6 +15,7 @@ from run_function_tests import run_case
 from run_function_tests import shape_string
 from run_function_tests import write_reports
 from run_perf_tests import run_shader
+from run_perf_tests import find_ratio_regressions
 from run_perf_tests import write_outputs
 
 
@@ -252,6 +253,16 @@ class CaseParsingTest(unittest.TestCase):
             write_outputs([perf], root / "perf.json")
             self.assertIn("shaderInt8", (root / "functional" / "functional.md").read_text(encoding="utf-8"))
             self.assertIn("| skip |", (root / "perf.md").read_text(encoding="utf-8"))
+
+    def test_performance_ratio_gate_ignores_skips_and_rejects_regressions(self):
+        rows = [
+            {"shader": "fast.lowered.spv", "status": "pass", "ratio": 3.0},
+            {"shader": "slow.lowered.spv", "status": "pass", "ratio": 3.01},
+            {"shader": "skip.lowered.spv", "status": "skip", "ratio": None},
+        ]
+        regressions = find_ratio_regressions(rows, 3.0)
+        self.assertEqual([row["shader"] for row in regressions],
+                         ["slow.lowered.spv"])
 
 
 if __name__ == "__main__":

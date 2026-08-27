@@ -127,6 +127,7 @@ if(Python3_Interpreter_FOUND AND TARGET glslang-standalone AND TARGET spirv-opt
             --spv-dir ${CMAKE_BINARY_DIR}/tests/vk_hw/spv
             --repeat 200
             --warmup 20
+            --max-ratio 3.0
             --exclude *flow*.lowered.spv
             --out ${CMAKE_BINARY_DIR}/tests/vk_hw/results/perf/perf.json
     )

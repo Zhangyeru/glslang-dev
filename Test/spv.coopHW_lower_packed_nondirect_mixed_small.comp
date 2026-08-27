@@ -14,10 +14,8 @@ void main()
     const ivec2 shape8 = ivec2(8, 8);
     const ivec2 zeroOff = ivec2(0);
 
-    // ── Condition 4 (unrolled): f16 A × f32 B → f32 result ──
-    // 8×8×8 matrix: MAC=512 ≤ 4096 → generic unrolled packed vec2.
-    // CanUseDirectMatrixMulAdd returns false because A is f16 but B is f32
-    // (not same-component and not f16×f16→f32).
+    // Mixed-operand direct (unrolled): f16 A × f32 B → f32 result.
+    // 8×8×8 matrix: MAC=512 ≤ the f32 direct unroll limit (2048).
     {
         coopmatHW<float16_t, 8, 8> a16;
         coopmatHW<float, 8, 8> b32, c32, d32;
@@ -31,8 +29,8 @@ void main()
         coopMatStoreHW(d32, d, shape8, zeroOff, gl_CooperativeMatrixLayoutRowMajorHW);
     }
 
-    // ── Condition 4 vector (unrolled): f16 input × f32 matrix → f32 result ──
-    // K=8, N=16: MAC=128 ≤ 4096 → generic unrolled packed vec2.
+    // Mixed-operand vector direct (unrolled): f16 input × f32 matrix.
+    // K=8, N=16: MAC=128 ≤ the f32 vector unroll limit (256).
     {
         coopvecHW<float16_t, 8> x16;
         coopmatHW<float, 8, 16> w32;
