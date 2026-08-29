@@ -140,6 +140,7 @@ if(Python3_Interpreter_FOUND AND TARGET glslang-standalone AND TARGET spirv-opt
         LABELS "hw;vulkan"
         FIXTURES_REQUIRED vk_hw_spv
     )
+    set_tests_properties(vk_hw_perf PROPERTIES RUN_SERIAL TRUE)
 elseif(Python3_Interpreter_FOUND)
     message(STATUS "HW Vulkan CTests require glslang-standalone and SPIRV-Tools executable targets")
 endif()
