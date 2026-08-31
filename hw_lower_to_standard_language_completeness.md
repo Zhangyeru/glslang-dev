@@ -164,7 +164,7 @@ Matmul 当前支持：
 
 - SPIR-V Tools CTest：32/32 通过
 - 顶层 CTest：8/8 通过
-- Vulkan function：84/84 通过，无 skip
+- Vulkan function：105/105 通过，无 skip
 - Vulkan perf：84/84 满足 `lowered_ns / baseline_ns <= 3.0`
 - Extension-free 成功时无 HW opcode、type 或 nested reference residue
 
@@ -307,19 +307,29 @@ Unroll limit 只决定 unrolled 或 rolled，是合理的；但 element/MAC hard
 - Hard limit 变为用户显式安全策略
 - 默认只在 ID 空间、整数溢出或内存耗尽时失败
 
-### 4.8 组合语言覆盖不完整
+### 4.8 组合语言闭包（已完成）
 
-仍需系统验证：
+当前已经系统覆盖：
 
-- 任意深度 struct/array nesting
-- Function、Private、Workgroup 全局变量
-- 多级 pointer
-- 复杂 call graph
-- Cooperative return value 的多个调用点
-- 复杂或不可约 CFG
-- 动态 composite indexing
-- 多 entry point 共享函数和全局变量
-- Core op 与 HW op 任意交错
+- 任意合法深度的 struct/array 递归 nesting
+- Function 局部变量与 Private 全局变量中的 cooperative aggregate
+- Workgroup 普通数值全局作为 cooperative load/store 的 backing memory
+- `VariablePointers` 允许的 pointer-to-pointer 与多级 pointer transport
+- 动态 nested AccessChain 和 cooperative vector dynamic insert/extract
+- 复杂 call graph、aggregate/cooperative return value 和多个调用点
+- loop、switch、selection、Phi/backedge、early return 组成的复杂 structured CFG
+- 多 entry point 共享函数与 Private 全局变量
+- Core arithmetic、SSA、composite、dynamic indexing 与 HW load/matmul/store 任意交错
+- packed/default 与 force-scalar 两条 lowering 路径
+- vk_hw 包含 20 个 composition flow case，其中 9 个超过 4096 个元素并验证 structured-loop fallback
+
+合法性边界：
+
+- `Function` 是函数局部 storage class，不是全局变量。
+- Validator 规定 cooperative 类型或包含它的 aggregate 只能分配在 `Function` 或 `Private`；
+  `Workgroup` 支持指普通 scalar/vector/array backing memory，不表示可以直接分配 cooperative 类型。
+- Shader capability 要求 structured control flow；真正的不可约 CFG 会被 validator 拒绝，不属于 lowering
+  必须接受的合法 shader 集合。
 
 ## 5. 语言完备性架构
 

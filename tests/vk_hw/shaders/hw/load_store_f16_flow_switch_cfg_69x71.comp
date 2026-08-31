@@ -1,0 +1,48 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA { float16_t data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float16_t data[]; } B;
+layout(set = 0, binding = 2) buffer InputC { float16_t data[]; } C;
+layout(set = 0, binding = 3) buffer OutputD { float16_t data[]; } D;
+
+struct SwitchValues {
+    coopmatHW<float16_t, 69, 71> first;
+    coopmatHW<float16_t, 69, 71> second;
+};
+
+coopmatHW<float16_t, 69, 71> selectWithSwitch(SwitchValues values, uint selector)
+{
+    coopmatHW<float16_t, 69, 71> selected;
+    switch (selector % 3u) {
+    case 0u:
+        selected = values.first;
+        break;
+    case 1u:
+        selected = values.second;
+        break;
+    default:
+        selected = values.first;
+        break;
+    }
+    return selected;
+}
+
+void main()
+{
+    const ivec2 shape = ivec2(69, 71);
+    const ivec2 zeroOffset = ivec2(0);
+
+    coopmatHW<float16_t, 69, 71> value;
+    coopMatLoadHW(value, A.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+
+    SwitchValues values;
+    values.first = value;
+    values.second = value;
+    value = selectWithSwitch(values, gl_LocalInvocationIndex);
+
+    coopMatStoreHW(value, D.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+}

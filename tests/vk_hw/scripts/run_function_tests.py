@@ -168,7 +168,12 @@ def parse_case(path):
             raise ValueError(f"mlp dimensions must be non-zero in {path}")
         return typed_meta("mlp", dtype, m="1", n=layer_dims[-1], k="0", layer_dims=layer_dims)
 
-    m = re.match(rf"load_store_({DTYPE_RE})(?:_(?:scalar|convert|arith|flow))?(?:_(\d+)x(\d+))?$", stem)
+    m = re.match(
+        rf"load_store_({DTYPE_RE})"
+        rf"(?:_(?:scalar|convert|arith|flow(?:_[a-z][a-z0-9]*)*))?"
+        rf"(?:_(\d+)x(\d+))?$",
+        stem,
+    )
     if m:
         dtype, rows, cols = m.groups()
         return typed_meta("load_store", dtype, m=rows or "8", n=cols or "8", k="0")

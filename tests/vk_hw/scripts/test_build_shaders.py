@@ -94,13 +94,38 @@ class ParseReduceCaseTest(unittest.TestCase):
         )
         self.assertEqual(shape_string(parse_case(pathlib.Path("load_store_f32_flow_5x7.lowered.spv"))), "5x7")
 
+    def test_parses_descriptive_flow_identity_as_load_store(self):
+        path = pathlib.Path(
+            "load_store_f16_flow_nested_struct_array_16x24.lowered.spv"
+        )
+        self.assertEqual(
+            parse_case(path),
+            {
+                "case": "load_store",
+                "dtype": "f16",
+                "a_dtype": "f16",
+                "b_dtype": "f16",
+                "c_dtype": "f16",
+                "accum_dtype": "f16",
+                "m": "16",
+                "n": "24",
+                "k": "0",
+            },
+        )
+        self.assertEqual(shape_string(parse_case(path)), "16x24")
+
     def test_perf_exclusion_pattern_keeps_reduce_and_drops_flow(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = pathlib.Path(temp_dir)
             reduce_shader = root / "reduce_row_add_f32_5x8.lowered.spv"
             flow_shader = root / "load_store_f32_flow_5x7.lowered.spv"
+            descriptive_flow_shader = (
+                root
+                / "load_store_f32_flow_dynamic_array_index_65x67.lowered.spv"
+            )
             reduce_shader.touch()
             flow_shader.touch()
+            descriptive_flow_shader.touch()
             self.assertEqual(
                 select_shaders(root, [], ["*flow*.lowered.spv"], 0),
                 [reduce_shader],
