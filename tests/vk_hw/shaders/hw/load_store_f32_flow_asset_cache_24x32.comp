@@ -1,0 +1,179 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA { float data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float data[]; } B;
+layout(set = 0, binding = 2) buffer InputC { float data[]; } C;
+layout(set = 0, binding = 3) buffer OutputD { float data[]; } D;
+
+const int ASSET_ROWS = 24;
+const int ASSET_COLUMNS = 32;
+const int CACHE_SET_COUNT = 2;
+const int VERSION_COUNT = 2;
+const int PLANE_COUNT = 2;
+
+struct AssetMatrix {
+    coopmatHW<float, ASSET_ROWS, ASSET_COLUMNS> value;
+};
+
+struct AssetVersion {
+    uvec4 planeState[PLANE_COUNT];
+    uvec4 revision;
+};
+
+struct AssetCacheSet {
+    AssetVersion versions[VERSION_COUNT];
+};
+
+struct AssetCache {
+    AssetCacheSet sets[CACHE_SET_COUNT];
+    AssetMatrix resident;
+};
+
+struct AssetRequest {
+    uint setIndex;
+    uint versionIndex;
+    uint planeIndex;
+    uint epoch;
+};
+
+uint buildRoutingKey()
+{
+    uint materialKey = floatBitsToUint(B.data[0]);
+    uint frameKey = floatBitsToUint(C.data[0]);
+    uint invocationKey = gl_GlobalInvocationID.x ^ gl_LocalInvocationIndex;
+    return materialKey ^ (frameKey << 1u) ^ invocationKey;
+}
+
+AssetRequest decodeRequest(uint routingKey)
+{
+    AssetRequest request;
+    request.setIndex = routingKey & 1u;
+    request.versionIndex = (routingKey >> 1u) & 1u;
+    request.planeIndex = (routingKey >> 2u) & 1u;
+    request.epoch = routingKey >> 3u;
+    return request;
+}
+
+AssetMatrix loadSourceAsset()
+{
+    const ivec2 assetShape = ivec2(ASSET_ROWS, ASSET_COLUMNS);
+    const ivec2 zeroOffset = ivec2(0);
+
+    coopmatHW<float, ASSET_ROWS, ASSET_COLUMNS> source;
+    coopMatLoadHW(source,
+                  A.data,
+                  assetShape,
+                  zeroOffset,
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+
+    AssetMatrix result;
+    result.value = source;
+    return result;
+}
+
+AssetCache populateCache(AssetMatrix source, AssetRequest request)
+{
+    AssetCache cache;
+    cache.resident = source;
+
+    for (int setIndex = 0; setIndex < CACHE_SET_COUNT; ++setIndex) {
+        for (int versionIndex = 0; versionIndex < VERSION_COUNT; ++versionIndex) {
+            cache.sets[setIndex].versions[versionIndex].revision =
+                uvec4(request.epoch, uint(setIndex), uint(versionIndex), 1u);
+
+            for (int planeIndex = 0; planeIndex < PLANE_COUNT; ++planeIndex) {
+                cache.sets[setIndex].versions[versionIndex].planeState[planeIndex] =
+                    uvec4(uint(planeIndex), request.epoch, 0u, 1u);
+            }
+        }
+    }
+
+    return cache;
+}
+
+AssetCache advanceCacheEpoch(AssetCache cache, AssetRequest request)
+{
+    uint selectedSet = request.setIndex;
+    uint selectedVersion = request.versionIndex;
+    uint selectedPlane = request.planeIndex;
+
+    AssetMatrix resident = cache.resident;
+
+    for (uint epochStep = 0u; epochStep < 3u; ++epochStep) {
+        bool keepResident = ((request.epoch + epochStep) & 1u) == 0u;
+        AssetMatrix staged = cache.resident;
+        resident = keepResident ? resident : staged;
+    }
+
+    cache.resident = resident;
+    cache.sets[selectedSet].versions[selectedVersion].revision.x += 3u;
+    return cache;
+}
+
+AssetMatrix selectCachePlane(AssetCache cache, AssetRequest request)
+{
+    AssetMatrix selected;
+    uint route = (request.setIndex << 1u) | request.versionIndex;
+
+    switch (route) {
+    case 0u:
+        selected = cache.resident;
+        break;
+    case 1u:
+        selected = cache.resident;
+        break;
+    case 2u:
+        selected = cache.resident;
+        break;
+    default:
+        selected = cache.resident;
+        break;
+    }
+
+    return selected;
+}
+
+bool isCacheEntryResident(AssetCache cache, AssetRequest request)
+{
+    uvec4 revision = cache.sets[request.setIndex].versions[request.versionIndex].revision;
+    bool hasPayload = revision.w != 0u;
+    bool epochAdvanced = revision.x >= request.epoch;
+    return hasPayload && epochAdvanced;
+}
+
+AssetMatrix resolveAsset(AssetCache cache, AssetRequest request)
+{
+    AssetMatrix selected = selectCachePlane(cache, request);
+
+    if (isCacheEntryResident(cache, request)) {
+        return selected;
+    }
+
+    return cache.resident;
+}
+
+void storeResolvedAsset(AssetMatrix resolved)
+{
+    const ivec2 assetShape = ivec2(ASSET_ROWS, ASSET_COLUMNS);
+    const ivec2 zeroOffset = ivec2(0);
+
+    coopMatStoreHW(resolved.value,
+                   D.data,
+                   assetShape,
+                   zeroOffset,
+                   gl_CooperativeMatrixLayoutRowMajorHW);
+}
+
+void main()
+{
+    uint routingKey = buildRoutingKey();
+    AssetRequest request = decodeRequest(routingKey);
+    AssetMatrix source = loadSourceAsset();
+    AssetCache cache = populateCache(source, request);
+    AssetCache currentCache = advanceCacheEpoch(cache, request);
+    AssetMatrix resolved = resolveAsset(currentCache, request);
+    storeResolvedAsset(resolved);
+}

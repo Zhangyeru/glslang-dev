@@ -1,0 +1,177 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA { float data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float data[]; } B;
+layout(set = 0, binding = 2) buffer InputC { float data[]; } C;
+layout(set = 0, binding = 3) buffer OutputD { float data[]; } D;
+
+const int HISTORY_ROWS = 32;
+const int HISTORY_COLUMNS = 32;
+const int HISTORY_SLOTS = 2;
+const int FRAME_CANDIDATES = 2;
+
+struct HistoryMatrix {
+    coopmatHW<float, HISTORY_ROWS, HISTORY_COLUMNS> value;
+};
+
+struct HistorySample {
+    uvec4 candidateState[FRAME_CANDIDATES];
+    uvec4 frameState;
+};
+
+struct TemporalHistory {
+    HistorySample slots[HISTORY_SLOTS];
+};
+
+struct TemporalResolveQueue {
+    TemporalHistory histories[HISTORY_SLOTS];
+    HistoryMatrix currentFrame;
+    vec4 blendState;
+};
+
+struct FrameRoute {
+    uint historyIndex;
+    uint slotIndex;
+    uint candidateIndex;
+    uint frameNumber;
+};
+
+uint readFrameKey()
+{
+    uint motionKey = floatBitsToUint(B.data[0]);
+    uint exposureKey = floatBitsToUint(C.data[0]);
+    uint dispatchKey = gl_GlobalInvocationID.x + gl_GlobalInvocationID.y;
+    return motionKey ^ (exposureKey << 1u) ^ dispatchKey;
+}
+
+FrameRoute decodeFrameRoute(uint frameKey)
+{
+    FrameRoute route;
+    route.historyIndex = frameKey & 1u;
+    route.slotIndex = (frameKey >> 1u) & 1u;
+    route.candidateIndex = (frameKey >> 2u) & 1u;
+    route.frameNumber = frameKey >> 3u;
+    return route;
+}
+
+HistoryMatrix loadCurrentFrame()
+{
+    const ivec2 frameShape = ivec2(HISTORY_ROWS, HISTORY_COLUMNS);
+    const ivec2 zeroOffset = ivec2(0);
+
+    coopmatHW<float, HISTORY_ROWS, HISTORY_COLUMNS> currentFrame;
+    coopMatLoadHW(currentFrame,
+                  A.data,
+                  frameShape,
+                  zeroOffset,
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+
+    HistoryMatrix result;
+    result.value = currentFrame;
+    return result;
+}
+
+TemporalResolveQueue seedTemporalHistory(HistoryMatrix currentFrame, FrameRoute route)
+{
+    TemporalResolveQueue queue;
+    queue.currentFrame = currentFrame;
+    queue.blendState = vec4(B.data[1], C.data[1], float(route.frameNumber), 1.0);
+
+    for (int historyIndex = 0; historyIndex < HISTORY_SLOTS; ++historyIndex) {
+        for (int slotIndex = 0; slotIndex < HISTORY_SLOTS; ++slotIndex) {
+            queue.histories[historyIndex].slots[slotIndex].frameState =
+                uvec4(route.frameNumber, uint(historyIndex), uint(slotIndex), 1u);
+
+            for (int candidateIndex = 0; candidateIndex < FRAME_CANDIDATES; ++candidateIndex) {
+                queue.histories[historyIndex].slots[slotIndex].candidateState[candidateIndex] =
+                    uvec4(uint(candidateIndex), route.frameNumber, 0u, 1u);
+            }
+        }
+    }
+
+    return queue;
+}
+
+TemporalResolveQueue rotateTemporalHistory(TemporalResolveQueue queue, FrameRoute route)
+{
+    HistoryMatrix carried = queue.currentFrame;
+
+    for (uint frameDelta = 0u; frameDelta < 3u; ++frameDelta) {
+        uint historyIndex = (route.historyIndex + frameDelta) & 1u;
+        HistoryMatrix previous = queue.currentFrame;
+        bool acceptPrevious = ((route.frameNumber + frameDelta) & 1u) != 0u;
+        carried = acceptPrevious ? previous : carried;
+    }
+
+    queue.currentFrame = carried;
+    queue.histories[route.historyIndex].slots[route.slotIndex].frameState.x += 1u;
+    return queue;
+}
+
+HistoryMatrix chooseTemporalCandidate(TemporalResolveQueue queue, FrameRoute route)
+{
+    HistoryMatrix candidate;
+    uint selector = (route.slotIndex << 1u) | route.candidateIndex;
+
+    switch (selector) {
+    case 0u:
+        candidate = queue.currentFrame;
+        break;
+    case 1u:
+        candidate = queue.currentFrame;
+        break;
+    case 2u:
+        candidate = queue.currentFrame;
+        break;
+    default:
+        candidate = queue.currentFrame;
+        break;
+    }
+
+    return candidate;
+}
+
+bool historyIsUsable(TemporalResolveQueue queue, FrameRoute route)
+{
+    uvec4 state = queue.histories[route.historyIndex].slots[route.slotIndex].frameState;
+    bool populated = state.w != 0u;
+    bool hasBlendState = queue.blendState.w > 0.0;
+    return populated && hasBlendState;
+}
+
+HistoryMatrix resolveTemporalFrame(TemporalResolveQueue queue, FrameRoute route)
+{
+    HistoryMatrix candidate = chooseTemporalCandidate(queue, route);
+
+    if (historyIsUsable(queue, route)) {
+        return candidate;
+    }
+
+    return queue.currentFrame;
+}
+
+void storeResolvedFrame(HistoryMatrix resolvedFrame)
+{
+    const ivec2 frameShape = ivec2(HISTORY_ROWS, HISTORY_COLUMNS);
+    const ivec2 zeroOffset = ivec2(0);
+
+    coopMatStoreHW(resolvedFrame.value,
+                   D.data,
+                   frameShape,
+                   zeroOffset,
+                   gl_CooperativeMatrixLayoutRowMajorHW);
+}
+
+void main()
+{
+    uint frameKey = readFrameKey();
+    FrameRoute route = decodeFrameRoute(frameKey);
+    HistoryMatrix currentFrame = loadCurrentFrame();
+    TemporalResolveQueue queue = seedTemporalHistory(currentFrame, route);
+    TemporalResolveQueue rotatedQueue = rotateTemporalHistory(queue, route);
+    HistoryMatrix resolvedFrame = resolveTemporalFrame(rotatedQueue, route);
+    storeResolvedFrame(resolvedFrame);
+}

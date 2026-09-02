@@ -1,0 +1,196 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer VisibilityInput {
+    float16_t features[36];
+} InX;
+
+layout(set = 0, binding = 1) buffer VisibilityWeights {
+    float16_t projection[12 * 36];
+    float16_t compression[36 * 12];
+    float16_t classifier[12 * 6];
+} Weights;
+
+layout(set = 0, binding = 2) buffer VisibilityBiases {
+    float16_t projection[36];
+    float16_t compression[12];
+    float16_t classifier[6];
+} Biases;
+
+layout(set = 0, binding = 3) buffer VisibilityOutput {
+    float16_t visibility[6];
+} OutY;
+
+const int INPUT_WIDTH = 12;
+const int PROJECTION_WIDTH = 36;
+const int COMPACT_WIDTH = 12;
+const int OUTPUT_WIDTH = 6;
+const int HISTORY_FRAME_COUNT = 2;
+
+struct InputFeatures {
+    coopvecHW<float16_t, INPUT_WIDTH> value;
+};
+
+struct ProjectedFeatures {
+    coopvecHW<float16_t, PROJECTION_WIDTH> value;
+};
+
+struct CompactFeatures {
+    coopvecHW<float16_t, COMPACT_WIDTH> value;
+};
+
+struct VisibilityResult {
+    coopvecHW<float16_t, OUTPUT_WIDTH> value;
+};
+
+struct VisibilityFrame {
+    CompactFeatures features;
+    uvec2 provenance;
+};
+
+struct VisibilityHistory {
+    VisibilityFrame frames[HISTORY_FRAME_COUNT];
+    uint preferredFrame;
+};
+
+uint buildVisibilityRoute()
+{
+    uint workItem = gl_GlobalInvocationID.x;
+    uint localLane = gl_LocalInvocationIndex;
+    return (workItem ^ localLane) & 1u;
+}
+
+InputFeatures loadVisibilityInput()
+{
+    InputFeatures inputFeatures;
+    coopVecLoadHW(inputFeatures.value, InX.features, 0u);
+    return inputFeatures;
+}
+
+ProjectedFeatures evaluateProjection(InputFeatures inputFeatures)
+{
+    const ivec2 weightShape = ivec2(INPUT_WIDTH, PROJECTION_WIDTH);
+    const ivec2 zeroOffset = ivec2(0);
+    const coopvecHW<float16_t, PROJECTION_WIDTH> zero =
+        coopvecHW<float16_t, PROJECTION_WIDTH>(float16_t(0));
+
+    coopmatHW<float16_t, INPUT_WIDTH, PROJECTION_WIDTH> weights;
+    coopvecHW<float16_t, PROJECTION_WIDTH> bias;
+    ProjectedFeatures projected;
+
+    coopMatLoadHW(weights,
+                  Weights.projection,
+                  weightShape,
+                  zeroOffset,
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias, Biases.projection, 0u);
+    coopVecMatMulAddHW(projected.value, inputFeatures.value, weights, bias);
+    projected.value = max(projected.value, zero);
+    return projected;
+}
+
+CompactFeatures evaluateCompression(ProjectedFeatures projected)
+{
+    const ivec2 weightShape = ivec2(PROJECTION_WIDTH, COMPACT_WIDTH);
+    const ivec2 zeroOffset = ivec2(0);
+    const coopvecHW<float16_t, COMPACT_WIDTH> zero =
+        coopvecHW<float16_t, COMPACT_WIDTH>(float16_t(0));
+
+    coopmatHW<float16_t, PROJECTION_WIDTH, COMPACT_WIDTH> weights;
+    coopvecHW<float16_t, COMPACT_WIDTH> bias;
+    CompactFeatures compact;
+
+    coopMatLoadHW(weights,
+                  Weights.compression,
+                  weightShape,
+                  zeroOffset,
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias, Biases.compression, 0u);
+    coopVecMatMulAddHW(compact.value, projected.value, weights, bias);
+    compact.value = max(compact.value, zero);
+    return compact;
+}
+
+VisibilityHistory updateVisibilityHistory(CompactFeatures compact, uint preferredFrame)
+{
+    VisibilityHistory history;
+
+    for (int frameIndex = 0; frameIndex < HISTORY_FRAME_COUNT; ++frameIndex) {
+        history.frames[frameIndex].features = compact;
+        history.frames[frameIndex].provenance =
+            uvec2(uint(frameIndex), gl_GlobalInvocationID.x);
+    }
+
+    history.preferredFrame = preferredFrame;
+    return history;
+}
+
+bool isHistoryFrameUsable(VisibilityFrame frame, uint expectedFrame)
+{
+    bool frameMatches = frame.provenance.x == expectedFrame;
+    bool invocationMatches = frame.provenance.y == gl_GlobalInvocationID.x;
+    return frameMatches && invocationMatches;
+}
+
+CompactFeatures resolveVisibilityHistory(VisibilityHistory history)
+{
+    uint selectedFrame = history.preferredFrame & 1u;
+    VisibilityFrame candidate;
+
+    switch (selectedFrame) {
+    case 0u:
+        candidate = history.frames[0];
+        break;
+    default:
+        candidate = history.frames[1];
+        break;
+    }
+
+    if (isHistoryFrameUsable(candidate, selectedFrame)) {
+        return candidate.features;
+    }
+
+    return history.frames[0].features;
+}
+
+VisibilityResult evaluateVisibilityClassifier(CompactFeatures compact)
+{
+    const ivec2 weightShape = ivec2(COMPACT_WIDTH, OUTPUT_WIDTH);
+    const ivec2 zeroOffset = ivec2(0);
+    const coopvecHW<float16_t, OUTPUT_WIDTH> zero =
+        coopvecHW<float16_t, OUTPUT_WIDTH>(float16_t(0));
+
+    coopmatHW<float16_t, COMPACT_WIDTH, OUTPUT_WIDTH> weights;
+    coopvecHW<float16_t, OUTPUT_WIDTH> bias;
+    VisibilityResult result;
+
+    coopMatLoadHW(weights,
+                  Weights.classifier,
+                  weightShape,
+                  zeroOffset,
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias, Biases.classifier, 0u);
+    coopVecMatMulAddHW(result.value, compact.value, weights, bias);
+    result.value = max(result.value, zero);
+    return result;
+}
+
+void storeVisibilityResult(VisibilityResult result)
+{
+    coopVecStoreHW(result.value, OutY.visibility, 0u);
+}
+
+void main()
+{
+    uint route = buildVisibilityRoute();
+    InputFeatures inputFeatures = loadVisibilityInput();
+    ProjectedFeatures projected = evaluateProjection(inputFeatures);
+    CompactFeatures compact = evaluateCompression(projected);
+    VisibilityHistory history = updateVisibilityHistory(compact, route);
+    CompactFeatures resolved = resolveVisibilityHistory(history);
+    VisibilityResult result = evaluateVisibilityClassifier(resolved);
+    storeVisibilityResult(result);
+}

@@ -321,7 +321,9 @@ Unroll limit 只决定 unrolled 或 rolled，是合理的；但 element/MAC hard
 - 多 entry point 共享函数与 Private 全局变量
 - Core arithmetic、SSA、composite、dynamic indexing 与 HW load/matmul/store 任意交错
 - packed/default 与 force-scalar 两条 lowering 路径
-- vk_hw 包含 20 个 composition flow case，其中 9 个超过 4096 个元素并验证 structured-loop fallback
+- vk_hw 包含 20 个 150–300 行的 production flow case，分别覆盖 load/store、matmul、
+  vecmatmuladd、MLP 和 multiops；shared-payload case 通过默认 packed 路径验证同一 buffer 的
+  loop-carried RAW 依赖
 
 合法性边界：
 

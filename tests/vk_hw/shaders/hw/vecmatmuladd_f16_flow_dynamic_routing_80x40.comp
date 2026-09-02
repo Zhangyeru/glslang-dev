@@ -1,0 +1,237 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputX {
+    float16_t data[];
+} X;
+
+layout(set = 0, binding = 1) buffer InputWeights {
+    float16_t data[];
+} W;
+
+layout(set = 0, binding = 2) buffer InputBias {
+    float16_t data[];
+} C;
+
+layout(set = 0, binding = 3) buffer OutputY {
+    float16_t data[];
+} Y;
+
+const int ROUTING_INPUT_WIDTH = 80;
+const int ROUTING_OUTPUT_WIDTH = 40;
+const int ROUTING_ROUTE_COUNT = 2;
+const ivec2 ROUTING_WEIGHT_SHAPE =
+    ivec2(ROUTING_INPUT_WIDTH, ROUTING_OUTPUT_WIDTH);
+const ivec2 ROUTING_ZERO_OFFSET = ivec2(0);
+
+struct RoutingFeaturePacket {
+    coopvecHW<float16_t, ROUTING_INPUT_WIDTH> value;
+    uvec4 provenance;
+};
+
+struct RoutingWeightPacket {
+    coopmatHW<float16_t, ROUTING_INPUT_WIDTH, ROUTING_OUTPUT_WIDTH> value;
+    uvec4 layoutInfo;
+};
+
+struct RoutingBiasPacket {
+    coopvecHW<float16_t, ROUTING_OUTPUT_WIDTH> value;
+    uvec4 revision;
+};
+
+struct RoutingRouteLane {
+    uvec4 scheduling;
+};
+
+struct RoutingDispatchBundle {
+    RoutingFeaturePacket features;
+    RoutingWeightPacket weights;
+    RoutingBiasPacket bias;
+    RoutingRouteLane lanes[ROUTING_ROUTE_COUNT];
+    uint selectedLane;
+    bool ready;
+};
+
+struct RoutingOutputPacket {
+    coopvecHW<float16_t, ROUTING_OUTPUT_WIDTH> value;
+    uvec4 completion;
+};
+
+struct RoutingResponse {
+    RoutingOutputPacket outputValue;
+    uint selectedLane;
+    bool committed;
+};
+
+uint buildRoutingRouteKey()
+{
+    uint groupKey = gl_WorkGroupID.x ^ (gl_WorkGroupID.y << 3u);
+    uint invocationKey = gl_LocalInvocationIndex ^ gl_GlobalInvocationID.x;
+    return groupKey ^ invocationKey;
+}
+
+uint selectRoutingRoute(uint routeKey)
+{
+    uint selected = routeKey & 1u;
+    switch (selected) {
+    case 0u:
+        return 0u;
+    case 1u:
+        return 1u;
+    default:
+        return 0u;
+    }
+}
+
+RoutingFeaturePacket loadRoutingFeatures()
+{
+    RoutingFeaturePacket packet;
+    coopVecLoadHW(packet.value, X.data, 0u);
+    packet.provenance =
+        uvec4(ROUTING_INPUT_WIDTH, gl_GlobalInvocationID.x, 0u, 1u);
+    return packet;
+}
+
+RoutingWeightPacket loadRoutingWeights()
+{
+    RoutingWeightPacket packet;
+    coopMatLoadHW(
+        packet.value,
+        W.data,
+        ROUTING_WEIGHT_SHAPE,
+        ROUTING_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    packet.layoutInfo =
+        uvec4(ROUTING_INPUT_WIDTH, ROUTING_OUTPUT_WIDTH, 0u, 1u);
+    return packet;
+}
+
+RoutingBiasPacket loadRoutingBias()
+{
+    RoutingBiasPacket packet;
+    coopVecLoadHW(packet.value, C.data, 0u);
+    packet.revision =
+        uvec4(ROUTING_OUTPUT_WIDTH, gl_WorkGroupID.x, 0u, 1u);
+    return packet;
+}
+
+bool validateRoutingPackets(
+    RoutingFeaturePacket features,
+    RoutingWeightPacket weights,
+    RoutingBiasPacket bias)
+{
+    bool featureReady = features.provenance.w != 0u;
+    bool weightReady = weights.layoutInfo.w != 0u;
+    bool biasReady = bias.revision.w != 0u;
+    bool innerMatches =
+        features.provenance.x == weights.layoutInfo.x;
+    bool outputMatches =
+        weights.layoutInfo.y == bias.revision.x;
+    return featureReady && weightReady && biasReady &&
+           innerMatches && outputMatches;
+}
+
+RoutingDispatchBundle buildRoutingBundle(
+    RoutingFeaturePacket features,
+    RoutingWeightPacket weights,
+    RoutingBiasPacket bias,
+    uint selectedLane)
+{
+    RoutingDispatchBundle bundle;
+    bundle.features = features;
+    bundle.weights = weights;
+    bundle.bias = bias;
+    bundle.selectedLane = selectedLane;
+    bundle.ready = validateRoutingPackets(features, weights, bias);
+
+    for (uint laneIndex = 0u;
+         laneIndex < ROUTING_ROUTE_COUNT;
+         ++laneIndex) {
+        bundle.lanes[laneIndex].scheduling =
+            uvec4(laneIndex, selectedLane, laneIndex == selectedLane ? 1u : 0u, 1u);
+    }
+
+    return bundle;
+}
+
+RoutingDispatchBundle stabilizeRoutingBundle(RoutingDispatchBundle bundle)
+{
+    uint selectedLane = bundle.selectedLane & 1u;
+    uvec4 selected = bundle.lanes[selectedLane].scheduling;
+
+    for (uint probeIndex = 0u; probeIndex < 3u; ++probeIndex) {
+        uint candidateIndex = (selectedLane + probeIndex) & 1u;
+        uvec4 candidate = bundle.lanes[candidateIndex].scheduling;
+        bool candidateReady = candidate.w != 0u;
+        selected = candidateReady ? candidate : selected;
+    }
+
+    if (bundle.ready) {
+        bundle.lanes[selectedLane].scheduling = selected;
+    } else {
+        bundle.lanes[0].scheduling = selected;
+        bundle.selectedLane = 0u;
+    }
+
+    return bundle;
+}
+
+RoutingResponse executeRoutingHead(RoutingDispatchBundle bundle)
+{
+    uint selectedLane = bundle.selectedLane & 1u;
+    RoutingResponse response;
+    coopVecMatMulAddHW(
+        response.outputValue.value,
+        bundle.features.value,
+        bundle.weights.value,
+        bundle.bias.value);
+
+    response.outputValue.completion =
+        uvec4(ROUTING_INPUT_WIDTH, ROUTING_OUTPUT_WIDTH, selectedLane, 1u);
+    response.selectedLane = selectedLane;
+    response.committed = bundle.ready;
+    return response;
+}
+
+RoutingResponse finalizeRoutingHead(RoutingResponse response)
+{
+    bool outputReady = response.outputValue.completion.w != 0u;
+    response.committed = response.committed && outputReady;
+
+    switch (response.selectedLane) {
+    case 0u:
+        return response;
+    case 1u:
+        return response;
+    default:
+        response.selectedLane = 0u;
+        return response;
+    }
+}
+
+void storeRoutingOutput(RoutingResponse response)
+{
+    if (!response.committed) {
+        response.committed = true;
+    }
+    coopVecStoreHW(response.outputValue.value, Y.data, 0u);
+}
+
+void main()
+{
+    uint routeKey = buildRoutingRouteKey();
+    uint selectedLane = selectRoutingRoute(routeKey);
+    RoutingFeaturePacket features = loadRoutingFeatures();
+    RoutingWeightPacket weights = loadRoutingWeights();
+    RoutingBiasPacket bias = loadRoutingBias();
+
+    RoutingDispatchBundle bundle =
+        buildRoutingBundle(features, weights, bias, selectedLane);
+    RoutingDispatchBundle stableBundle = stabilizeRoutingBundle(bundle);
+    RoutingResponse response = executeRoutingHead(stableBundle);
+    RoutingResponse finalResponse = finalizeRoutingHead(response);
+    storeRoutingOutput(finalResponse);
+}

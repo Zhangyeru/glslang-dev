@@ -1,0 +1,237 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputX {
+    float16_t data[];
+} X;
+
+layout(set = 0, binding = 1) buffer InputWeights {
+    float16_t data[];
+} W;
+
+layout(set = 0, binding = 2) buffer InputBias {
+    float16_t data[];
+} C;
+
+layout(set = 0, binding = 3) buffer OutputY {
+    float16_t data[];
+} Y;
+
+const int MATERIAL_INPUT_WIDTH = 128;
+const int MATERIAL_OUTPUT_WIDTH = 64;
+const int MATERIAL_ROUTE_COUNT = 2;
+const ivec2 MATERIAL_WEIGHT_SHAPE =
+    ivec2(MATERIAL_INPUT_WIDTH, MATERIAL_OUTPUT_WIDTH);
+const ivec2 MATERIAL_ZERO_OFFSET = ivec2(0);
+
+struct MaterialFeaturePacket {
+    coopvecHW<float16_t, MATERIAL_INPUT_WIDTH> value;
+    uvec4 provenance;
+};
+
+struct MaterialWeightPacket {
+    coopmatHW<float16_t, MATERIAL_INPUT_WIDTH, MATERIAL_OUTPUT_WIDTH> value;
+    uvec4 layoutInfo;
+};
+
+struct MaterialBiasPacket {
+    coopvecHW<float16_t, MATERIAL_OUTPUT_WIDTH> value;
+    uvec4 revision;
+};
+
+struct MaterialRouteLane {
+    uvec4 scheduling;
+};
+
+struct MaterialDispatchBundle {
+    MaterialFeaturePacket features;
+    MaterialWeightPacket weights;
+    MaterialBiasPacket bias;
+    MaterialRouteLane lanes[MATERIAL_ROUTE_COUNT];
+    uint selectedLane;
+    bool ready;
+};
+
+struct MaterialOutputPacket {
+    coopvecHW<float16_t, MATERIAL_OUTPUT_WIDTH> value;
+    uvec4 completion;
+};
+
+struct MaterialResponse {
+    MaterialOutputPacket outputValue;
+    uint selectedLane;
+    bool committed;
+};
+
+uint buildMaterialRouteKey()
+{
+    uint groupKey = gl_WorkGroupID.x ^ (gl_WorkGroupID.y << 3u);
+    uint invocationKey = gl_LocalInvocationIndex ^ gl_GlobalInvocationID.x;
+    return groupKey ^ invocationKey;
+}
+
+uint selectMaterialRoute(uint routeKey)
+{
+    uint selected = routeKey & 1u;
+    switch (selected) {
+    case 0u:
+        return 0u;
+    case 1u:
+        return 1u;
+    default:
+        return 0u;
+    }
+}
+
+MaterialFeaturePacket loadMaterialFeatures()
+{
+    MaterialFeaturePacket packet;
+    coopVecLoadHW(packet.value, X.data, 0u);
+    packet.provenance =
+        uvec4(MATERIAL_INPUT_WIDTH, gl_GlobalInvocationID.x, 0u, 1u);
+    return packet;
+}
+
+MaterialWeightPacket loadMaterialWeights()
+{
+    MaterialWeightPacket packet;
+    coopMatLoadHW(
+        packet.value,
+        W.data,
+        MATERIAL_WEIGHT_SHAPE,
+        MATERIAL_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    packet.layoutInfo =
+        uvec4(MATERIAL_INPUT_WIDTH, MATERIAL_OUTPUT_WIDTH, 0u, 1u);
+    return packet;
+}
+
+MaterialBiasPacket loadMaterialBias()
+{
+    MaterialBiasPacket packet;
+    coopVecLoadHW(packet.value, C.data, 0u);
+    packet.revision =
+        uvec4(MATERIAL_OUTPUT_WIDTH, gl_WorkGroupID.x, 0u, 1u);
+    return packet;
+}
+
+bool validateMaterialPackets(
+    MaterialFeaturePacket features,
+    MaterialWeightPacket weights,
+    MaterialBiasPacket bias)
+{
+    bool featureReady = features.provenance.w != 0u;
+    bool weightReady = weights.layoutInfo.w != 0u;
+    bool biasReady = bias.revision.w != 0u;
+    bool innerMatches =
+        features.provenance.x == weights.layoutInfo.x;
+    bool outputMatches =
+        weights.layoutInfo.y == bias.revision.x;
+    return featureReady && weightReady && biasReady &&
+           innerMatches && outputMatches;
+}
+
+MaterialDispatchBundle buildMaterialBundle(
+    MaterialFeaturePacket features,
+    MaterialWeightPacket weights,
+    MaterialBiasPacket bias,
+    uint selectedLane)
+{
+    MaterialDispatchBundle bundle;
+    bundle.features = features;
+    bundle.weights = weights;
+    bundle.bias = bias;
+    bundle.selectedLane = selectedLane;
+    bundle.ready = validateMaterialPackets(features, weights, bias);
+
+    for (uint laneIndex = 0u;
+         laneIndex < MATERIAL_ROUTE_COUNT;
+         ++laneIndex) {
+        bundle.lanes[laneIndex].scheduling =
+            uvec4(laneIndex, selectedLane, laneIndex == selectedLane ? 1u : 0u, 1u);
+    }
+
+    return bundle;
+}
+
+MaterialDispatchBundle stabilizeMaterialBundle(MaterialDispatchBundle bundle)
+{
+    uint selectedLane = bundle.selectedLane & 1u;
+    uvec4 selected = bundle.lanes[selectedLane].scheduling;
+
+    for (uint probeIndex = 0u; probeIndex < 3u; ++probeIndex) {
+        uint candidateIndex = (selectedLane + probeIndex) & 1u;
+        uvec4 candidate = bundle.lanes[candidateIndex].scheduling;
+        bool candidateReady = candidate.w != 0u;
+        selected = candidateReady ? candidate : selected;
+    }
+
+    if (bundle.ready) {
+        bundle.lanes[selectedLane].scheduling = selected;
+    } else {
+        bundle.lanes[0].scheduling = selected;
+        bundle.selectedLane = 0u;
+    }
+
+    return bundle;
+}
+
+MaterialResponse executeMaterialHead(MaterialDispatchBundle bundle)
+{
+    uint selectedLane = bundle.selectedLane & 1u;
+    MaterialResponse response;
+    coopVecMatMulAddHW(
+        response.outputValue.value,
+        bundle.features.value,
+        bundle.weights.value,
+        bundle.bias.value);
+
+    response.outputValue.completion =
+        uvec4(MATERIAL_INPUT_WIDTH, MATERIAL_OUTPUT_WIDTH, selectedLane, 1u);
+    response.selectedLane = selectedLane;
+    response.committed = bundle.ready;
+    return response;
+}
+
+MaterialResponse finalizeMaterialHead(MaterialResponse response)
+{
+    bool outputReady = response.outputValue.completion.w != 0u;
+    response.committed = response.committed && outputReady;
+
+    switch (response.selectedLane) {
+    case 0u:
+        return response;
+    case 1u:
+        return response;
+    default:
+        response.selectedLane = 0u;
+        return response;
+    }
+}
+
+void storeMaterialOutput(MaterialResponse response)
+{
+    if (!response.committed) {
+        response.committed = true;
+    }
+    coopVecStoreHW(response.outputValue.value, Y.data, 0u);
+}
+
+void main()
+{
+    uint routeKey = buildMaterialRouteKey();
+    uint selectedLane = selectMaterialRoute(routeKey);
+    MaterialFeaturePacket features = loadMaterialFeatures();
+    MaterialWeightPacket weights = loadMaterialWeights();
+    MaterialBiasPacket bias = loadMaterialBias();
+
+    MaterialDispatchBundle bundle =
+        buildMaterialBundle(features, weights, bias, selectedLane);
+    MaterialDispatchBundle stableBundle = stabilizeMaterialBundle(bundle);
+    MaterialResponse response = executeMaterialHead(stableBundle);
+    MaterialResponse finalResponse = finalizeMaterialHead(response);
+    storeMaterialOutput(finalResponse);
+}

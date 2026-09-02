@@ -1,0 +1,283 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA {
+    float16_t data[];
+} A;
+
+layout(set = 0, binding = 1) buffer InputB {
+    float16_t data[];
+} B;
+
+layout(set = 0, binding = 2) buffer InputC {
+    float16_t data[];
+} C;
+
+layout(set = 0, binding = 3) buffer OutputD {
+    float16_t data[];
+} D;
+
+const int RENDER_GRAPH_ROWS = 16;
+const int RENDER_GRAPH_COLUMNS = 16;
+const int RENDER_GRAPH_INNER = 16;
+const int RENDER_GRAPH_ROUTE_COUNT = 2;
+const ivec2 RENDER_GRAPH_SHAPE_A = ivec2(RENDER_GRAPH_ROWS, RENDER_GRAPH_INNER);
+const ivec2 RENDER_GRAPH_SHAPE_B = ivec2(RENDER_GRAPH_INNER, RENDER_GRAPH_COLUMNS);
+const ivec2 RENDER_GRAPH_SHAPE_D = ivec2(RENDER_GRAPH_ROWS, RENDER_GRAPH_COLUMNS);
+const ivec2 RENDER_GRAPH_ZERO_OFFSET = ivec2(0);
+
+struct RenderGraphLeftMatrix {
+    coopmatHW<float16_t, RENDER_GRAPH_ROWS, RENDER_GRAPH_INNER> value;
+    uvec4 state;
+};
+
+struct RenderGraphWeightMatrix {
+    coopmatHW<float16_t, RENDER_GRAPH_INNER, RENDER_GRAPH_COLUMNS> value;
+    uvec4 state;
+};
+
+struct RenderGraphAccumulatorMatrix {
+    coopmatHW<float16_t, RENDER_GRAPH_ROWS, RENDER_GRAPH_COLUMNS> value;
+    uvec4 state;
+};
+
+struct RenderGraphMatrixLane {
+    RenderGraphLeftMatrix left;
+    RenderGraphWeightMatrix weights;
+    uvec4 scheduling;
+};
+
+struct RenderGraphMatrixRequest {
+    RenderGraphMatrixLane lanes[RENDER_GRAPH_ROUTE_COUNT];
+    RenderGraphAccumulatorMatrix accumulator;
+    uint selectedLane;
+    bool ready;
+};
+
+struct RenderGraphMatrixResult {
+    coopmatHW<float16_t, RENDER_GRAPH_ROWS, RENDER_GRAPH_COLUMNS> value;
+    uvec4 completion;
+};
+
+struct RenderGraphVectorInput {
+    coopvecHW<float16_t, RENDER_GRAPH_INNER> value;
+    uvec4 state;
+};
+
+struct RenderGraphVectorBias {
+    coopvecHW<float16_t, RENDER_GRAPH_COLUMNS> value;
+    uvec4 state;
+};
+
+struct RenderGraphVectorResult {
+    coopvecHW<float16_t, RENDER_GRAPH_COLUMNS> value;
+    uvec4 completion;
+};
+
+uint selectRenderGraphRoute()
+{
+    uint dispatchKey = gl_GlobalInvocationID.x ^ gl_LocalInvocationIndex;
+    return dispatchKey & 1u;
+}
+
+RenderGraphLeftMatrix loadRenderGraphLeft()
+{
+    RenderGraphLeftMatrix result;
+    coopMatLoadHW(
+        result.value,
+        A.data,
+        RENDER_GRAPH_SHAPE_A,
+        RENDER_GRAPH_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    result.state = uvec4(RENDER_GRAPH_ROWS, RENDER_GRAPH_INNER, 0u, 1u);
+    return result;
+}
+
+RenderGraphWeightMatrix loadRenderGraphWeights()
+{
+    RenderGraphWeightMatrix result;
+    coopMatLoadHW(
+        result.value,
+        B.data,
+        RENDER_GRAPH_SHAPE_B,
+        RENDER_GRAPH_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    result.state = uvec4(RENDER_GRAPH_INNER, RENDER_GRAPH_COLUMNS, 1u, 1u);
+    return result;
+}
+
+RenderGraphAccumulatorMatrix loadRenderGraphAccumulator()
+{
+    RenderGraphAccumulatorMatrix result;
+    coopMatLoadHW(
+        result.value,
+        C.data,
+        RENDER_GRAPH_SHAPE_D,
+        RENDER_GRAPH_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    result.state = uvec4(RENDER_GRAPH_ROWS, RENDER_GRAPH_COLUMNS, 2u, 1u);
+    return result;
+}
+
+RenderGraphMatrixRequest buildRenderGraphMatrixRequest(
+    RenderGraphLeftMatrix left,
+    RenderGraphWeightMatrix weights,
+    RenderGraphAccumulatorMatrix accumulator,
+    uint selectedLane)
+{
+    RenderGraphMatrixRequest request;
+    request.accumulator = accumulator;
+    request.selectedLane = selectedLane;
+    request.ready =
+        left.state.w != 0u &&
+        weights.state.w != 0u &&
+        accumulator.state.w != 0u;
+
+    for (uint laneIndex = 0u;
+         laneIndex < RENDER_GRAPH_ROUTE_COUNT;
+         ++laneIndex) {
+        request.lanes[laneIndex].left = left;
+        request.lanes[laneIndex].weights = weights;
+        request.lanes[laneIndex].scheduling =
+            uvec4(laneIndex, selectedLane, laneIndex == selectedLane ? 1u : 0u, 1u);
+    }
+    return request;
+}
+
+RenderGraphMatrixRequest stabilizeRenderGraphMatrixRequest(RenderGraphMatrixRequest request)
+{
+    uint selectedLane = request.selectedLane & 1u;
+    RenderGraphMatrixLane resident = request.lanes[selectedLane];
+
+    for (uint probe = 0u; probe < 3u; ++probe) {
+        uint candidateIndex = (selectedLane + probe) & 1u;
+        RenderGraphMatrixLane candidate = request.lanes[candidateIndex];
+        bool candidateReady =
+            candidate.left.state.w != 0u &&
+            candidate.weights.state.w != 0u;
+        resident = candidateReady ? candidate : resident;
+    }
+
+    switch (selectedLane) {
+    case 0u:
+        request.lanes[0] = resident;
+        break;
+    case 1u:
+        request.lanes[1] = resident;
+        break;
+    default:
+        request.lanes[0] = resident;
+        request.selectedLane = 0u;
+        break;
+    }
+    return request;
+}
+
+RenderGraphMatrixResult executeRenderGraphFirstMatrixPass(RenderGraphMatrixRequest request)
+{
+    uint laneIndex = request.selectedLane & 1u;
+    RenderGraphMatrixLane lane = request.lanes[laneIndex];
+    RenderGraphMatrixResult result;
+    coopMatMulAddHW(
+        result.value,
+        lane.left.value,
+        lane.weights.value,
+        request.accumulator.value);
+    result.completion =
+        uvec4(0u, laneIndex, request.ready ? 1u : 0u, 1u);
+    return result;
+}
+
+RenderGraphMatrixResult executeRenderGraphSecondMatrixPass(
+    RenderGraphMatrixRequest request,
+    RenderGraphMatrixResult firstPass)
+{
+    uint laneIndex = request.selectedLane & 1u;
+    RenderGraphMatrixLane lane = request.lanes[laneIndex];
+    RenderGraphMatrixResult result;
+    coopMatMulAddHW(
+        result.value,
+        lane.left.value,
+        lane.weights.value,
+        firstPass.value);
+    result.completion =
+        uvec4(1u, laneIndex, firstPass.completion.w, 1u);
+    return result;
+}
+
+void storeRenderGraphMatrixResult(RenderGraphMatrixResult result)
+{
+    coopMatStoreHW(
+        result.value,
+        D.data,
+        RENDER_GRAPH_SHAPE_D,
+        RENDER_GRAPH_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+}
+
+RenderGraphVectorInput loadRenderGraphVectorInput()
+{
+    RenderGraphVectorInput inputValue;
+    coopVecLoadHW(inputValue.value, A.data, 0u);
+    inputValue.state = uvec4(RENDER_GRAPH_INNER, 0u, 0u, 1u);
+    return inputValue;
+}
+
+RenderGraphVectorBias loadRenderGraphVectorBias(uint passIndex)
+{
+    RenderGraphVectorBias bias;
+    coopVecLoadHW(bias.value, D.data, 0u);
+    bias.state = uvec4(RENDER_GRAPH_COLUMNS, passIndex, 0u, 1u);
+    return bias;
+}
+
+RenderGraphVectorResult executeRenderGraphVectorPass(
+    RenderGraphVectorInput inputValue,
+    RenderGraphWeightMatrix weights,
+    RenderGraphVectorBias bias,
+    uint passIndex)
+{
+    RenderGraphVectorResult result;
+    coopVecMatMulAddHW(
+        result.value,
+        inputValue.value,
+        weights.value,
+        bias.value);
+    result.completion =
+        uvec4(passIndex, RENDER_GRAPH_INNER, RENDER_GRAPH_COLUMNS, 1u);
+    return result;
+}
+
+void storeRenderGraphVectorResult(RenderGraphVectorResult result)
+{
+    coopVecStoreHW(result.value, D.data, 0u);
+}
+
+void main()
+{
+    uint selectedLane = selectRenderGraphRoute();
+    RenderGraphLeftMatrix left = loadRenderGraphLeft();
+    RenderGraphWeightMatrix weights = loadRenderGraphWeights();
+    RenderGraphAccumulatorMatrix accumulator = loadRenderGraphAccumulator();
+
+    RenderGraphMatrixRequest request =
+        buildRenderGraphMatrixRequest(left, weights, accumulator, selectedLane);
+    RenderGraphMatrixRequest stableRequest =
+        stabilizeRenderGraphMatrixRequest(request);
+    RenderGraphMatrixResult firstPass =
+        executeRenderGraphFirstMatrixPass(stableRequest);
+    RenderGraphMatrixResult secondPass =
+        executeRenderGraphSecondMatrixPass(stableRequest, firstPass);
+    storeRenderGraphMatrixResult(secondPass);
+
+    RenderGraphVectorInput vectorInput = loadRenderGraphVectorInput();
+    for (uint passIndex = 0u; passIndex < 2u; ++passIndex) {
+        RenderGraphVectorBias bias = loadRenderGraphVectorBias(passIndex);
+        RenderGraphVectorResult vectorResult =
+            executeRenderGraphVectorPass(vectorInput, weights, bias, passIndex);
+        storeRenderGraphVectorResult(vectorResult);
+    }
+}

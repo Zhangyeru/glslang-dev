@@ -1,0 +1,249 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA {
+    float data[];
+} A;
+
+layout(set = 0, binding = 1) buffer InputB {
+    float data[];
+} B;
+
+layout(set = 0, binding = 2) buffer InputC {
+    float data[];
+} C;
+
+layout(set = 0, binding = 3) buffer OutputD {
+    float data[];
+} D;
+
+const int VISIBILITY_ROWS = 24;
+const int VISIBILITY_COLUMNS = 40;
+const int VISIBILITY_INNER = 56;
+const int VISIBILITY_ROUTE_COUNT = 2;
+
+const ivec2 VISIBILITY_SHAPE_A = ivec2(VISIBILITY_ROWS, VISIBILITY_INNER);
+const ivec2 VISIBILITY_SHAPE_B = ivec2(VISIBILITY_INNER, VISIBILITY_COLUMNS);
+const ivec2 VISIBILITY_SHAPE_D = ivec2(VISIBILITY_ROWS, VISIBILITY_COLUMNS);
+const ivec2 VISIBILITY_ZERO_OFFSET = ivec2(0);
+
+struct VisibilityLeftTile {
+    coopmatHW<float, VISIBILITY_ROWS, VISIBILITY_INNER> value;
+    uvec4 residency;
+};
+
+struct VisibilityRightTile {
+    coopmatHW<float, VISIBILITY_INNER, VISIBILITY_COLUMNS> value;
+    uvec4 residency;
+};
+
+struct VisibilityAccumulatorTile {
+    coopmatHW<float, VISIBILITY_ROWS, VISIBILITY_COLUMNS> value;
+    uvec4 revision;
+};
+
+struct VisibilityRequestLane {
+    VisibilityLeftTile left;
+    VisibilityRightTile right;
+    uvec4 scheduling;
+};
+
+struct VisibilityDispatchRequest {
+    VisibilityRequestLane lanes[VISIBILITY_ROUTE_COUNT];
+    VisibilityAccumulatorTile accumulator;
+    uint selectedLane;
+    bool contractValid;
+};
+
+struct VisibilityResultTile {
+    coopmatHW<float, VISIBILITY_ROWS, VISIBILITY_COLUMNS> value;
+    uvec4 completion;
+};
+
+struct VisibilityResponse {
+    VisibilityResultTile result;
+    uint selectedLane;
+    bool committed;
+};
+
+uint selectVisibilityLane()
+{
+    uint workgroupKey = gl_WorkGroupID.x ^ (gl_WorkGroupID.y << 1u);
+    uint invocationKey = gl_LocalInvocationIndex + gl_GlobalInvocationID.x;
+    return (workgroupKey ^ invocationKey) & 1u;
+}
+
+bool validateVisibilityContract()
+{
+    ivec2 shapes[3] = ivec2[3](
+        VISIBILITY_SHAPE_A,
+        VISIBILITY_SHAPE_B,
+        VISIBILITY_SHAPE_D);
+
+    bool positiveDimensions = true;
+    for (uint shapeIndex = 0u; shapeIndex < 3u; ++shapeIndex) {
+        positiveDimensions =
+            positiveDimensions && all(greaterThan(shapes[shapeIndex], ivec2(0)));
+    }
+
+    bool innerMatches = VISIBILITY_SHAPE_A.y == VISIBILITY_SHAPE_B.x;
+    bool rowsMatch = VISIBILITY_SHAPE_A.x == VISIBILITY_SHAPE_D.x;
+    bool columnsMatch = VISIBILITY_SHAPE_B.y == VISIBILITY_SHAPE_D.y;
+    return positiveDimensions && innerMatches && rowsMatch && columnsMatch;
+}
+
+VisibilityLeftTile loadVisibilityLeftTile()
+{
+    VisibilityLeftTile tile;
+    coopMatLoadHW(
+        tile.value,
+        A.data,
+        VISIBILITY_SHAPE_A,
+        VISIBILITY_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    tile.residency = uvec4(VISIBILITY_ROWS, VISIBILITY_INNER, 0u, 1u);
+    return tile;
+}
+
+VisibilityRightTile loadVisibilityRightTile()
+{
+    VisibilityRightTile tile;
+    coopMatLoadHW(
+        tile.value,
+        B.data,
+        VISIBILITY_SHAPE_B,
+        VISIBILITY_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    tile.residency = uvec4(VISIBILITY_INNER, VISIBILITY_COLUMNS, 1u, 1u);
+    return tile;
+}
+
+VisibilityAccumulatorTile loadVisibilityAccumulatorTile()
+{
+    VisibilityAccumulatorTile tile;
+    coopMatLoadHW(
+        tile.value,
+        C.data,
+        VISIBILITY_SHAPE_D,
+        VISIBILITY_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    tile.revision = uvec4(VISIBILITY_ROWS, VISIBILITY_COLUMNS, 2u, 1u);
+    return tile;
+}
+
+VisibilityDispatchRequest buildVisibilityRequest(
+    VisibilityLeftTile left,
+    VisibilityRightTile right,
+    VisibilityAccumulatorTile accumulator,
+    uint selectedLane)
+{
+    VisibilityDispatchRequest request;
+    request.accumulator = accumulator;
+    request.selectedLane = selectedLane;
+    request.contractValid = validateVisibilityContract();
+
+    for (uint lane = 0u; lane < VISIBILITY_ROUTE_COUNT; ++lane) {
+        request.lanes[lane].left = left;
+        request.lanes[lane].right = right;
+        request.lanes[lane].scheduling =
+            uvec4(lane, selectedLane, lane == selectedLane ? 1u : 0u, 1u);
+    }
+
+    return request;
+}
+
+VisibilityDispatchRequest normalizeVisibilityRequest(VisibilityDispatchRequest request)
+{
+    uint selectedLane = request.selectedLane & 1u;
+    VisibilityRequestLane residentLane = request.lanes[selectedLane];
+
+    for (uint probe = 0u; probe < 3u; ++probe) {
+        uint candidateIndex = (selectedLane + probe) & 1u;
+        VisibilityRequestLane candidate = request.lanes[candidateIndex];
+        bool candidateReady =
+            candidate.left.residency.w != 0u &&
+            candidate.right.residency.w != 0u;
+        residentLane = candidateReady ? candidate : residentLane;
+    }
+
+    switch (selectedLane) {
+    case 0u:
+        request.lanes[0] = residentLane;
+        break;
+    case 1u:
+        request.lanes[1] = residentLane;
+        break;
+    default:
+        request.lanes[0] = residentLane;
+        request.selectedLane = 0u;
+        break;
+    }
+
+    return request;
+}
+
+VisibilityResponse executeVisibilityRequest(VisibilityDispatchRequest request)
+{
+    uint laneIndex = request.selectedLane & 1u;
+    VisibilityRequestLane lane = request.lanes[laneIndex];
+
+    VisibilityResponse response;
+    coopMatMulAddHW(
+        response.result.value,
+        lane.left.value,
+        lane.right.value,
+        request.accumulator.value);
+
+    response.result.completion =
+        uvec4(laneIndex, VISIBILITY_ROWS, VISIBILITY_COLUMNS, 1u);
+    response.selectedLane = laneIndex;
+    response.committed = request.contractValid;
+    return response;
+}
+
+VisibilityResponse finalizeVisibilityResponse(VisibilityResponse response)
+{
+    bool resultReady = response.result.completion.w != 0u;
+    response.committed = response.committed && resultReady;
+
+    switch (response.selectedLane) {
+    case 0u:
+        return response;
+    case 1u:
+        return response;
+    default:
+        response.selectedLane = 0u;
+        return response;
+    }
+}
+
+void storeVisibilityResponse(VisibilityResponse response)
+{
+    if (!response.committed) {
+        response.committed = true;
+    }
+
+    coopMatStoreHW(
+        response.result.value,
+        D.data,
+        VISIBILITY_SHAPE_D,
+        VISIBILITY_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+}
+
+void main()
+{
+    uint selectedLane = selectVisibilityLane();
+    VisibilityLeftTile left = loadVisibilityLeftTile();
+    VisibilityRightTile right = loadVisibilityRightTile();
+    VisibilityAccumulatorTile accumulator = loadVisibilityAccumulatorTile();
+
+    VisibilityDispatchRequest request =
+        buildVisibilityRequest(left, right, accumulator, selectedLane);
+    VisibilityDispatchRequest normalized = normalizeVisibilityRequest(request);
+    VisibilityResponse response = executeVisibilityRequest(normalized);
+    VisibilityResponse finalResponse = finalizeVisibilityResponse(response);
+    storeVisibilityResponse(finalResponse);
+}

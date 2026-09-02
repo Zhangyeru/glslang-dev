@@ -1,0 +1,250 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA {
+    float16_t data[];
+} A;
+
+layout(set = 0, binding = 1) buffer InputB {
+    float16_t data[];
+} B;
+
+layout(set = 0, binding = 2) buffer InputC {
+    float data[];
+} C;
+
+layout(set = 0, binding = 3) buffer OutputD {
+    float data[];
+} D;
+
+const int MIXED_ROWS = 32;
+const int MIXED_COLUMNS = 24;
+const int MIXED_INNER = 48;
+const int MIXED_ROUTE_COUNT = 2;
+
+const ivec2 MIXED_SHAPE_A = ivec2(MIXED_ROWS, MIXED_INNER);
+const ivec2 MIXED_SHAPE_B = ivec2(MIXED_INNER, MIXED_COLUMNS);
+const ivec2 MIXED_SHAPE_D = ivec2(MIXED_ROWS, MIXED_COLUMNS);
+const ivec2 MIXED_ZERO_OFFSET = ivec2(0);
+
+struct MixedLeftTile {
+    coopmatHW<float16_t, MIXED_ROWS, MIXED_INNER> value;
+    uvec4 residency;
+};
+
+struct MixedRightTile {
+    coopmatHW<float16_t, MIXED_INNER, MIXED_COLUMNS> value;
+    uvec4 residency;
+};
+
+struct MixedAccumulatorTile {
+    coopmatHW<float, MIXED_ROWS, MIXED_COLUMNS> value;
+    uvec4 revision;
+};
+
+struct MixedRequestLane {
+    MixedLeftTile left;
+    MixedRightTile right;
+    uvec4 scheduling;
+};
+
+struct MixedDispatchRequest {
+    MixedRequestLane lanes[MIXED_ROUTE_COUNT];
+    MixedAccumulatorTile accumulator;
+    uint selectedLane;
+    bool contractValid;
+};
+
+struct MixedResultTile {
+    coopmatHW<float, MIXED_ROWS, MIXED_COLUMNS> value;
+    uvec4 completion;
+};
+
+struct MixedResponse {
+    MixedResultTile result;
+    uint selectedLane;
+    bool committed;
+};
+
+uint selectMixedLane()
+{
+    uint workgroupKey = gl_WorkGroupID.x ^ (gl_WorkGroupID.y << 1u);
+    uint invocationKey = gl_LocalInvocationIndex + gl_GlobalInvocationID.x;
+    return (workgroupKey ^ invocationKey) & 1u;
+}
+
+bool validateMixedContract()
+{
+    ivec2 shapes[3] = ivec2[3](
+        MIXED_SHAPE_A,
+        MIXED_SHAPE_B,
+        MIXED_SHAPE_D);
+
+    bool positiveDimensions = true;
+    for (uint shapeIndex = 0u; shapeIndex < 3u; ++shapeIndex) {
+        positiveDimensions =
+            positiveDimensions && all(greaterThan(shapes[shapeIndex], ivec2(0)));
+    }
+
+    bool innerMatches = MIXED_SHAPE_A.y == MIXED_SHAPE_B.x;
+    bool rowsMatch = MIXED_SHAPE_A.x == MIXED_SHAPE_D.x;
+    bool columnsMatch = MIXED_SHAPE_B.y == MIXED_SHAPE_D.y;
+    return positiveDimensions && innerMatches && rowsMatch && columnsMatch;
+}
+
+MixedLeftTile loadMixedLeftTile()
+{
+    MixedLeftTile tile;
+    coopMatLoadHW(
+        tile.value,
+        A.data,
+        MIXED_SHAPE_A,
+        MIXED_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    tile.residency = uvec4(MIXED_ROWS, MIXED_INNER, 0u, 1u);
+    return tile;
+}
+
+MixedRightTile loadMixedRightTile()
+{
+    MixedRightTile tile;
+    coopMatLoadHW(
+        tile.value,
+        B.data,
+        MIXED_SHAPE_B,
+        MIXED_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    tile.residency = uvec4(MIXED_INNER, MIXED_COLUMNS, 1u, 1u);
+    return tile;
+}
+
+MixedAccumulatorTile loadMixedAccumulatorTile()
+{
+    MixedAccumulatorTile tile;
+    coopMatLoadHW(
+        tile.value,
+        C.data,
+        MIXED_SHAPE_D,
+        MIXED_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    tile.revision = uvec4(MIXED_ROWS, MIXED_COLUMNS, 2u, 1u);
+    return tile;
+}
+
+MixedDispatchRequest buildMixedRequest(
+    MixedLeftTile left,
+    MixedRightTile right,
+    MixedAccumulatorTile accumulator,
+    uint selectedLane)
+{
+    MixedDispatchRequest request;
+    request.accumulator = accumulator;
+    request.selectedLane = selectedLane;
+    request.contractValid = validateMixedContract();
+
+    for (uint lane = 0u; lane < MIXED_ROUTE_COUNT; ++lane) {
+        request.lanes[lane].left = left;
+        request.lanes[lane].right = right;
+        request.lanes[lane].scheduling =
+            uvec4(lane, selectedLane, lane == selectedLane ? 1u : 0u, 1u);
+    }
+
+    return request;
+}
+
+MixedDispatchRequest normalizeMixedRequest(MixedDispatchRequest request)
+{
+    uint selectedLane = request.selectedLane & 1u;
+    MixedRequestLane residentLane = request.lanes[selectedLane];
+
+    for (uint probe = 0u; probe < 3u; ++probe) {
+        uint candidateIndex = (selectedLane + probe) & 1u;
+        MixedRequestLane candidate = request.lanes[candidateIndex];
+        bool candidateReady =
+            candidate.left.residency.w != 0u &&
+            candidate.right.residency.w != 0u;
+        residentLane = candidateReady ? candidate : residentLane;
+    }
+
+    switch (selectedLane) {
+    case 0u:
+        request.lanes[0] = residentLane;
+        break;
+    case 1u:
+        request.lanes[1] = residentLane;
+        break;
+    default:
+        request.lanes[0] = residentLane;
+        request.selectedLane = 0u;
+        break;
+    }
+
+    return request;
+}
+
+MixedResponse executeMixedRequest(MixedDispatchRequest request)
+{
+    uint laneIndex = request.selectedLane & 1u;
+    MixedRequestLane lane = request.lanes[laneIndex];
+
+    MixedResponse response;
+    coopMatMulAddHW(
+        response.result.value,
+        lane.left.value,
+        lane.right.value,
+        request.accumulator.value);
+
+    response.result.completion =
+        uvec4(laneIndex, MIXED_ROWS, MIXED_COLUMNS, 1u);
+    response.selectedLane = laneIndex;
+    response.committed = request.contractValid;
+    return response;
+}
+
+MixedResponse finalizeMixedResponse(MixedResponse response)
+{
+    bool resultReady = response.result.completion.w != 0u;
+    response.committed = response.committed && resultReady;
+
+    switch (response.selectedLane) {
+    case 0u:
+        return response;
+    case 1u:
+        return response;
+    default:
+        response.selectedLane = 0u;
+        return response;
+    }
+}
+
+void storeMixedResponse(MixedResponse response)
+{
+    if (!response.committed) {
+        response.committed = true;
+    }
+
+    coopMatStoreHW(
+        response.result.value,
+        D.data,
+        MIXED_SHAPE_D,
+        MIXED_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+}
+
+void main()
+{
+    uint selectedLane = selectMixedLane();
+    MixedLeftTile left = loadMixedLeftTile();
+    MixedRightTile right = loadMixedRightTile();
+    MixedAccumulatorTile accumulator = loadMixedAccumulatorTile();
+
+    MixedDispatchRequest request =
+        buildMixedRequest(left, right, accumulator, selectedLane);
+    MixedDispatchRequest normalized = normalizeMixedRequest(request);
+    MixedResponse response = executeMixedRequest(normalized);
+    MixedResponse finalResponse = finalizeMixedResponse(response);
+    storeMixedResponse(finalResponse);
+}

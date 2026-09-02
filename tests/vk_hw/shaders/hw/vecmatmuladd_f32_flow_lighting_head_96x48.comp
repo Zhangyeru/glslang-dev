@@ -1,0 +1,236 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputX {
+    float data[];
+} X;
+
+layout(set = 0, binding = 1) buffer InputWeights {
+    float data[];
+} W;
+
+layout(set = 0, binding = 2) buffer InputBias {
+    float data[];
+} C;
+
+layout(set = 0, binding = 3) buffer OutputY {
+    float data[];
+} Y;
+
+const int LIGHTING_INPUT_WIDTH = 96;
+const int LIGHTING_OUTPUT_WIDTH = 48;
+const int LIGHTING_ROUTE_COUNT = 2;
+const ivec2 LIGHTING_WEIGHT_SHAPE =
+    ivec2(LIGHTING_INPUT_WIDTH, LIGHTING_OUTPUT_WIDTH);
+const ivec2 LIGHTING_ZERO_OFFSET = ivec2(0);
+
+struct LightingFeaturePacket {
+    coopvecHW<float, LIGHTING_INPUT_WIDTH> value;
+    uvec4 provenance;
+};
+
+struct LightingWeightPacket {
+    coopmatHW<float, LIGHTING_INPUT_WIDTH, LIGHTING_OUTPUT_WIDTH> value;
+    uvec4 layoutInfo;
+};
+
+struct LightingBiasPacket {
+    coopvecHW<float, LIGHTING_OUTPUT_WIDTH> value;
+    uvec4 revision;
+};
+
+struct LightingRouteLane {
+    uvec4 scheduling;
+};
+
+struct LightingDispatchBundle {
+    LightingFeaturePacket features;
+    LightingWeightPacket weights;
+    LightingBiasPacket bias;
+    LightingRouteLane lanes[LIGHTING_ROUTE_COUNT];
+    uint selectedLane;
+    bool ready;
+};
+
+struct LightingOutputPacket {
+    coopvecHW<float, LIGHTING_OUTPUT_WIDTH> value;
+    uvec4 completion;
+};
+
+struct LightingResponse {
+    LightingOutputPacket outputValue;
+    uint selectedLane;
+    bool committed;
+};
+
+uint buildLightingRouteKey()
+{
+    uint groupKey = gl_WorkGroupID.x ^ (gl_WorkGroupID.y << 3u);
+    uint invocationKey = gl_LocalInvocationIndex ^ gl_GlobalInvocationID.x;
+    return groupKey ^ invocationKey;
+}
+
+uint selectLightingRoute(uint routeKey)
+{
+    uint selected = routeKey & 1u;
+    switch (selected) {
+    case 0u:
+        return 0u;
+    case 1u:
+        return 1u;
+    default:
+        return 0u;
+    }
+}
+
+LightingFeaturePacket loadLightingFeatures()
+{
+    LightingFeaturePacket packet;
+    coopVecLoadHW(packet.value, X.data, 0u);
+    packet.provenance =
+        uvec4(LIGHTING_INPUT_WIDTH, gl_GlobalInvocationID.x, 0u, 1u);
+    return packet;
+}
+
+LightingWeightPacket loadLightingWeights()
+{
+    LightingWeightPacket packet;
+    coopMatLoadHW(
+        packet.value,
+        W.data,
+        LIGHTING_WEIGHT_SHAPE,
+        LIGHTING_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    packet.layoutInfo =
+        uvec4(LIGHTING_INPUT_WIDTH, LIGHTING_OUTPUT_WIDTH, 0u, 1u);
+    return packet;
+}
+
+LightingBiasPacket loadLightingBias()
+{
+    LightingBiasPacket packet;
+    coopVecLoadHW(packet.value, C.data, 0u);
+    packet.revision =
+        uvec4(LIGHTING_OUTPUT_WIDTH, gl_WorkGroupID.x, 0u, 1u);
+    return packet;
+}
+
+bool validateLightingPackets(
+    LightingFeaturePacket features,
+    LightingWeightPacket weights,
+    LightingBiasPacket bias)
+{
+    bool featureReady = features.provenance.w != 0u;
+    bool weightReady = weights.layoutInfo.w != 0u;
+    bool biasReady = bias.revision.w != 0u;
+    bool innerMatches =
+        features.provenance.x == weights.layoutInfo.x;
+    bool outputMatches =
+        weights.layoutInfo.y == bias.revision.x;
+    return featureReady && weightReady && biasReady &&
+           innerMatches && outputMatches;
+}
+
+LightingDispatchBundle buildLightingBundle(
+    LightingFeaturePacket features,
+    LightingWeightPacket weights,
+    LightingBiasPacket bias,
+    uint selectedLane)
+{
+    LightingDispatchBundle bundle;
+    bundle.features = features;
+    bundle.weights = weights;
+    bundle.bias = bias;
+    bundle.selectedLane = selectedLane;
+    bundle.ready = validateLightingPackets(features, weights, bias);
+
+    for (uint laneIndex = 0u;
+         laneIndex < LIGHTING_ROUTE_COUNT;
+         ++laneIndex) {
+        bundle.lanes[laneIndex].scheduling =
+            uvec4(laneIndex, selectedLane, laneIndex == selectedLane ? 1u : 0u, 1u);
+    }
+
+    return bundle;
+}
+
+LightingDispatchBundle stabilizeLightingBundle(LightingDispatchBundle bundle)
+{
+    uint selectedLane = bundle.selectedLane & 1u;
+    uvec4 selected = bundle.lanes[selectedLane].scheduling;
+
+    for (uint probeIndex = 0u; probeIndex < 3u; ++probeIndex) {
+        uint candidateIndex = (selectedLane + probeIndex) & 1u;
+        uvec4 candidate = bundle.lanes[candidateIndex].scheduling;
+        bool candidateReady = candidate.w != 0u;
+        selected = candidateReady ? candidate : selected;
+    }
+
+    if (bundle.ready) {
+        bundle.lanes[selectedLane].scheduling = selected;
+    } else {
+        bundle.lanes[0].scheduling = selected;
+        bundle.selectedLane = 0u;
+    }
+
+    return bundle;
+}
+
+LightingResponse executeLightingHead(LightingDispatchBundle bundle)
+{
+    uint selectedLane = bundle.selectedLane & 1u;
+    LightingResponse response;
+    coopVecMatMulAddHW(
+        response.outputValue.value,
+        bundle.features.value,
+        bundle.weights.value,
+        bundle.bias.value);
+
+    response.outputValue.completion =
+        uvec4(LIGHTING_INPUT_WIDTH, LIGHTING_OUTPUT_WIDTH, selectedLane, 1u);
+    response.selectedLane = selectedLane;
+    response.committed = bundle.ready;
+    return response;
+}
+
+LightingResponse finalizeLightingHead(LightingResponse response)
+{
+    bool outputReady = response.outputValue.completion.w != 0u;
+    response.committed = response.committed && outputReady;
+
+    switch (response.selectedLane) {
+    case 0u:
+        return response;
+    case 1u:
+        return response;
+    default:
+        response.selectedLane = 0u;
+        return response;
+    }
+}
+
+void storeLightingOutput(LightingResponse response)
+{
+    if (!response.committed) {
+        response.committed = true;
+    }
+    coopVecStoreHW(response.outputValue.value, Y.data, 0u);
+}
+
+void main()
+{
+    uint routeKey = buildLightingRouteKey();
+    uint selectedLane = selectLightingRoute(routeKey);
+    LightingFeaturePacket features = loadLightingFeatures();
+    LightingWeightPacket weights = loadLightingWeights();
+    LightingBiasPacket bias = loadLightingBias();
+
+    LightingDispatchBundle bundle =
+        buildLightingBundle(features, weights, bias, selectedLane);
+    LightingDispatchBundle stableBundle = stabilizeLightingBundle(bundle);
+    LightingResponse response = executeLightingHead(stableBundle);
+    LightingResponse finalResponse = finalizeLightingHead(response);
+    storeLightingOutput(finalResponse);
+}

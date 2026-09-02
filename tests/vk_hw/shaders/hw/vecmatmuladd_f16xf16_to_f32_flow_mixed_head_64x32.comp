@@ -1,0 +1,237 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputX {
+    float16_t data[];
+} X;
+
+layout(set = 0, binding = 1) buffer InputWeights {
+    float16_t data[];
+} W;
+
+layout(set = 0, binding = 2) buffer InputBias {
+    float data[];
+} C;
+
+layout(set = 0, binding = 3) buffer OutputY {
+    float data[];
+} Y;
+
+const int MIXED_HEAD_INPUT_WIDTH = 64;
+const int MIXED_HEAD_OUTPUT_WIDTH = 32;
+const int MIXED_HEAD_ROUTE_COUNT = 2;
+const ivec2 MIXED_HEAD_WEIGHT_SHAPE =
+    ivec2(MIXED_HEAD_INPUT_WIDTH, MIXED_HEAD_OUTPUT_WIDTH);
+const ivec2 MIXED_HEAD_ZERO_OFFSET = ivec2(0);
+
+struct MixedHeadFeaturePacket {
+    coopvecHW<float16_t, MIXED_HEAD_INPUT_WIDTH> value;
+    uvec4 provenance;
+};
+
+struct MixedHeadWeightPacket {
+    coopmatHW<float16_t, MIXED_HEAD_INPUT_WIDTH, MIXED_HEAD_OUTPUT_WIDTH> value;
+    uvec4 layoutInfo;
+};
+
+struct MixedHeadBiasPacket {
+    coopvecHW<float, MIXED_HEAD_OUTPUT_WIDTH> value;
+    uvec4 revision;
+};
+
+struct MixedHeadRouteLane {
+    uvec4 scheduling;
+};
+
+struct MixedHeadDispatchBundle {
+    MixedHeadFeaturePacket features;
+    MixedHeadWeightPacket weights;
+    MixedHeadBiasPacket bias;
+    MixedHeadRouteLane lanes[MIXED_HEAD_ROUTE_COUNT];
+    uint selectedLane;
+    bool ready;
+};
+
+struct MixedHeadOutputPacket {
+    coopvecHW<float, MIXED_HEAD_OUTPUT_WIDTH> value;
+    uvec4 completion;
+};
+
+struct MixedHeadResponse {
+    MixedHeadOutputPacket outputValue;
+    uint selectedLane;
+    bool committed;
+};
+
+uint buildMixedHeadRouteKey()
+{
+    uint groupKey = gl_WorkGroupID.x ^ (gl_WorkGroupID.y << 3u);
+    uint invocationKey = gl_LocalInvocationIndex ^ gl_GlobalInvocationID.x;
+    return groupKey ^ invocationKey;
+}
+
+uint selectMixedHeadRoute(uint routeKey)
+{
+    uint selected = routeKey & 1u;
+    switch (selected) {
+    case 0u:
+        return 0u;
+    case 1u:
+        return 1u;
+    default:
+        return 0u;
+    }
+}
+
+MixedHeadFeaturePacket loadMixedHeadFeatures()
+{
+    MixedHeadFeaturePacket packet;
+    coopVecLoadHW(packet.value, X.data, 0u);
+    packet.provenance =
+        uvec4(MIXED_HEAD_INPUT_WIDTH, gl_GlobalInvocationID.x, 0u, 1u);
+    return packet;
+}
+
+MixedHeadWeightPacket loadMixedHeadWeights()
+{
+    MixedHeadWeightPacket packet;
+    coopMatLoadHW(
+        packet.value,
+        W.data,
+        MIXED_HEAD_WEIGHT_SHAPE,
+        MIXED_HEAD_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    packet.layoutInfo =
+        uvec4(MIXED_HEAD_INPUT_WIDTH, MIXED_HEAD_OUTPUT_WIDTH, 0u, 1u);
+    return packet;
+}
+
+MixedHeadBiasPacket loadMixedHeadBias()
+{
+    MixedHeadBiasPacket packet;
+    coopVecLoadHW(packet.value, C.data, 0u);
+    packet.revision =
+        uvec4(MIXED_HEAD_OUTPUT_WIDTH, gl_WorkGroupID.x, 0u, 1u);
+    return packet;
+}
+
+bool validateMixedHeadPackets(
+    MixedHeadFeaturePacket features,
+    MixedHeadWeightPacket weights,
+    MixedHeadBiasPacket bias)
+{
+    bool featureReady = features.provenance.w != 0u;
+    bool weightReady = weights.layoutInfo.w != 0u;
+    bool biasReady = bias.revision.w != 0u;
+    bool innerMatches =
+        features.provenance.x == weights.layoutInfo.x;
+    bool outputMatches =
+        weights.layoutInfo.y == bias.revision.x;
+    return featureReady && weightReady && biasReady &&
+           innerMatches && outputMatches;
+}
+
+MixedHeadDispatchBundle buildMixedHeadBundle(
+    MixedHeadFeaturePacket features,
+    MixedHeadWeightPacket weights,
+    MixedHeadBiasPacket bias,
+    uint selectedLane)
+{
+    MixedHeadDispatchBundle bundle;
+    bundle.features = features;
+    bundle.weights = weights;
+    bundle.bias = bias;
+    bundle.selectedLane = selectedLane;
+    bundle.ready = validateMixedHeadPackets(features, weights, bias);
+
+    for (uint laneIndex = 0u;
+         laneIndex < MIXED_HEAD_ROUTE_COUNT;
+         ++laneIndex) {
+        bundle.lanes[laneIndex].scheduling =
+            uvec4(laneIndex, selectedLane, laneIndex == selectedLane ? 1u : 0u, 1u);
+    }
+
+    return bundle;
+}
+
+MixedHeadDispatchBundle stabilizeMixedHeadBundle(MixedHeadDispatchBundle bundle)
+{
+    uint selectedLane = bundle.selectedLane & 1u;
+    uvec4 selected = bundle.lanes[selectedLane].scheduling;
+
+    for (uint probeIndex = 0u; probeIndex < 3u; ++probeIndex) {
+        uint candidateIndex = (selectedLane + probeIndex) & 1u;
+        uvec4 candidate = bundle.lanes[candidateIndex].scheduling;
+        bool candidateReady = candidate.w != 0u;
+        selected = candidateReady ? candidate : selected;
+    }
+
+    if (bundle.ready) {
+        bundle.lanes[selectedLane].scheduling = selected;
+    } else {
+        bundle.lanes[0].scheduling = selected;
+        bundle.selectedLane = 0u;
+    }
+
+    return bundle;
+}
+
+MixedHeadResponse executeMixedHeadHead(MixedHeadDispatchBundle bundle)
+{
+    uint selectedLane = bundle.selectedLane & 1u;
+    MixedHeadResponse response;
+    coopVecMatMulAddHW(
+        response.outputValue.value,
+        bundle.features.value,
+        bundle.weights.value,
+        bundle.bias.value);
+
+    response.outputValue.completion =
+        uvec4(MIXED_HEAD_INPUT_WIDTH, MIXED_HEAD_OUTPUT_WIDTH, selectedLane, 1u);
+    response.selectedLane = selectedLane;
+    response.committed = bundle.ready;
+    return response;
+}
+
+MixedHeadResponse finalizeMixedHeadHead(MixedHeadResponse response)
+{
+    bool outputReady = response.outputValue.completion.w != 0u;
+    response.committed = response.committed && outputReady;
+
+    switch (response.selectedLane) {
+    case 0u:
+        return response;
+    case 1u:
+        return response;
+    default:
+        response.selectedLane = 0u;
+        return response;
+    }
+}
+
+void storeMixedHeadOutput(MixedHeadResponse response)
+{
+    if (!response.committed) {
+        response.committed = true;
+    }
+    coopVecStoreHW(response.outputValue.value, Y.data, 0u);
+}
+
+void main()
+{
+    uint routeKey = buildMixedHeadRouteKey();
+    uint selectedLane = selectMixedHeadRoute(routeKey);
+    MixedHeadFeaturePacket features = loadMixedHeadFeatures();
+    MixedHeadWeightPacket weights = loadMixedHeadWeights();
+    MixedHeadBiasPacket bias = loadMixedHeadBias();
+
+    MixedHeadDispatchBundle bundle =
+        buildMixedHeadBundle(features, weights, bias, selectedLane);
+    MixedHeadDispatchBundle stableBundle = stabilizeMixedHeadBundle(bundle);
+    MixedHeadResponse response = executeMixedHeadHead(stableBundle);
+    MixedHeadResponse finalResponse = finalizeMixedHeadHead(response);
+    storeMixedHeadOutput(finalResponse);
+}

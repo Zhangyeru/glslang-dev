@@ -1,0 +1,294 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(set = 0, binding = 0) buffer LightingNetworkInputBuffer {
+    float16_t values[48];
+} InX;
+layout(set = 0, binding = 1) buffer LightingNetworkWeightBuffer {
+    float16_t w0[8 * 48];
+    float16_t w1[48 * 16];
+    float16_t w2[16 * 48];
+    float16_t w3[48 * 4];
+} Weights;
+layout(set = 0, binding = 2) buffer LightingNetworkBiasBuffer {
+    float16_t b0[48];
+    float16_t b1[16];
+    float16_t b2[48];
+    float16_t b3[4];
+} Biases;
+layout(set = 0, binding = 3) buffer LightingNetworkOutputBuffer {
+    float16_t values[4];
+} OutY;
+const int LIGHTING_NETWORK_LAYER_COUNT = 4;
+const int LIGHTING_NETWORK_ROUTE_COUNT = 2;
+const int LIGHTING_NETWORK_ROUTED_STAGE = 2;
+struct LightingNetworkNetworkContext {
+    uint selectedRoute;
+    bool enabled;
+    uvec4 dimensions;
+    vec4 controls;
+};
+struct LightingNetworkStage0 {
+    coopvecHW<float16_t, 8> value;
+    uvec4 provenance;
+};
+struct LightingNetworkStage1 {
+    coopvecHW<float16_t, 48> value;
+    uvec4 provenance;
+};
+struct LightingNetworkStage2 {
+    coopvecHW<float16_t, 16> value;
+    uvec4 provenance;
+};
+struct LightingNetworkStage3 {
+    coopvecHW<float16_t, 48> value;
+    uvec4 provenance;
+};
+struct LightingNetworkStage4 {
+    coopvecHW<float16_t, 4> value;
+    uvec4 provenance;
+};
+struct LightingNetworkHistoryFrame {
+    LightingNetworkStage2 activation;
+    uvec4 state;
+};
+struct LightingNetworkActivationHistory {
+    LightingNetworkHistoryFrame frames[LIGHTING_NETWORK_ROUTE_COUNT];
+    uint selectedFrame;
+};
+uint buildLightingNetworkRouteKey()
+{
+    uint dispatchKey = gl_GlobalInvocationID.x ^ gl_LocalInvocationIndex;
+    uint groupKey = gl_WorkGroupID.x | (gl_WorkGroupID.y << 4u);
+    return dispatchKey ^ groupKey;
+}
+uint selectLightingNetworkRoute(uint routeKey)
+{
+    switch (routeKey & 1u) {
+    case 0u:
+        return 0u;
+    case 1u:
+        return 1u;
+    default:
+        return 0u;
+    }
+}
+LightingNetworkNetworkContext buildLightingNetworkContext()
+{
+    LightingNetworkNetworkContext context;
+    uint routeKey = buildLightingNetworkRouteKey();
+    context.selectedRoute = selectLightingNetworkRoute(routeKey);
+    context.enabled = true;
+    context.dimensions =
+        uvec4(8u, 48u, 4u, 4u);
+    context.controls =
+        vec4(float(context.selectedRoute), float(2), 1.0, 1.0);
+    return context;
+}
+bool validateLightingNetworkContext(LightingNetworkNetworkContext context)
+{
+    bool dimensionsValid =
+        context.dimensions.x == 8u &&
+        context.dimensions.z == 4u;
+    bool layerCountValid = context.dimensions.w == 4u;
+    bool controlsValid = context.controls.w > 0.0;
+    return context.enabled && dimensionsValid && layerCountValid && controlsValid;
+}
+LightingNetworkStage0 loadLightingNetworkInput(LightingNetworkNetworkContext context)
+{
+    LightingNetworkStage0 inputValue;
+    coopVecLoadHW(inputValue.value, InX.values, 0u);
+    inputValue.provenance =
+        uvec4(0u, context.selectedRoute, 8u, 1u);
+    return inputValue;
+}
+LightingNetworkStage1 evaluateLightingNetworkStage0(
+    LightingNetworkStage0 inputValue,
+    LightingNetworkNetworkContext context)
+{
+    const ivec2 weightShape = ivec2(8, 48);
+    const ivec2 zeroOffset = ivec2(0);
+    const coopvecHW<float16_t, 48> zero =
+        coopvecHW<float16_t, 48>(float16_t(0));
+    coopmatHW<float16_t, 8, 48> weights;
+    coopvecHW<float16_t, 48> bias;
+    LightingNetworkStage1 outputValue;
+    coopMatLoadHW(
+        weights,
+        Weights.w0,
+        weightShape,
+        zeroOffset,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias, Biases.b0, 0u);
+    coopVecMatMulAddHW(outputValue.value, inputValue.value, weights, bias);
+    outputValue.value = max(outputValue.value, zero);
+    outputValue.provenance =
+        uvec4(1u, context.selectedRoute, 48u, 1u);
+    return outputValue;
+}
+
+LightingNetworkStage2 evaluateLightingNetworkStage1(
+    LightingNetworkStage1 inputValue,
+    LightingNetworkNetworkContext context)
+{
+    const ivec2 weightShape = ivec2(48, 16);
+    const ivec2 zeroOffset = ivec2(0);
+    const coopvecHW<float16_t, 16> zero =
+        coopvecHW<float16_t, 16>(float16_t(0));
+
+    coopmatHW<float16_t, 48, 16> weights;
+    coopvecHW<float16_t, 16> bias;
+    LightingNetworkStage2 outputValue;
+
+    coopMatLoadHW(
+        weights,
+        Weights.w1,
+        weightShape,
+        zeroOffset,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias, Biases.b1, 0u);
+    coopVecMatMulAddHW(outputValue.value, inputValue.value, weights, bias);
+    outputValue.value = max(outputValue.value, zero);
+    outputValue.provenance =
+        uvec4(2u, context.selectedRoute, 16u, 1u);
+    return outputValue;
+}
+
+LightingNetworkStage3 evaluateLightingNetworkStage2(
+    LightingNetworkStage2 inputValue,
+    LightingNetworkNetworkContext context)
+{
+    const ivec2 weightShape = ivec2(16, 48);
+    const ivec2 zeroOffset = ivec2(0);
+    const coopvecHW<float16_t, 48> zero =
+        coopvecHW<float16_t, 48>(float16_t(0));
+
+    coopmatHW<float16_t, 16, 48> weights;
+    coopvecHW<float16_t, 48> bias;
+    LightingNetworkStage3 outputValue;
+
+    coopMatLoadHW(
+        weights,
+        Weights.w2,
+        weightShape,
+        zeroOffset,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias, Biases.b2, 0u);
+    coopVecMatMulAddHW(outputValue.value, inputValue.value, weights, bias);
+    outputValue.value = max(outputValue.value, zero);
+    outputValue.provenance =
+        uvec4(3u, context.selectedRoute, 48u, 1u);
+    return outputValue;
+}
+
+LightingNetworkStage4 evaluateLightingNetworkStage3(
+    LightingNetworkStage3 inputValue,
+    LightingNetworkNetworkContext context)
+{
+    const ivec2 weightShape = ivec2(48, 4);
+    const ivec2 zeroOffset = ivec2(0);
+    const coopvecHW<float16_t, 4> zero =
+        coopvecHW<float16_t, 4>(float16_t(0));
+
+    coopmatHW<float16_t, 48, 4> weights;
+    coopvecHW<float16_t, 4> bias;
+    LightingNetworkStage4 outputValue;
+
+    coopMatLoadHW(
+        weights,
+        Weights.w3,
+        weightShape,
+        zeroOffset,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias, Biases.b3, 0u);
+    coopVecMatMulAddHW(outputValue.value, inputValue.value, weights, bias);
+    outputValue.value = max(outputValue.value, zero);
+    outputValue.provenance =
+        uvec4(4u, context.selectedRoute, 4u, 1u);
+    return outputValue;
+}
+
+LightingNetworkActivationHistory buildLightingNetworkHistory(
+    LightingNetworkStage2 activation,
+    LightingNetworkNetworkContext context)
+{
+    LightingNetworkActivationHistory history;
+    history.selectedFrame = context.selectedRoute;
+
+    for (uint frameIndex = 0u;
+         frameIndex < LIGHTING_NETWORK_ROUTE_COUNT;
+         ++frameIndex) {
+        history.frames[frameIndex].activation = activation;
+        history.frames[frameIndex].state =
+            uvec4(frameIndex, context.selectedRoute, 2u, 1u);
+    }
+
+    return history;
+}
+
+bool validateLightingNetworkFrame(
+    LightingNetworkHistoryFrame frame,
+    LightingNetworkNetworkContext context)
+{
+    bool resident = frame.state.w != 0u;
+    bool stageMatches = frame.state.z == 2u;
+    bool routeKnown = frame.state.y == context.selectedRoute;
+    return resident && stageMatches && routeKnown;
+}
+
+LightingNetworkStage2 resolveLightingNetworkHistory(
+    LightingNetworkActivationHistory history,
+    LightingNetworkNetworkContext context)
+{
+    uint selectedFrame = history.selectedFrame & 1u;
+    LightingNetworkHistoryFrame selected;
+
+    switch (selectedFrame) {
+    case 0u:
+        selected = history.frames[0];
+        break;
+    case 1u:
+        selected = history.frames[1];
+        break;
+    default:
+        selected = history.frames[0];
+        break;
+    }
+
+    if (validateLightingNetworkFrame(selected, context)) {
+        return selected.activation;
+    }
+    return history.frames[0].activation;
+}
+
+LightingNetworkStage2 routeLightingNetworkActivation(
+    LightingNetworkStage2 activation,
+    LightingNetworkNetworkContext context)
+{
+    LightingNetworkActivationHistory history =
+        buildLightingNetworkHistory(activation, context);
+    return resolveLightingNetworkHistory(history, context);
+}
+
+void storeLightingNetworkOutput(LightingNetworkStage4 outputValue)
+{
+    coopVecStoreHW(outputValue.value, OutY.values, 0u);
+}
+
+void main()
+{
+    LightingNetworkNetworkContext context = buildLightingNetworkContext();
+    if (!validateLightingNetworkContext(context)) {
+        context.enabled = true;
+    }
+
+    LightingNetworkStage0 stage0 = loadLightingNetworkInput(context);
+    LightingNetworkStage1 stage1 = evaluateLightingNetworkStage0(stage0, context);
+    LightingNetworkStage2 stage2 = evaluateLightingNetworkStage1(stage1, context);
+    stage2 = routeLightingNetworkActivation(stage2, context);
+    LightingNetworkStage3 stage3 = evaluateLightingNetworkStage2(stage2, context);
+    LightingNetworkStage4 stage4 = evaluateLightingNetworkStage3(stage3, context);
+
+    storeLightingNetworkOutput(stage4);
+}

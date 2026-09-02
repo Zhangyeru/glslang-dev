@@ -1,0 +1,282 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA {
+    float data[];
+} A;
+
+layout(set = 0, binding = 1) buffer InputB {
+    float data[];
+} B;
+
+layout(set = 0, binding = 2) buffer InputC {
+    float data[];
+} C;
+
+layout(set = 0, binding = 3) buffer OutputD {
+    float data[];
+} D;
+
+const int SHARED_PAYLOAD_ROWS = 24;
+const int SHARED_PAYLOAD_COLUMNS = 24;
+const int SHARED_PAYLOAD_INNER = 24;
+const int SHARED_PAYLOAD_ROUTE_COUNT = 2;
+const ivec2 SHARED_PAYLOAD_SHAPE_A = ivec2(SHARED_PAYLOAD_ROWS, SHARED_PAYLOAD_INNER);
+const ivec2 SHARED_PAYLOAD_SHAPE_B = ivec2(SHARED_PAYLOAD_INNER, SHARED_PAYLOAD_COLUMNS);
+const ivec2 SHARED_PAYLOAD_SHAPE_D = ivec2(SHARED_PAYLOAD_ROWS, SHARED_PAYLOAD_COLUMNS);
+const ivec2 SHARED_PAYLOAD_ZERO_OFFSET = ivec2(0);
+
+struct SharedPayloadLeftMatrix {
+    coopmatHW<float, SHARED_PAYLOAD_ROWS, SHARED_PAYLOAD_INNER> value;
+    uvec4 state;
+};
+
+struct SharedPayloadWeightMatrix {
+    coopmatHW<float, SHARED_PAYLOAD_INNER, SHARED_PAYLOAD_COLUMNS> value;
+    uvec4 state;
+};
+
+struct SharedPayloadAccumulatorMatrix {
+    coopmatHW<float, SHARED_PAYLOAD_ROWS, SHARED_PAYLOAD_COLUMNS> value;
+    uvec4 state;
+};
+
+struct SharedPayloadMatrixLane {
+    SharedPayloadLeftMatrix left;
+    SharedPayloadWeightMatrix weights;
+    uvec4 scheduling;
+};
+
+struct SharedPayloadMatrixRequest {
+    SharedPayloadMatrixLane lanes[SHARED_PAYLOAD_ROUTE_COUNT];
+    SharedPayloadAccumulatorMatrix accumulator;
+    uint selectedLane;
+    bool ready;
+};
+
+struct SharedPayloadMatrixResult {
+    coopmatHW<float, SHARED_PAYLOAD_ROWS, SHARED_PAYLOAD_COLUMNS> value;
+    uvec4 completion;
+};
+
+struct SharedPayloadVectorInput {
+    coopvecHW<float, SHARED_PAYLOAD_INNER> value;
+    uvec4 state;
+};
+
+struct SharedPayloadVectorBias {
+    coopvecHW<float, SHARED_PAYLOAD_COLUMNS> value;
+    uvec4 state;
+};
+
+struct SharedPayloadVectorResult {
+    coopvecHW<float, SHARED_PAYLOAD_COLUMNS> value;
+    uvec4 completion;
+};
+
+uint selectSharedPayloadRoute()
+{
+    uint dispatchKey = gl_GlobalInvocationID.x ^ gl_LocalInvocationIndex;
+    return dispatchKey & 1u;
+}
+
+SharedPayloadLeftMatrix loadSharedPayloadLeft()
+{
+    SharedPayloadLeftMatrix result;
+    coopMatLoadHW(
+        result.value,
+        A.data,
+        SHARED_PAYLOAD_SHAPE_A,
+        SHARED_PAYLOAD_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    result.state = uvec4(SHARED_PAYLOAD_ROWS, SHARED_PAYLOAD_INNER, 0u, 1u);
+    return result;
+}
+
+SharedPayloadWeightMatrix loadSharedPayloadWeights()
+{
+    SharedPayloadWeightMatrix result;
+    coopMatLoadHW(
+        result.value,
+        B.data,
+        SHARED_PAYLOAD_SHAPE_B,
+        SHARED_PAYLOAD_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    result.state = uvec4(SHARED_PAYLOAD_INNER, SHARED_PAYLOAD_COLUMNS, 1u, 1u);
+    return result;
+}
+
+SharedPayloadAccumulatorMatrix loadSharedPayloadAccumulator()
+{
+    SharedPayloadAccumulatorMatrix result;
+    coopMatLoadHW(
+        result.value,
+        C.data,
+        SHARED_PAYLOAD_SHAPE_D,
+        SHARED_PAYLOAD_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    result.state = uvec4(SHARED_PAYLOAD_ROWS, SHARED_PAYLOAD_COLUMNS, 2u, 1u);
+    return result;
+}
+
+SharedPayloadMatrixRequest buildSharedPayloadMatrixRequest(
+    SharedPayloadLeftMatrix left,
+    SharedPayloadWeightMatrix weights,
+    SharedPayloadAccumulatorMatrix accumulator,
+    uint selectedLane)
+{
+    SharedPayloadMatrixRequest request;
+    request.accumulator = accumulator;
+    request.selectedLane = selectedLane;
+    request.ready =
+        left.state.w != 0u &&
+        weights.state.w != 0u &&
+        accumulator.state.w != 0u;
+
+    for (uint laneIndex = 0u;
+         laneIndex < SHARED_PAYLOAD_ROUTE_COUNT;
+         ++laneIndex) {
+        request.lanes[laneIndex].left = left;
+        request.lanes[laneIndex].weights = weights;
+        request.lanes[laneIndex].scheduling =
+            uvec4(laneIndex, selectedLane, laneIndex == selectedLane ? 1u : 0u, 1u);
+    }
+    return request;
+}
+
+SharedPayloadMatrixRequest stabilizeSharedPayloadMatrixRequest(SharedPayloadMatrixRequest request)
+{
+    uint selectedLane = request.selectedLane & 1u;
+    SharedPayloadMatrixLane resident = request.lanes[selectedLane];
+
+    for (uint probe = 0u; probe < 3u; ++probe) {
+        uint candidateIndex = (selectedLane + probe) & 1u;
+        SharedPayloadMatrixLane candidate = request.lanes[candidateIndex];
+        bool candidateReady =
+            candidate.left.state.w != 0u &&
+            candidate.weights.state.w != 0u;
+        resident = candidateReady ? candidate : resident;
+    }
+
+    switch (selectedLane) {
+    case 0u:
+        request.lanes[0] = resident;
+        break;
+    case 1u:
+        request.lanes[1] = resident;
+        break;
+    default:
+        request.lanes[0] = resident;
+        request.selectedLane = 0u;
+        break;
+    }
+    return request;
+}
+
+SharedPayloadMatrixResult executeSharedPayloadFirstMatrixPass(SharedPayloadMatrixRequest request)
+{
+    uint laneIndex = request.selectedLane & 1u;
+    SharedPayloadMatrixLane lane = request.lanes[laneIndex];
+    SharedPayloadMatrixResult result;
+    coopMatMulAddHW(
+        result.value,
+        lane.left.value,
+        lane.weights.value,
+        request.accumulator.value);
+    result.completion =
+        uvec4(0u, laneIndex, request.ready ? 1u : 0u, 1u);
+    return result;
+}
+
+SharedPayloadMatrixResult executeSharedPayloadSecondMatrixPass(
+    SharedPayloadMatrixRequest request,
+    SharedPayloadMatrixResult firstPass)
+{
+    uint laneIndex = request.selectedLane & 1u;
+    SharedPayloadMatrixLane lane = request.lanes[laneIndex];
+    SharedPayloadMatrixResult result;
+    coopMatMulAddHW(
+        result.value,
+        lane.left.value,
+        lane.weights.value,
+        firstPass.value);
+    result.completion =
+        uvec4(1u, laneIndex, firstPass.completion.w, 1u);
+    return result;
+}
+
+void storeSharedPayloadMatrixResult(SharedPayloadMatrixResult result)
+{
+    coopMatStoreHW(
+        result.value,
+        D.data,
+        SHARED_PAYLOAD_SHAPE_D,
+        SHARED_PAYLOAD_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+}
+
+SharedPayloadVectorInput loadSharedPayloadVectorInput()
+{
+    SharedPayloadVectorInput inputValue;
+    coopVecLoadHW(inputValue.value, A.data, 0u);
+    inputValue.state = uvec4(SHARED_PAYLOAD_INNER, 0u, 0u, 1u);
+    return inputValue;
+}
+
+SharedPayloadVectorBias loadSharedPayloadVectorBias(uint passIndex)
+{
+    SharedPayloadVectorBias bias;
+    coopVecLoadHW(bias.value, D.data, 0u);
+    bias.state = uvec4(SHARED_PAYLOAD_COLUMNS, passIndex, 0u, 1u);
+    return bias;
+}
+
+SharedPayloadVectorResult executeSharedPayloadVectorPass(
+    SharedPayloadVectorInput inputValue,
+    SharedPayloadWeightMatrix weights,
+    SharedPayloadVectorBias bias,
+    uint passIndex)
+{
+    SharedPayloadVectorResult result;
+    coopVecMatMulAddHW(
+        result.value,
+        inputValue.value,
+        weights.value,
+        bias.value);
+    result.completion =
+        uvec4(passIndex, SHARED_PAYLOAD_INNER, SHARED_PAYLOAD_COLUMNS, 1u);
+    return result;
+}
+
+void storeSharedPayloadVectorResult(SharedPayloadVectorResult result)
+{
+    coopVecStoreHW(result.value, D.data, 0u);
+}
+
+void main()
+{
+    uint selectedLane = selectSharedPayloadRoute();
+    SharedPayloadLeftMatrix left = loadSharedPayloadLeft();
+    SharedPayloadWeightMatrix weights = loadSharedPayloadWeights();
+    SharedPayloadAccumulatorMatrix accumulator = loadSharedPayloadAccumulator();
+
+    SharedPayloadMatrixRequest request =
+        buildSharedPayloadMatrixRequest(left, weights, accumulator, selectedLane);
+    SharedPayloadMatrixRequest stableRequest =
+        stabilizeSharedPayloadMatrixRequest(request);
+    SharedPayloadMatrixResult firstPass =
+        executeSharedPayloadFirstMatrixPass(stableRequest);
+    SharedPayloadMatrixResult secondPass =
+        executeSharedPayloadSecondMatrixPass(stableRequest, firstPass);
+    storeSharedPayloadMatrixResult(secondPass);
+
+    SharedPayloadVectorInput vectorInput = loadSharedPayloadVectorInput();
+    for (uint passIndex = 0u; passIndex < 2u; ++passIndex) {
+        SharedPayloadVectorBias bias = loadSharedPayloadVectorBias(passIndex);
+        SharedPayloadVectorResult vectorResult =
+            executeSharedPayloadVectorPass(vectorInput, weights, bias, passIndex);
+        storeSharedPayloadVectorResult(vectorResult);
+    }
+}

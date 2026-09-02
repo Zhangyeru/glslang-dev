@@ -1,0 +1,176 @@
+#version 460 core
+#extension GL_HW_neural_shader : require
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA { float16_t data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float16_t data[]; } B;
+layout(set = 0, binding = 2) buffer InputC { float16_t data[]; } C;
+layout(set = 0, binding = 3) buffer OutputD { float16_t data[]; } D;
+
+const int MATERIAL_ROWS = 17;
+const int MATERIAL_COLUMNS = 25;
+const int MATERIAL_VARIANTS = 2;
+const int MATERIAL_CHANNELS = 2;
+
+struct MaterialMatrix {
+    coopmatHW<float16_t, MATERIAL_ROWS, MATERIAL_COLUMNS> value;
+};
+
+struct MaterialLayer {
+    MaterialMatrix channels[MATERIAL_CHANNELS];
+    uvec4 residency;
+};
+
+struct MaterialPayload {
+    MaterialLayer layers[MATERIAL_VARIANTS];
+    uvec4 routing;
+};
+
+struct MaterialPacket {
+    MaterialPayload payloads[MATERIAL_VARIANTS];
+    vec4 factors;
+};
+
+struct MaterialRoute {
+    uint payloadIndex;
+    uint layerIndex;
+    uint channelIndex;
+    uint generation;
+};
+
+uint readMaterialKey()
+{
+    uint featureBits = floatBitsToUint(float(B.data[0]));
+    uint surfaceBits = floatBitsToUint(float(C.data[0]));
+    uint dispatchBits = gl_WorkGroupID.x | (gl_LocalInvocationIndex << 4u);
+    return featureBits ^ (surfaceBits >> 1u) ^ dispatchBits;
+}
+
+MaterialRoute decodeMaterialRoute(uint materialKey)
+{
+    MaterialRoute route;
+    route.payloadIndex = materialKey & 1u;
+    route.layerIndex = (materialKey >> 1u) & 1u;
+    route.channelIndex = (materialKey >> 2u) & 1u;
+    route.generation = materialKey >> 3u;
+    return route;
+}
+
+MaterialMatrix loadMaterialSurface()
+{
+    const ivec2 materialShape = ivec2(MATERIAL_ROWS, MATERIAL_COLUMNS);
+    const ivec2 zeroOffset = ivec2(0);
+
+    coopmatHW<float16_t, MATERIAL_ROWS, MATERIAL_COLUMNS> surface;
+    coopMatLoadHW(surface,
+                  A.data,
+                  materialShape,
+                  zeroOffset,
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+
+    MaterialMatrix result;
+    result.value = surface;
+    return result;
+}
+
+MaterialPacket createMaterialPacket(MaterialMatrix surface, MaterialRoute route)
+{
+    MaterialPacket packet;
+    packet.factors = vec4(float(B.data[1]), float(C.data[1]), float(route.generation), 1.0);
+
+    for (int payloadIndex = 0; payloadIndex < MATERIAL_VARIANTS; ++payloadIndex) {
+        packet.payloads[payloadIndex].routing =
+            uvec4(route.payloadIndex, route.layerIndex, route.channelIndex, route.generation);
+
+        for (int layerIndex = 0; layerIndex < MATERIAL_VARIANTS; ++layerIndex) {
+            packet.payloads[payloadIndex].layers[layerIndex].residency =
+                uvec4(uint(payloadIndex), uint(layerIndex), route.generation, 1u);
+
+            for (int channelIndex = 0; channelIndex < MATERIAL_CHANNELS; ++channelIndex) {
+                packet.payloads[payloadIndex].layers[layerIndex].channels[channelIndex] = surface;
+            }
+        }
+    }
+
+    return packet;
+}
+
+MaterialPacket applyMaterialOverrides(MaterialPacket packet, MaterialRoute route)
+{
+    MaterialMatrix activeMaterial =
+        packet.payloads[route.payloadIndex].layers[route.layerIndex].channels[route.channelIndex];
+
+    switch (route.generation & 3u) {
+    case 0u:
+        packet.payloads[0].layers[0].channels[0] = activeMaterial;
+        break;
+    case 1u:
+        packet.payloads[0].layers[1].channels[1] = activeMaterial;
+        break;
+    case 2u:
+        packet.payloads[1].layers[0].channels[1] = activeMaterial;
+        break;
+    default:
+        packet.payloads[1].layers[1].channels[0] = activeMaterial;
+        break;
+    }
+
+    packet.payloads[route.payloadIndex].layers[route.layerIndex].channels[route.channelIndex] = activeMaterial;
+    return packet;
+}
+
+MaterialMatrix selectMaterialChannel(MaterialPacket packet, MaterialRoute route)
+{
+    MaterialMatrix selected =
+        packet.payloads[route.payloadIndex].layers[route.layerIndex].channels[route.channelIndex];
+
+    for (uint probe = 0u; probe < 3u; ++probe) {
+        uint candidateChannel = (route.channelIndex + probe) & 1u;
+        MaterialMatrix candidate =
+            packet.payloads[route.payloadIndex].layers[route.layerIndex].channels[candidateChannel];
+        bool resident =
+            packet.payloads[route.payloadIndex].layers[route.layerIndex].residency.w != 0u;
+        selected = resident ? candidate : selected;
+    }
+
+    return selected;
+}
+
+MaterialMatrix resolveMaterialPayload(MaterialPacket packet, MaterialRoute route)
+{
+    MaterialMatrix selected = selectMaterialChannel(packet, route);
+    bool validFactors = packet.factors.w > 0.0;
+    bool validRouting = packet.payloads[route.payloadIndex].routing.z == route.channelIndex;
+
+    if (validFactors && validRouting) {
+        return selected;
+    }
+
+    return packet.payloads[route.payloadIndex].layers[route.layerIndex].channels[route.channelIndex];
+}
+
+void storeMaterialPayload(MaterialMatrix material)
+{
+    const ivec2 materialShape = ivec2(MATERIAL_ROWS, MATERIAL_COLUMNS);
+    const ivec2 zeroOffset = ivec2(0);
+
+    coopMatStoreHW(material.value,
+                   D.data,
+                   materialShape,
+                   zeroOffset,
+                   gl_CooperativeMatrixLayoutRowMajorHW);
+}
+
+void main()
+{
+    uint materialKey = readMaterialKey();
+    MaterialRoute route = decodeMaterialRoute(materialKey);
+    MaterialMatrix surface = loadMaterialSurface();
+    MaterialPacket packet = createMaterialPacket(surface, route);
+    MaterialPacket resolvedPacket = applyMaterialOverrides(packet, route);
+    MaterialMatrix resolved = resolveMaterialPayload(resolvedPacket, route);
+    storeMaterialPayload(resolved);
+}

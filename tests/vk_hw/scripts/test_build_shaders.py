@@ -96,7 +96,7 @@ class ParseReduceCaseTest(unittest.TestCase):
 
     def test_parses_descriptive_flow_identity_as_load_store(self):
         path = pathlib.Path(
-            "load_store_f16_flow_nested_struct_array_16x24.lowered.spv"
+            "load_store_f16_flow_material_payload_17x25.lowered.spv"
         )
         self.assertEqual(
             parse_case(path),
@@ -107,12 +107,44 @@ class ParseReduceCaseTest(unittest.TestCase):
                 "b_dtype": "f16",
                 "c_dtype": "f16",
                 "accum_dtype": "f16",
-                "m": "16",
-                "n": "24",
+                "m": "17",
+                "n": "25",
                 "k": "0",
             },
         )
-        self.assertEqual(shape_string(parse_case(path)), "16x24")
+        self.assertEqual(shape_string(parse_case(path)), "17x25")
+
+    def test_parses_production_flow_workload_families(self):
+        cases = [
+            (
+                "matmul_f32_flow_multi_call_graph_48x32x64.lowered.spv",
+                "matmul",
+                ("48", "32", "64"),
+            ),
+            (
+                "vecmatmuladd_f16_flow_neural_material_128x64.lowered.spv",
+                "vecmatmuladd",
+                ("1", "64", "128"),
+            ),
+            (
+                "mlp_f16_flow_material_classifier_16x64_64x32_32x8.lowered.spv",
+                "mlp",
+                ("1", "8", "0"),
+            ),
+            (
+                "multiops_f32_flow_call_graph_32x16x24.lowered.spv",
+                "multiops",
+                ("32", "16", "24"),
+            ),
+        ]
+        for name, expected_case, expected_shape in cases:
+            with self.subTest(name=name):
+                result = parse_case(pathlib.Path(name))
+                self.assertEqual(result["case"], expected_case)
+                self.assertEqual(
+                    (result["m"], result["n"], result["k"]),
+                    expected_shape,
+                )
 
     def test_perf_exclusion_pattern_keeps_reduce_and_drops_flow(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -121,7 +153,7 @@ class ParseReduceCaseTest(unittest.TestCase):
             flow_shader = root / "load_store_f32_flow_5x7.lowered.spv"
             descriptive_flow_shader = (
                 root
-                / "load_store_f32_flow_dynamic_array_index_65x67.lowered.spv"
+                / "matmul_f32_flow_visibility_tiles_24x40x56.lowered.spv"
             )
             reduce_shader.touch()
             flow_shader.touch()
@@ -169,6 +201,14 @@ class ExtensionFreeLoweringModeTest(unittest.TestCase):
         self.assertEqual(
             lowering_pass_for_stem("load_store_f32_scalar_5x7"),
             "--hw-lower-to-standard-extension-free=scalar",
+        )
+
+    def test_shared_payload_flow_uses_default_packed_recovery(self):
+        self.assertEqual(
+            lowering_pass_for_stem(
+                "multiops_f32_flow_shared_payload_24x24x24"
+            ),
+            "--hw-lower-to-standard-extension-free",
         )
 
 
@@ -300,6 +340,26 @@ OpExtension "SPV_NV_cooperative_matrix"
 
 
 class EndToEndLoweringContractTest(unittest.TestCase):
+    def test_production_flow_compile_requests_vulkan_target(self):
+        with tempfile.TemporaryDirectory() as temp:
+            out_dir = pathlib.Path(temp)
+            shader = out_dir / "matmul_f32_flow_visibility_tiles_24x40x56.comp"
+            shader.touch()
+            (out_dir / "matmul_f32_flow_visibility_tiles_24x40x56.lowered.spvasm").write_text(
+                "OpCapability Shader\n", encoding="utf-8"
+            )
+
+            with mock.patch("build_shaders.run") as run:
+                compile_hw_shader(
+                    "glslang", "spirv-opt", "spirv-val", "spirv-dis",
+                    shader, out_dir, "vulkan1.3")
+
+        compile_command = run.call_args_list[0].args[0]
+        self.assertEqual(
+            compile_command[:4],
+            ["glslang", "--target-env", "vulkan1.3", "-V"],
+        )
+
     def test_success_output_is_validated_before_residue_is_checked(self):
         with tempfile.TemporaryDirectory() as temp:
             out_dir = pathlib.Path(temp)

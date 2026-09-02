@@ -1,0 +1,294 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(set = 0, binding = 0) buffer PostprocessInputBuffer {
+    float16_t values[64];
+} InX;
+layout(set = 0, binding = 1) buffer PostprocessWeightBuffer {
+    float16_t w0[10 * 64];
+    float16_t w1[64 * 16];
+    float16_t w2[16 * 8];
+    float16_t w3[8 * 4];
+} Weights;
+layout(set = 0, binding = 2) buffer PostprocessBiasBuffer {
+    float16_t b0[64];
+    float16_t b1[16];
+    float16_t b2[8];
+    float16_t b3[4];
+} Biases;
+layout(set = 0, binding = 3) buffer PostprocessOutputBuffer {
+    float16_t values[4];
+} OutY;
+const int POSTPROCESS_LAYER_COUNT = 4;
+const int POSTPROCESS_ROUTE_COUNT = 2;
+const int POSTPROCESS_ROUTED_STAGE = 2;
+struct PostprocessNetworkContext {
+    uint selectedRoute;
+    bool enabled;
+    uvec4 dimensions;
+    vec4 controls;
+};
+struct PostprocessStage0 {
+    coopvecHW<float16_t, 10> value;
+    uvec4 provenance;
+};
+struct PostprocessStage1 {
+    coopvecHW<float16_t, 64> value;
+    uvec4 provenance;
+};
+struct PostprocessStage2 {
+    coopvecHW<float16_t, 16> value;
+    uvec4 provenance;
+};
+struct PostprocessStage3 {
+    coopvecHW<float16_t, 8> value;
+    uvec4 provenance;
+};
+struct PostprocessStage4 {
+    coopvecHW<float16_t, 4> value;
+    uvec4 provenance;
+};
+struct PostprocessHistoryFrame {
+    PostprocessStage2 activation;
+    uvec4 state;
+};
+struct PostprocessActivationHistory {
+    PostprocessHistoryFrame frames[POSTPROCESS_ROUTE_COUNT];
+    uint selectedFrame;
+};
+uint buildPostprocessRouteKey()
+{
+    uint dispatchKey = gl_GlobalInvocationID.x ^ gl_LocalInvocationIndex;
+    uint groupKey = gl_WorkGroupID.x | (gl_WorkGroupID.y << 4u);
+    return dispatchKey ^ groupKey;
+}
+uint selectPostprocessRoute(uint routeKey)
+{
+    switch (routeKey & 1u) {
+    case 0u:
+        return 0u;
+    case 1u:
+        return 1u;
+    default:
+        return 0u;
+    }
+}
+PostprocessNetworkContext buildPostprocessContext()
+{
+    PostprocessNetworkContext context;
+    uint routeKey = buildPostprocessRouteKey();
+    context.selectedRoute = selectPostprocessRoute(routeKey);
+    context.enabled = true;
+    context.dimensions =
+        uvec4(10u, 64u, 4u, 4u);
+    context.controls =
+        vec4(float(context.selectedRoute), float(2), 1.0, 1.0);
+    return context;
+}
+bool validatePostprocessContext(PostprocessNetworkContext context)
+{
+    bool dimensionsValid =
+        context.dimensions.x == 10u &&
+        context.dimensions.z == 4u;
+    bool layerCountValid = context.dimensions.w == 4u;
+    bool controlsValid = context.controls.w > 0.0;
+    return context.enabled && dimensionsValid && layerCountValid && controlsValid;
+}
+PostprocessStage0 loadPostprocessInput(PostprocessNetworkContext context)
+{
+    PostprocessStage0 inputValue;
+    coopVecLoadHW(inputValue.value, InX.values, 0u);
+    inputValue.provenance =
+        uvec4(0u, context.selectedRoute, 10u, 1u);
+    return inputValue;
+}
+PostprocessStage1 evaluatePostprocessStage0(
+    PostprocessStage0 inputValue,
+    PostprocessNetworkContext context)
+{
+    const ivec2 weightShape = ivec2(10, 64);
+    const ivec2 zeroOffset = ivec2(0);
+    const coopvecHW<float16_t, 64> zero =
+        coopvecHW<float16_t, 64>(float16_t(0));
+    coopmatHW<float16_t, 10, 64> weights;
+    coopvecHW<float16_t, 64> bias;
+    PostprocessStage1 outputValue;
+    coopMatLoadHW(
+        weights,
+        Weights.w0,
+        weightShape,
+        zeroOffset,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias, Biases.b0, 0u);
+    coopVecMatMulAddHW(outputValue.value, inputValue.value, weights, bias);
+    outputValue.value = max(outputValue.value, zero);
+    outputValue.provenance =
+        uvec4(1u, context.selectedRoute, 64u, 1u);
+    return outputValue;
+}
+
+PostprocessStage2 evaluatePostprocessStage1(
+    PostprocessStage1 inputValue,
+    PostprocessNetworkContext context)
+{
+    const ivec2 weightShape = ivec2(64, 16);
+    const ivec2 zeroOffset = ivec2(0);
+    const coopvecHW<float16_t, 16> zero =
+        coopvecHW<float16_t, 16>(float16_t(0));
+
+    coopmatHW<float16_t, 64, 16> weights;
+    coopvecHW<float16_t, 16> bias;
+    PostprocessStage2 outputValue;
+
+    coopMatLoadHW(
+        weights,
+        Weights.w1,
+        weightShape,
+        zeroOffset,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias, Biases.b1, 0u);
+    coopVecMatMulAddHW(outputValue.value, inputValue.value, weights, bias);
+    outputValue.value = max(outputValue.value, zero);
+    outputValue.provenance =
+        uvec4(2u, context.selectedRoute, 16u, 1u);
+    return outputValue;
+}
+
+PostprocessStage3 evaluatePostprocessStage2(
+    PostprocessStage2 inputValue,
+    PostprocessNetworkContext context)
+{
+    const ivec2 weightShape = ivec2(16, 8);
+    const ivec2 zeroOffset = ivec2(0);
+    const coopvecHW<float16_t, 8> zero =
+        coopvecHW<float16_t, 8>(float16_t(0));
+
+    coopmatHW<float16_t, 16, 8> weights;
+    coopvecHW<float16_t, 8> bias;
+    PostprocessStage3 outputValue;
+
+    coopMatLoadHW(
+        weights,
+        Weights.w2,
+        weightShape,
+        zeroOffset,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias, Biases.b2, 0u);
+    coopVecMatMulAddHW(outputValue.value, inputValue.value, weights, bias);
+    outputValue.value = max(outputValue.value, zero);
+    outputValue.provenance =
+        uvec4(3u, context.selectedRoute, 8u, 1u);
+    return outputValue;
+}
+
+PostprocessStage4 evaluatePostprocessStage3(
+    PostprocessStage3 inputValue,
+    PostprocessNetworkContext context)
+{
+    const ivec2 weightShape = ivec2(8, 4);
+    const ivec2 zeroOffset = ivec2(0);
+    const coopvecHW<float16_t, 4> zero =
+        coopvecHW<float16_t, 4>(float16_t(0));
+
+    coopmatHW<float16_t, 8, 4> weights;
+    coopvecHW<float16_t, 4> bias;
+    PostprocessStage4 outputValue;
+
+    coopMatLoadHW(
+        weights,
+        Weights.w3,
+        weightShape,
+        zeroOffset,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias, Biases.b3, 0u);
+    coopVecMatMulAddHW(outputValue.value, inputValue.value, weights, bias);
+    outputValue.value = max(outputValue.value, zero);
+    outputValue.provenance =
+        uvec4(4u, context.selectedRoute, 4u, 1u);
+    return outputValue;
+}
+
+PostprocessActivationHistory buildPostprocessHistory(
+    PostprocessStage2 activation,
+    PostprocessNetworkContext context)
+{
+    PostprocessActivationHistory history;
+    history.selectedFrame = context.selectedRoute;
+
+    for (uint frameIndex = 0u;
+         frameIndex < POSTPROCESS_ROUTE_COUNT;
+         ++frameIndex) {
+        history.frames[frameIndex].activation = activation;
+        history.frames[frameIndex].state =
+            uvec4(frameIndex, context.selectedRoute, 2u, 1u);
+    }
+
+    return history;
+}
+
+bool validatePostprocessFrame(
+    PostprocessHistoryFrame frame,
+    PostprocessNetworkContext context)
+{
+    bool resident = frame.state.w != 0u;
+    bool stageMatches = frame.state.z == 2u;
+    bool routeKnown = frame.state.y == context.selectedRoute;
+    return resident && stageMatches && routeKnown;
+}
+
+PostprocessStage2 resolvePostprocessHistory(
+    PostprocessActivationHistory history,
+    PostprocessNetworkContext context)
+{
+    uint selectedFrame = history.selectedFrame & 1u;
+    PostprocessHistoryFrame selected;
+
+    switch (selectedFrame) {
+    case 0u:
+        selected = history.frames[0];
+        break;
+    case 1u:
+        selected = history.frames[1];
+        break;
+    default:
+        selected = history.frames[0];
+        break;
+    }
+
+    if (validatePostprocessFrame(selected, context)) {
+        return selected.activation;
+    }
+    return history.frames[0].activation;
+}
+
+PostprocessStage2 routePostprocessActivation(
+    PostprocessStage2 activation,
+    PostprocessNetworkContext context)
+{
+    PostprocessActivationHistory history =
+        buildPostprocessHistory(activation, context);
+    return resolvePostprocessHistory(history, context);
+}
+
+void storePostprocessOutput(PostprocessStage4 outputValue)
+{
+    coopVecStoreHW(outputValue.value, OutY.values, 0u);
+}
+
+void main()
+{
+    PostprocessNetworkContext context = buildPostprocessContext();
+    if (!validatePostprocessContext(context)) {
+        context.enabled = true;
+    }
+
+    PostprocessStage0 stage0 = loadPostprocessInput(context);
+    PostprocessStage1 stage1 = evaluatePostprocessStage0(stage0, context);
+    PostprocessStage2 stage2 = evaluatePostprocessStage1(stage1, context);
+    stage2 = routePostprocessActivation(stage2, context);
+    PostprocessStage3 stage3 = evaluatePostprocessStage2(stage2, context);
+    PostprocessStage4 stage4 = evaluatePostprocessStage3(stage3, context);
+
+    storePostprocessOutput(stage4);
+}

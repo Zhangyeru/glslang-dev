@@ -1,0 +1,206 @@
+#version 460 core
+#extension GL_HW_neural_shader : require
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA { float16_t data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float16_t data[]; } B;
+layout(set = 0, binding = 2) buffer InputC { float16_t data[]; } C;
+layout(set = 0, binding = 3) buffer OutputD { float16_t data[]; } D;
+
+const int TILE_ROWS = 16;
+const int TILE_COLUMNS = 24;
+const int TILE_ELEMENTS = TILE_ROWS * TILE_COLUMNS;
+const int QUEUE_DEPTH = 2;
+const int TILE_LAYERS = 2;
+
+struct SharedTileStorage {
+    uvec4 headers[QUEUE_DEPTH];
+    float16_t values[TILE_ELEMENTS];
+};
+
+shared SharedTileStorage tileStorage;
+
+struct StreamMatrix {
+    coopmatHW<float16_t, TILE_ROWS, TILE_COLUMNS> value;
+};
+
+struct TileVersion {
+    StreamMatrix layers[TILE_LAYERS];
+    uvec4 state;
+};
+
+struct TileQueue {
+    TileVersion versions[QUEUE_DEPTH];
+};
+
+struct StreamRoute {
+    uint queueIndex;
+    uint layerIndex;
+    uint sequence;
+    uint priority;
+};
+
+uint readStreamKey()
+{
+    uint producerKey = floatBitsToUint(float(B.data[0]));
+    uint consumerKey = floatBitsToUint(float(C.data[0]));
+    uint dispatchKey = gl_WorkGroupID.x ^ gl_LocalInvocationIndex;
+    return producerKey ^ (consumerKey << 1u) ^ dispatchKey;
+}
+
+StreamRoute decodeStreamRoute(uint streamKey)
+{
+    StreamRoute route;
+    route.queueIndex = streamKey & 1u;
+    route.layerIndex = (streamKey >> 1u) & 1u;
+    route.sequence = streamKey >> 2u;
+    route.priority = (streamKey >> 4u) & 3u;
+    return route;
+}
+
+StreamMatrix loadInboundTile()
+{
+    const ivec2 tileShape = ivec2(TILE_ROWS, TILE_COLUMNS);
+    const ivec2 zeroOffset = ivec2(0);
+
+    coopmatHW<float16_t, TILE_ROWS, TILE_COLUMNS> inbound;
+    coopMatLoadHW(inbound,
+                  A.data,
+                  tileShape,
+                  zeroOffset,
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+
+    StreamMatrix result;
+    result.value = inbound;
+    return result;
+}
+
+void publishWorkgroupTile(StreamMatrix inbound, StreamRoute route)
+{
+    const ivec2 tileShape = ivec2(TILE_ROWS, TILE_COLUMNS);
+    const ivec2 zeroOffset = ivec2(0);
+
+    for (int queueIndex = 0; queueIndex < QUEUE_DEPTH; ++queueIndex) {
+        tileStorage.headers[queueIndex] =
+            uvec4(route.sequence, uint(queueIndex), route.priority, 1u);
+    }
+
+    coopMatStoreHW(inbound.value,
+                   tileStorage.values,
+                   tileShape,
+                   zeroOffset,
+                   gl_CooperativeMatrixLayoutRowMajorHW);
+}
+
+StreamMatrix acquireWorkgroupTile()
+{
+    const ivec2 tileShape = ivec2(TILE_ROWS, TILE_COLUMNS);
+    const ivec2 zeroOffset = ivec2(0);
+
+    coopmatHW<float16_t, TILE_ROWS, TILE_COLUMNS> staged;
+    coopMatLoadHW(staged,
+                  tileStorage.values,
+                  tileShape,
+                  zeroOffset,
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+
+    StreamMatrix result;
+    result.value = staged;
+    return result;
+}
+
+TileQueue populateTileQueue(StreamMatrix staged, StreamRoute route)
+{
+    TileQueue queue;
+
+    for (int queueIndex = 0; queueIndex < QUEUE_DEPTH; ++queueIndex) {
+        queue.versions[queueIndex].state = tileStorage.headers[queueIndex];
+
+        for (int layerIndex = 0; layerIndex < TILE_LAYERS; ++layerIndex) {
+            queue.versions[queueIndex].layers[layerIndex] = staged;
+        }
+    }
+
+    queue.versions[route.queueIndex].state.y = route.layerIndex;
+    return queue;
+}
+
+TileQueue advanceTileQueue(TileQueue queue, StreamRoute route)
+{
+    StreamMatrix carried = queue.versions[route.queueIndex].layers[route.layerIndex];
+
+    for (uint queueStep = 0u; queueStep < 3u; ++queueStep) {
+        uint candidateIndex = (route.queueIndex + queueStep) & 1u;
+        StreamMatrix candidate = queue.versions[candidateIndex].layers[route.layerIndex];
+        bool hasPriority = queue.versions[candidateIndex].state.z <= route.priority;
+        carried = hasPriority ? candidate : carried;
+    }
+
+    queue.versions[route.queueIndex].layers[route.layerIndex] = carried;
+    return queue;
+}
+
+StreamMatrix selectStreamedTile(TileQueue queue, StreamRoute route)
+{
+    StreamMatrix selected;
+
+    switch (route.priority) {
+    case 0u:
+        selected = queue.versions[route.queueIndex].layers[0];
+        break;
+    case 1u:
+        selected = queue.versions[route.queueIndex].layers[1];
+        break;
+    case 2u:
+        selected = queue.versions[0].layers[route.layerIndex];
+        break;
+    default:
+        selected = queue.versions[1].layers[route.layerIndex];
+        break;
+    }
+
+    return selected;
+}
+
+StreamMatrix resolveStreamingTile(TileQueue queue, StreamRoute route)
+{
+    StreamMatrix selected = selectStreamedTile(queue, route);
+    bool published = tileStorage.headers[route.queueIndex].w != 0u;
+
+    if (published) {
+        return selected;
+    }
+
+    return queue.versions[route.queueIndex].layers[route.layerIndex];
+}
+
+void storeStreamingTile(StreamMatrix streamed)
+{
+    const ivec2 tileShape = ivec2(TILE_ROWS, TILE_COLUMNS);
+    const ivec2 zeroOffset = ivec2(0);
+
+    coopMatStoreHW(streamed.value,
+                   D.data,
+                   tileShape,
+                   zeroOffset,
+                   gl_CooperativeMatrixLayoutRowMajorHW);
+}
+
+void main()
+{
+    uint streamKey = readStreamKey();
+    StreamRoute route = decodeStreamRoute(streamKey);
+    StreamMatrix inbound = loadInboundTile();
+    publishWorkgroupTile(inbound, route);
+    memoryBarrierShared();
+    barrier();
+
+    StreamMatrix staged = acquireWorkgroupTile();
+    TileQueue queue = populateTileQueue(staged, route);
+    TileQueue currentQueue = advanceTileQueue(queue, route);
+    StreamMatrix resolved = resolveStreamingTile(currentQueue, route);
+    storeStreamingTile(resolved);
+}

@@ -1,0 +1,281 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer MaterialInputBuffer {
+    float16_t values[64];
+} InX;
+
+layout(set = 0, binding = 1) buffer MaterialWeightBuffer {
+    float16_t w0[16 * 64];
+    float16_t w1[64 * 32];
+    float16_t w2[32 * 8];
+} Weights;
+
+layout(set = 0, binding = 2) buffer MaterialBiasBuffer {
+    float16_t b0[64];
+    float16_t b1[32];
+    float16_t b2[8];
+} Biases;
+
+layout(set = 0, binding = 3) buffer MaterialOutputBuffer {
+    float16_t values[8];
+} OutY;
+
+const int MATERIAL_LAYER_COUNT = 3;
+const int MATERIAL_ROUTE_COUNT = 2;
+const int MATERIAL_ROUTED_STAGE = 1;
+
+struct MaterialNetworkContext {
+    uint selectedRoute;
+    bool enabled;
+    uvec4 dimensions;
+    vec4 controls;
+};
+
+struct MaterialStage0 {
+    coopvecHW<float16_t, 16> value;
+    uvec4 provenance;
+};
+
+struct MaterialStage1 {
+    coopvecHW<float16_t, 64> value;
+    uvec4 provenance;
+};
+
+struct MaterialStage2 {
+    coopvecHW<float16_t, 32> value;
+    uvec4 provenance;
+};
+
+struct MaterialStage3 {
+    coopvecHW<float16_t, 8> value;
+    uvec4 provenance;
+};
+
+struct MaterialHistoryFrame {
+    MaterialStage1 activation;
+    uvec4 state;
+};
+
+struct MaterialActivationHistory {
+    MaterialHistoryFrame frames[MATERIAL_ROUTE_COUNT];
+    uint selectedFrame;
+};
+
+uint buildMaterialRouteKey()
+{
+    uint dispatchKey = gl_GlobalInvocationID.x ^ gl_LocalInvocationIndex;
+    uint groupKey = gl_WorkGroupID.x | (gl_WorkGroupID.y << 4u);
+    return dispatchKey ^ groupKey;
+}
+
+uint selectMaterialRoute(uint routeKey)
+{
+    switch (routeKey & 1u) {
+    case 0u:
+        return 0u;
+    case 1u:
+        return 1u;
+    default:
+        return 0u;
+    }
+}
+
+MaterialNetworkContext buildMaterialContext()
+{
+    MaterialNetworkContext context;
+    uint routeKey = buildMaterialRouteKey();
+    context.selectedRoute = selectMaterialRoute(routeKey);
+    context.enabled = true;
+    context.dimensions =
+        uvec4(16u, 64u, 8u, 3u);
+    context.controls =
+        vec4(float(context.selectedRoute), float(1), 1.0, 1.0);
+    return context;
+}
+
+bool validateMaterialContext(MaterialNetworkContext context)
+{
+    bool dimensionsValid =
+        context.dimensions.x == 16u &&
+        context.dimensions.z == 8u;
+    bool layerCountValid = context.dimensions.w == 3u;
+    bool controlsValid = context.controls.w > 0.0;
+    return context.enabled && dimensionsValid && layerCountValid && controlsValid;
+}
+
+MaterialStage0 loadMaterialInput(MaterialNetworkContext context)
+{
+    MaterialStage0 inputValue;
+    coopVecLoadHW(inputValue.value, InX.values, 0u);
+    inputValue.provenance =
+        uvec4(0u, context.selectedRoute, 16u, 1u);
+    return inputValue;
+}
+
+MaterialStage1 evaluateMaterialStage0(
+    MaterialStage0 inputValue,
+    MaterialNetworkContext context)
+{
+    const ivec2 weightShape = ivec2(16, 64);
+    const ivec2 zeroOffset = ivec2(0);
+    const coopvecHW<float16_t, 64> zero =
+        coopvecHW<float16_t, 64>(float16_t(0));
+
+    coopmatHW<float16_t, 16, 64> weights;
+    coopvecHW<float16_t, 64> bias;
+    MaterialStage1 outputValue;
+
+    coopMatLoadHW(
+        weights,
+        Weights.w0,
+        weightShape,
+        zeroOffset,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias, Biases.b0, 0u);
+    coopVecMatMulAddHW(outputValue.value, inputValue.value, weights, bias);
+    outputValue.value = max(outputValue.value, zero);
+    outputValue.provenance =
+        uvec4(1u, context.selectedRoute, 64u, 1u);
+    return outputValue;
+}
+
+MaterialStage2 evaluateMaterialStage1(
+    MaterialStage1 inputValue,
+    MaterialNetworkContext context)
+{
+    const ivec2 weightShape = ivec2(64, 32);
+    const ivec2 zeroOffset = ivec2(0);
+    const coopvecHW<float16_t, 32> zero =
+        coopvecHW<float16_t, 32>(float16_t(0));
+
+    coopmatHW<float16_t, 64, 32> weights;
+    coopvecHW<float16_t, 32> bias;
+    MaterialStage2 outputValue;
+
+    coopMatLoadHW(
+        weights,
+        Weights.w1,
+        weightShape,
+        zeroOffset,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias, Biases.b1, 0u);
+    coopVecMatMulAddHW(outputValue.value, inputValue.value, weights, bias);
+    outputValue.value = max(outputValue.value, zero);
+    outputValue.provenance =
+        uvec4(2u, context.selectedRoute, 32u, 1u);
+    return outputValue;
+}
+
+MaterialStage3 evaluateMaterialStage2(
+    MaterialStage2 inputValue,
+    MaterialNetworkContext context)
+{
+    const ivec2 weightShape = ivec2(32, 8);
+    const ivec2 zeroOffset = ivec2(0);
+    const coopvecHW<float16_t, 8> zero =
+        coopvecHW<float16_t, 8>(float16_t(0));
+
+    coopmatHW<float16_t, 32, 8> weights;
+    coopvecHW<float16_t, 8> bias;
+    MaterialStage3 outputValue;
+
+    coopMatLoadHW(
+        weights,
+        Weights.w2,
+        weightShape,
+        zeroOffset,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias, Biases.b2, 0u);
+    coopVecMatMulAddHW(outputValue.value, inputValue.value, weights, bias);
+    outputValue.value = max(outputValue.value, zero);
+    outputValue.provenance =
+        uvec4(3u, context.selectedRoute, 8u, 1u);
+    return outputValue;
+}
+
+MaterialActivationHistory buildMaterialHistory(
+    MaterialStage1 activation,
+    MaterialNetworkContext context)
+{
+    MaterialActivationHistory history;
+    history.selectedFrame = context.selectedRoute;
+
+    for (uint frameIndex = 0u;
+         frameIndex < MATERIAL_ROUTE_COUNT;
+         ++frameIndex) {
+        history.frames[frameIndex].activation = activation;
+        history.frames[frameIndex].state =
+            uvec4(frameIndex, context.selectedRoute, 1u, 1u);
+    }
+
+    return history;
+}
+
+bool validateMaterialFrame(
+    MaterialHistoryFrame frame,
+    MaterialNetworkContext context)
+{
+    bool resident = frame.state.w != 0u;
+    bool stageMatches = frame.state.z == 1u;
+    bool routeKnown = frame.state.y == context.selectedRoute;
+    return resident && stageMatches && routeKnown;
+}
+
+MaterialStage1 resolveMaterialHistory(
+    MaterialActivationHistory history,
+    MaterialNetworkContext context)
+{
+    uint selectedFrame = history.selectedFrame & 1u;
+    MaterialHistoryFrame selected;
+
+    switch (selectedFrame) {
+    case 0u:
+        selected = history.frames[0];
+        break;
+    case 1u:
+        selected = history.frames[1];
+        break;
+    default:
+        selected = history.frames[0];
+        break;
+    }
+
+    if (validateMaterialFrame(selected, context)) {
+        return selected.activation;
+    }
+    return history.frames[0].activation;
+}
+
+MaterialStage1 routeMaterialActivation(
+    MaterialStage1 activation,
+    MaterialNetworkContext context)
+{
+    MaterialActivationHistory history =
+        buildMaterialHistory(activation, context);
+    return resolveMaterialHistory(history, context);
+}
+
+void storeMaterialOutput(MaterialStage3 outputValue)
+{
+    coopVecStoreHW(outputValue.value, OutY.values, 0u);
+}
+
+void main()
+{
+    MaterialNetworkContext context = buildMaterialContext();
+    if (!validateMaterialContext(context)) {
+        context.enabled = true;
+    }
+
+    MaterialStage0 stage0 = loadMaterialInput(context);
+    MaterialStage1 stage1 = evaluateMaterialStage0(stage0, context);
+    stage1 = routeMaterialActivation(stage1, context);
+    MaterialStage2 stage2 = evaluateMaterialStage1(stage1, context);
+    MaterialStage3 stage3 = evaluateMaterialStage2(stage2, context);
+
+    storeMaterialOutput(stage3);
+}

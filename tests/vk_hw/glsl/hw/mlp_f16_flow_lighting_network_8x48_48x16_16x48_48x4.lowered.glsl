@@ -1,0 +1,623 @@
+#version 450
+#if defined(GL_AMD_gpu_shader_half_float)
+#extension GL_AMD_gpu_shader_half_float : require
+#elif defined(GL_EXT_shader_explicit_arithmetic_types_float16)
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+#else
+#error No extension available for FP16.
+#endif
+#extension GL_EXT_shader_16bit_storage : require
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+struct LightingNetworkNetworkContext
+{
+    uint selectedRoute;
+    bool enabled;
+    uvec4 dimensions;
+    vec4 controls;
+};
+
+struct LightingNetworkStage0
+{
+    f16vec2 value[4];
+    uvec4 provenance;
+};
+
+struct LightingNetworkStage1
+{
+    f16vec2 value[24];
+    uvec4 provenance;
+};
+
+struct LightingNetworkStage2
+{
+    f16vec2 value[8];
+    uvec4 provenance;
+};
+
+struct LightingNetworkStage3
+{
+    f16vec2 value[24];
+    uvec4 provenance;
+};
+
+struct LightingNetworkStage4
+{
+    f16vec2 value[2];
+    uvec4 provenance;
+};
+
+struct LightingNetworkHistoryFrame
+{
+    LightingNetworkStage2 activation;
+    uvec4 state;
+};
+
+struct LightingNetworkActivationHistory
+{
+    LightingNetworkHistoryFrame frames[2];
+    uint selectedFrame;
+};
+
+const f16vec2 _265[24] = f16vec2[](f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)));
+const f16vec2 _303[8] = f16vec2[](f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)));
+const f16vec2 _376[2] = f16vec2[](f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)));
+
+layout(set = 0, binding = 0, std430) buffer LightingNetworkInputBuffer
+{
+    float16_t values[48];
+} InX;
+
+layout(set = 0, binding = 1, std430) buffer LightingNetworkWeightBuffer
+{
+    float16_t w0[384];
+    float16_t w1[768];
+    float16_t w2[768];
+    float16_t w3[192];
+} Weights;
+
+layout(set = 0, binding = 2, std430) buffer LightingNetworkBiasBuffer
+{
+    float16_t b0[48];
+    float16_t b1[16];
+    float16_t b2[48];
+    float16_t b3[4];
+} Biases;
+
+layout(set = 0, binding = 3, std430) buffer LightingNetworkOutputBuffer
+{
+    float16_t values[4];
+} OutY;
+
+uint buildLightingNetworkRouteKey()
+{
+    uint dispatchKey = gl_GlobalInvocationID.x ^ gl_LocalInvocationIndex;
+    uint groupKey = gl_WorkGroupID.x | (gl_WorkGroupID.y << 4u);
+    return dispatchKey ^ groupKey;
+}
+
+uint selectLightingNetworkRoute(uint routeKey)
+{
+    switch (routeKey & 1u)
+    {
+        case 0u:
+        {
+            return 0u;
+        }
+        case 1u:
+        {
+            return 1u;
+        }
+        default:
+        {
+            return 0u;
+        }
+    }
+}
+
+LightingNetworkNetworkContext buildLightingNetworkContext()
+{
+    uint routeKey = buildLightingNetworkRouteKey();
+    uint param = routeKey;
+    LightingNetworkNetworkContext context;
+    context.selectedRoute = selectLightingNetworkRoute(param);
+    context.enabled = true;
+    context.dimensions = uvec4(8u, 48u, 4u, 4u);
+    context.controls = vec4(float(context.selectedRoute), 2.0, 1.0, 1.0);
+    return context;
+}
+
+bool validateLightingNetworkContext(LightingNetworkNetworkContext context)
+{
+    bool _169 = context.dimensions.x == 8u;
+    bool _175;
+    if (_169)
+    {
+        _175 = context.dimensions.z == 4u;
+    }
+    else
+    {
+        _175 = _169;
+    }
+    bool dimensionsValid = _175;
+    bool layerCountValid = context.dimensions.w == 4u;
+    bool controlsValid = context.controls.w > 0.0;
+    return ((context.enabled && dimensionsValid) && layerCountValid) && controlsValid;
+}
+
+f16vec2 _8321(uint _8322)
+{
+    return f16vec2(InX.values[_8322], InX.values[_8322 + 1u]);
+}
+
+LightingNetworkStage0 loadLightingNetworkInput(LightingNetworkNetworkContext context)
+{
+    uint _8334 = 0u;
+    f16vec2 _8333[4];
+    uint _8339;
+    for (;;)
+    {
+        _8339 = _8334;
+        if (_8339 < 8u)
+        {
+            _8333[_8339 / 2u] = _8321(0u + _8339);
+            _8334 = _8339 + 2u;
+            continue;
+        }
+        else
+        {
+            break;
+        }
+    }
+    f16vec2 _205[4] = _8333;
+    f16vec2 tempArg[4] = _205;
+    LightingNetworkStage0 inputValue;
+    inputValue.value = _205;
+    inputValue.provenance = uvec4(0u, context.selectedRoute, 8u, 1u);
+    return inputValue;
+}
+
+f16vec2[24] _548(f16vec2 _549[4])
+{
+    f16vec2 _1832 = f16vec2(_549[0].x);
+    f16vec2 _1881 = f16vec2(_549[0].y);
+    f16vec2 _1930 = f16vec2(_549[1].x);
+    f16vec2 _1979 = f16vec2(_549[1].y);
+    f16vec2 _2028 = f16vec2(_549[2].x);
+    f16vec2 _2077 = f16vec2(_549[2].y);
+    f16vec2 _2126 = f16vec2(_549[3].x);
+    f16vec2 _2175 = f16vec2(_549[3].y);
+    return f16vec2[](fma(_2175, f16vec2(Weights.w0[336u], Weights.w0[337u]), fma(_2126, f16vec2(Weights.w0[288u], Weights.w0[289u]), fma(_2077, f16vec2(Weights.w0[240u], Weights.w0[241u]), fma(_2028, f16vec2(Weights.w0[192u], Weights.w0[193u]), fma(_1979, f16vec2(Weights.w0[144u], Weights.w0[145u]), fma(_1930, f16vec2(Weights.w0[96u], Weights.w0[97u]), fma(_1881, f16vec2(Weights.w0[48u], Weights.w0[49u]), fma(_1832, f16vec2(Weights.w0[0u], Weights.w0[1u]), f16vec2(Biases.b0[0u], Biases.b0[1u]))))))))), fma(_2175, f16vec2(Weights.w0[338u], Weights.w0[339u]), fma(_2126, f16vec2(Weights.w0[290u], Weights.w0[291u]), fma(_2077, f16vec2(Weights.w0[242u], Weights.w0[243u]), fma(_2028, f16vec2(Weights.w0[194u], Weights.w0[195u]), fma(_1979, f16vec2(Weights.w0[146u], Weights.w0[147u]), fma(_1930, f16vec2(Weights.w0[98u], Weights.w0[99u]), fma(_1881, f16vec2(Weights.w0[50u], Weights.w0[51u]), fma(_1832, f16vec2(Weights.w0[2u], Weights.w0[3u]), f16vec2(Biases.b0[2u], Biases.b0[3u]))))))))), fma(_2175, f16vec2(Weights.w0[340u], Weights.w0[341u]), fma(_2126, f16vec2(Weights.w0[292u], Weights.w0[293u]), fma(_2077, f16vec2(Weights.w0[244u], Weights.w0[245u]), fma(_2028, f16vec2(Weights.w0[196u], Weights.w0[197u]), fma(_1979, f16vec2(Weights.w0[148u], Weights.w0[149u]), fma(_1930, f16vec2(Weights.w0[100u], Weights.w0[101u]), fma(_1881, f16vec2(Weights.w0[52u], Weights.w0[53u]), fma(_1832, f16vec2(Weights.w0[4u], Weights.w0[5u]), f16vec2(Biases.b0[4u], Biases.b0[5u]))))))))), fma(_2175, f16vec2(Weights.w0[342u], Weights.w0[343u]), fma(_2126, f16vec2(Weights.w0[294u], Weights.w0[295u]), fma(_2077, f16vec2(Weights.w0[246u], Weights.w0[247u]), fma(_2028, f16vec2(Weights.w0[198u], Weights.w0[199u]), fma(_1979, f16vec2(Weights.w0[150u], Weights.w0[151u]), fma(_1930, f16vec2(Weights.w0[102u], Weights.w0[103u]), fma(_1881, f16vec2(Weights.w0[54u], Weights.w0[55u]), fma(_1832, f16vec2(Weights.w0[6u], Weights.w0[7u]), f16vec2(Biases.b0[6u], Biases.b0[7u]))))))))), fma(_2175, f16vec2(Weights.w0[344u], Weights.w0[345u]), fma(_2126, f16vec2(Weights.w0[296u], Weights.w0[297u]), fma(_2077, f16vec2(Weights.w0[248u], Weights.w0[249u]), fma(_2028, f16vec2(Weights.w0[200u], Weights.w0[201u]), fma(_1979, f16vec2(Weights.w0[152u], Weights.w0[153u]), fma(_1930, f16vec2(Weights.w0[104u], Weights.w0[105u]), fma(_1881, f16vec2(Weights.w0[56u], Weights.w0[57u]), fma(_1832, f16vec2(Weights.w0[8u], Weights.w0[9u]), f16vec2(Biases.b0[8u], Biases.b0[9u]))))))))), fma(_2175, f16vec2(Weights.w0[346u], Weights.w0[347u]), fma(_2126, f16vec2(Weights.w0[298u], Weights.w0[299u]), fma(_2077, f16vec2(Weights.w0[250u], Weights.w0[251u]), fma(_2028, f16vec2(Weights.w0[202u], Weights.w0[203u]), fma(_1979, f16vec2(Weights.w0[154u], Weights.w0[155u]), fma(_1930, f16vec2(Weights.w0[106u], Weights.w0[107u]), fma(_1881, f16vec2(Weights.w0[58u], Weights.w0[59u]), fma(_1832, f16vec2(Weights.w0[10u], Weights.w0[11u]), f16vec2(Biases.b0[10u], Biases.b0[11u]))))))))), fma(_2175, f16vec2(Weights.w0[348u], Weights.w0[349u]), fma(_2126, f16vec2(Weights.w0[300u], Weights.w0[301u]), fma(_2077, f16vec2(Weights.w0[252u], Weights.w0[253u]), fma(_2028, f16vec2(Weights.w0[204u], Weights.w0[205u]), fma(_1979, f16vec2(Weights.w0[156u], Weights.w0[157u]), fma(_1930, f16vec2(Weights.w0[108u], Weights.w0[109u]), fma(_1881, f16vec2(Weights.w0[60u], Weights.w0[61u]), fma(_1832, f16vec2(Weights.w0[12u], Weights.w0[13u]), f16vec2(Biases.b0[12u], Biases.b0[13u]))))))))), fma(_2175, f16vec2(Weights.w0[350u], Weights.w0[351u]), fma(_2126, f16vec2(Weights.w0[302u], Weights.w0[303u]), fma(_2077, f16vec2(Weights.w0[254u], Weights.w0[255u]), fma(_2028, f16vec2(Weights.w0[206u], Weights.w0[207u]), fma(_1979, f16vec2(Weights.w0[158u], Weights.w0[159u]), fma(_1930, f16vec2(Weights.w0[110u], Weights.w0[111u]), fma(_1881, f16vec2(Weights.w0[62u], Weights.w0[63u]), fma(_1832, f16vec2(Weights.w0[14u], Weights.w0[15u]), f16vec2(Biases.b0[14u], Biases.b0[15u]))))))))), fma(_2175, f16vec2(Weights.w0[352u], Weights.w0[353u]), fma(_2126, f16vec2(Weights.w0[304u], Weights.w0[305u]), fma(_2077, f16vec2(Weights.w0[256u], Weights.w0[257u]), fma(_2028, f16vec2(Weights.w0[208u], Weights.w0[209u]), fma(_1979, f16vec2(Weights.w0[160u], Weights.w0[161u]), fma(_1930, f16vec2(Weights.w0[112u], Weights.w0[113u]), fma(_1881, f16vec2(Weights.w0[64u], Weights.w0[65u]), fma(_1832, f16vec2(Weights.w0[16u], Weights.w0[17u]), f16vec2(Biases.b0[16u], Biases.b0[17u]))))))))), fma(_2175, f16vec2(Weights.w0[354u], Weights.w0[355u]), fma(_2126, f16vec2(Weights.w0[306u], Weights.w0[307u]), fma(_2077, f16vec2(Weights.w0[258u], Weights.w0[259u]), fma(_2028, f16vec2(Weights.w0[210u], Weights.w0[211u]), fma(_1979, f16vec2(Weights.w0[162u], Weights.w0[163u]), fma(_1930, f16vec2(Weights.w0[114u], Weights.w0[115u]), fma(_1881, f16vec2(Weights.w0[66u], Weights.w0[67u]), fma(_1832, f16vec2(Weights.w0[18u], Weights.w0[19u]), f16vec2(Biases.b0[18u], Biases.b0[19u]))))))))), fma(_2175, f16vec2(Weights.w0[356u], Weights.w0[357u]), fma(_2126, f16vec2(Weights.w0[308u], Weights.w0[309u]), fma(_2077, f16vec2(Weights.w0[260u], Weights.w0[261u]), fma(_2028, f16vec2(Weights.w0[212u], Weights.w0[213u]), fma(_1979, f16vec2(Weights.w0[164u], Weights.w0[165u]), fma(_1930, f16vec2(Weights.w0[116u], Weights.w0[117u]), fma(_1881, f16vec2(Weights.w0[68u], Weights.w0[69u]), fma(_1832, f16vec2(Weights.w0[20u], Weights.w0[21u]), f16vec2(Biases.b0[20u], Biases.b0[21u]))))))))), fma(_2175, f16vec2(Weights.w0[358u], Weights.w0[359u]), fma(_2126, f16vec2(Weights.w0[310u], Weights.w0[311u]), fma(_2077, f16vec2(Weights.w0[262u], Weights.w0[263u]), fma(_2028, f16vec2(Weights.w0[214u], Weights.w0[215u]), fma(_1979, f16vec2(Weights.w0[166u], Weights.w0[167u]), fma(_1930, f16vec2(Weights.w0[118u], Weights.w0[119u]), fma(_1881, f16vec2(Weights.w0[70u], Weights.w0[71u]), fma(_1832, f16vec2(Weights.w0[22u], Weights.w0[23u]), f16vec2(Biases.b0[22u], Biases.b0[23u]))))))))), fma(_2175, f16vec2(Weights.w0[360u], Weights.w0[361u]), fma(_2126, f16vec2(Weights.w0[312u], Weights.w0[313u]), fma(_2077, f16vec2(Weights.w0[264u], Weights.w0[265u]), fma(_2028, f16vec2(Weights.w0[216u], Weights.w0[217u]), fma(_1979, f16vec2(Weights.w0[168u], Weights.w0[169u]), fma(_1930, f16vec2(Weights.w0[120u], Weights.w0[121u]), fma(_1881, f16vec2(Weights.w0[72u], Weights.w0[73u]), fma(_1832, f16vec2(Weights.w0[24u], Weights.w0[25u]), f16vec2(Biases.b0[24u], Biases.b0[25u]))))))))), fma(_2175, f16vec2(Weights.w0[362u], Weights.w0[363u]), fma(_2126, f16vec2(Weights.w0[314u], Weights.w0[315u]), fma(_2077, f16vec2(Weights.w0[266u], Weights.w0[267u]), fma(_2028, f16vec2(Weights.w0[218u], Weights.w0[219u]), fma(_1979, f16vec2(Weights.w0[170u], Weights.w0[171u]), fma(_1930, f16vec2(Weights.w0[122u], Weights.w0[123u]), fma(_1881, f16vec2(Weights.w0[74u], Weights.w0[75u]), fma(_1832, f16vec2(Weights.w0[26u], Weights.w0[27u]), f16vec2(Biases.b0[26u], Biases.b0[27u]))))))))), fma(_2175, f16vec2(Weights.w0[364u], Weights.w0[365u]), fma(_2126, f16vec2(Weights.w0[316u], Weights.w0[317u]), fma(_2077, f16vec2(Weights.w0[268u], Weights.w0[269u]), fma(_2028, f16vec2(Weights.w0[220u], Weights.w0[221u]), fma(_1979, f16vec2(Weights.w0[172u], Weights.w0[173u]), fma(_1930, f16vec2(Weights.w0[124u], Weights.w0[125u]), fma(_1881, f16vec2(Weights.w0[76u], Weights.w0[77u]), fma(_1832, f16vec2(Weights.w0[28u], Weights.w0[29u]), f16vec2(Biases.b0[28u], Biases.b0[29u]))))))))), fma(_2175, f16vec2(Weights.w0[366u], Weights.w0[367u]), fma(_2126, f16vec2(Weights.w0[318u], Weights.w0[319u]), fma(_2077, f16vec2(Weights.w0[270u], Weights.w0[271u]), fma(_2028, f16vec2(Weights.w0[222u], Weights.w0[223u]), fma(_1979, f16vec2(Weights.w0[174u], Weights.w0[175u]), fma(_1930, f16vec2(Weights.w0[126u], Weights.w0[127u]), fma(_1881, f16vec2(Weights.w0[78u], Weights.w0[79u]), fma(_1832, f16vec2(Weights.w0[30u], Weights.w0[31u]), f16vec2(Biases.b0[30u], Biases.b0[31u]))))))))), fma(_2175, f16vec2(Weights.w0[368u], Weights.w0[369u]), fma(_2126, f16vec2(Weights.w0[320u], Weights.w0[321u]), fma(_2077, f16vec2(Weights.w0[272u], Weights.w0[273u]), fma(_2028, f16vec2(Weights.w0[224u], Weights.w0[225u]), fma(_1979, f16vec2(Weights.w0[176u], Weights.w0[177u]), fma(_1930, f16vec2(Weights.w0[128u], Weights.w0[129u]), fma(_1881, f16vec2(Weights.w0[80u], Weights.w0[81u]), fma(_1832, f16vec2(Weights.w0[32u], Weights.w0[33u]), f16vec2(Biases.b0[32u], Biases.b0[33u]))))))))), fma(_2175, f16vec2(Weights.w0[370u], Weights.w0[371u]), fma(_2126, f16vec2(Weights.w0[322u], Weights.w0[323u]), fma(_2077, f16vec2(Weights.w0[274u], Weights.w0[275u]), fma(_2028, f16vec2(Weights.w0[226u], Weights.w0[227u]), fma(_1979, f16vec2(Weights.w0[178u], Weights.w0[179u]), fma(_1930, f16vec2(Weights.w0[130u], Weights.w0[131u]), fma(_1881, f16vec2(Weights.w0[82u], Weights.w0[83u]), fma(_1832, f16vec2(Weights.w0[34u], Weights.w0[35u]), f16vec2(Biases.b0[34u], Biases.b0[35u]))))))))), fma(_2175, f16vec2(Weights.w0[372u], Weights.w0[373u]), fma(_2126, f16vec2(Weights.w0[324u], Weights.w0[325u]), fma(_2077, f16vec2(Weights.w0[276u], Weights.w0[277u]), fma(_2028, f16vec2(Weights.w0[228u], Weights.w0[229u]), fma(_1979, f16vec2(Weights.w0[180u], Weights.w0[181u]), fma(_1930, f16vec2(Weights.w0[132u], Weights.w0[133u]), fma(_1881, f16vec2(Weights.w0[84u], Weights.w0[85u]), fma(_1832, f16vec2(Weights.w0[36u], Weights.w0[37u]), f16vec2(Biases.b0[36u], Biases.b0[37u]))))))))), fma(_2175, f16vec2(Weights.w0[374u], Weights.w0[375u]), fma(_2126, f16vec2(Weights.w0[326u], Weights.w0[327u]), fma(_2077, f16vec2(Weights.w0[278u], Weights.w0[279u]), fma(_2028, f16vec2(Weights.w0[230u], Weights.w0[231u]), fma(_1979, f16vec2(Weights.w0[182u], Weights.w0[183u]), fma(_1930, f16vec2(Weights.w0[134u], Weights.w0[135u]), fma(_1881, f16vec2(Weights.w0[86u], Weights.w0[87u]), fma(_1832, f16vec2(Weights.w0[38u], Weights.w0[39u]), f16vec2(Biases.b0[38u], Biases.b0[39u]))))))))), fma(_2175, f16vec2(Weights.w0[376u], Weights.w0[377u]), fma(_2126, f16vec2(Weights.w0[328u], Weights.w0[329u]), fma(_2077, f16vec2(Weights.w0[280u], Weights.w0[281u]), fma(_2028, f16vec2(Weights.w0[232u], Weights.w0[233u]), fma(_1979, f16vec2(Weights.w0[184u], Weights.w0[185u]), fma(_1930, f16vec2(Weights.w0[136u], Weights.w0[137u]), fma(_1881, f16vec2(Weights.w0[88u], Weights.w0[89u]), fma(_1832, f16vec2(Weights.w0[40u], Weights.w0[41u]), f16vec2(Biases.b0[40u], Biases.b0[41u]))))))))), fma(_2175, f16vec2(Weights.w0[378u], Weights.w0[379u]), fma(_2126, f16vec2(Weights.w0[330u], Weights.w0[331u]), fma(_2077, f16vec2(Weights.w0[282u], Weights.w0[283u]), fma(_2028, f16vec2(Weights.w0[234u], Weights.w0[235u]), fma(_1979, f16vec2(Weights.w0[186u], Weights.w0[187u]), fma(_1930, f16vec2(Weights.w0[138u], Weights.w0[139u]), fma(_1881, f16vec2(Weights.w0[90u], Weights.w0[91u]), fma(_1832, f16vec2(Weights.w0[42u], Weights.w0[43u]), f16vec2(Biases.b0[42u], Biases.b0[43u]))))))))), fma(_2175, f16vec2(Weights.w0[380u], Weights.w0[381u]), fma(_2126, f16vec2(Weights.w0[332u], Weights.w0[333u]), fma(_2077, f16vec2(Weights.w0[284u], Weights.w0[285u]), fma(_2028, f16vec2(Weights.w0[236u], Weights.w0[237u]), fma(_1979, f16vec2(Weights.w0[188u], Weights.w0[189u]), fma(_1930, f16vec2(Weights.w0[140u], Weights.w0[141u]), fma(_1881, f16vec2(Weights.w0[92u], Weights.w0[93u]), fma(_1832, f16vec2(Weights.w0[44u], Weights.w0[45u]), f16vec2(Biases.b0[44u], Biases.b0[45u]))))))))), fma(_2175, f16vec2(Weights.w0[382u], Weights.w0[383u]), fma(_2126, f16vec2(Weights.w0[334u], Weights.w0[335u]), fma(_2077, f16vec2(Weights.w0[286u], Weights.w0[287u]), fma(_2028, f16vec2(Weights.w0[238u], Weights.w0[239u]), fma(_1979, f16vec2(Weights.w0[190u], Weights.w0[191u]), fma(_1930, f16vec2(Weights.w0[142u], Weights.w0[143u]), fma(_1881, f16vec2(Weights.w0[94u], Weights.w0[95u]), fma(_1832, f16vec2(Weights.w0[46u], Weights.w0[47u]), f16vec2(Biases.b0[46u], Biases.b0[47u]))))))))));
+}
+
+LightingNetworkStage1 evaluateLightingNetworkStage0(LightingNetworkStage0 inputValue, LightingNetworkNetworkContext context)
+{
+    f16vec2 _258[24] = _548(inputValue.value);
+    f16vec2 tempArg[24] = _258;
+    LightingNetworkStage1 outputValue;
+    outputValue.value = _258;
+    f16vec2 _8351[24] = outputValue.value;
+    uint _8350 = 0u;
+    f16vec2 _8349[24];
+    uint _8357;
+    for (;;)
+    {
+        _8357 = _8350;
+        if (_8357 < 24u)
+        {
+            _8349[_8357] = max(_8351[_8357], _265[_8357]);
+            _8350 = _8357 + 1u;
+            continue;
+        }
+        else
+        {
+            break;
+        }
+    }
+    outputValue.value = _8349;
+    outputValue.provenance = uvec4(1u, context.selectedRoute, 48u, 1u);
+    return outputValue;
+}
+
+f16vec2[8] _2226(f16vec2 _2227[24])
+{
+    f16vec2 _4286 = f16vec2(_2227[0].x);
+    f16vec2 _4303 = f16vec2(_2227[0].y);
+    f16vec2 _4320 = f16vec2(_2227[1].x);
+    f16vec2 _4337 = f16vec2(_2227[1].y);
+    f16vec2 _4354 = f16vec2(_2227[2].x);
+    f16vec2 _4371 = f16vec2(_2227[2].y);
+    f16vec2 _4388 = f16vec2(_2227[3].x);
+    f16vec2 _4405 = f16vec2(_2227[3].y);
+    f16vec2 _4422 = f16vec2(_2227[4].x);
+    f16vec2 _4439 = f16vec2(_2227[4].y);
+    f16vec2 _4441 = fma(_4439, f16vec2(Weights.w1[144u], Weights.w1[145u]), fma(_4422, f16vec2(Weights.w1[128u], Weights.w1[129u]), fma(_4405, f16vec2(Weights.w1[112u], Weights.w1[113u]), fma(_4388, f16vec2(Weights.w1[96u], Weights.w1[97u]), fma(_4371, f16vec2(Weights.w1[80u], Weights.w1[81u]), fma(_4354, f16vec2(Weights.w1[64u], Weights.w1[65u]), fma(_4337, f16vec2(Weights.w1[48u], Weights.w1[49u]), fma(_4320, f16vec2(Weights.w1[32u], Weights.w1[33u]), fma(_4303, f16vec2(Weights.w1[16u], Weights.w1[17u]), fma(_4286, f16vec2(Weights.w1[0u], Weights.w1[1u]), f16vec2(Biases.b1[0u], Biases.b1[1u])))))))))));
+    f16vec2 _4443 = fma(_4439, f16vec2(Weights.w1[146u], Weights.w1[147u]), fma(_4422, f16vec2(Weights.w1[130u], Weights.w1[131u]), fma(_4405, f16vec2(Weights.w1[114u], Weights.w1[115u]), fma(_4388, f16vec2(Weights.w1[98u], Weights.w1[99u]), fma(_4371, f16vec2(Weights.w1[82u], Weights.w1[83u]), fma(_4354, f16vec2(Weights.w1[66u], Weights.w1[67u]), fma(_4337, f16vec2(Weights.w1[50u], Weights.w1[51u]), fma(_4320, f16vec2(Weights.w1[34u], Weights.w1[35u]), fma(_4303, f16vec2(Weights.w1[18u], Weights.w1[19u]), fma(_4286, f16vec2(Weights.w1[2u], Weights.w1[3u]), f16vec2(Biases.b1[2u], Biases.b1[3u])))))))))));
+    f16vec2 _4445 = fma(_4439, f16vec2(Weights.w1[148u], Weights.w1[149u]), fma(_4422, f16vec2(Weights.w1[132u], Weights.w1[133u]), fma(_4405, f16vec2(Weights.w1[116u], Weights.w1[117u]), fma(_4388, f16vec2(Weights.w1[100u], Weights.w1[101u]), fma(_4371, f16vec2(Weights.w1[84u], Weights.w1[85u]), fma(_4354, f16vec2(Weights.w1[68u], Weights.w1[69u]), fma(_4337, f16vec2(Weights.w1[52u], Weights.w1[53u]), fma(_4320, f16vec2(Weights.w1[36u], Weights.w1[37u]), fma(_4303, f16vec2(Weights.w1[20u], Weights.w1[21u]), fma(_4286, f16vec2(Weights.w1[4u], Weights.w1[5u]), f16vec2(Biases.b1[4u], Biases.b1[5u])))))))))));
+    f16vec2 _4447 = fma(_4439, f16vec2(Weights.w1[150u], Weights.w1[151u]), fma(_4422, f16vec2(Weights.w1[134u], Weights.w1[135u]), fma(_4405, f16vec2(Weights.w1[118u], Weights.w1[119u]), fma(_4388, f16vec2(Weights.w1[102u], Weights.w1[103u]), fma(_4371, f16vec2(Weights.w1[86u], Weights.w1[87u]), fma(_4354, f16vec2(Weights.w1[70u], Weights.w1[71u]), fma(_4337, f16vec2(Weights.w1[54u], Weights.w1[55u]), fma(_4320, f16vec2(Weights.w1[38u], Weights.w1[39u]), fma(_4303, f16vec2(Weights.w1[22u], Weights.w1[23u]), fma(_4286, f16vec2(Weights.w1[6u], Weights.w1[7u]), f16vec2(Biases.b1[6u], Biases.b1[7u])))))))))));
+    f16vec2 _4449 = fma(_4439, f16vec2(Weights.w1[152u], Weights.w1[153u]), fma(_4422, f16vec2(Weights.w1[136u], Weights.w1[137u]), fma(_4405, f16vec2(Weights.w1[120u], Weights.w1[121u]), fma(_4388, f16vec2(Weights.w1[104u], Weights.w1[105u]), fma(_4371, f16vec2(Weights.w1[88u], Weights.w1[89u]), fma(_4354, f16vec2(Weights.w1[72u], Weights.w1[73u]), fma(_4337, f16vec2(Weights.w1[56u], Weights.w1[57u]), fma(_4320, f16vec2(Weights.w1[40u], Weights.w1[41u]), fma(_4303, f16vec2(Weights.w1[24u], Weights.w1[25u]), fma(_4286, f16vec2(Weights.w1[8u], Weights.w1[9u]), f16vec2(Biases.b1[8u], Biases.b1[9u])))))))))));
+    f16vec2 _4451 = fma(_4439, f16vec2(Weights.w1[154u], Weights.w1[155u]), fma(_4422, f16vec2(Weights.w1[138u], Weights.w1[139u]), fma(_4405, f16vec2(Weights.w1[122u], Weights.w1[123u]), fma(_4388, f16vec2(Weights.w1[106u], Weights.w1[107u]), fma(_4371, f16vec2(Weights.w1[90u], Weights.w1[91u]), fma(_4354, f16vec2(Weights.w1[74u], Weights.w1[75u]), fma(_4337, f16vec2(Weights.w1[58u], Weights.w1[59u]), fma(_4320, f16vec2(Weights.w1[42u], Weights.w1[43u]), fma(_4303, f16vec2(Weights.w1[26u], Weights.w1[27u]), fma(_4286, f16vec2(Weights.w1[10u], Weights.w1[11u]), f16vec2(Biases.b1[10u], Biases.b1[11u])))))))))));
+    f16vec2 _4453 = fma(_4439, f16vec2(Weights.w1[156u], Weights.w1[157u]), fma(_4422, f16vec2(Weights.w1[140u], Weights.w1[141u]), fma(_4405, f16vec2(Weights.w1[124u], Weights.w1[125u]), fma(_4388, f16vec2(Weights.w1[108u], Weights.w1[109u]), fma(_4371, f16vec2(Weights.w1[92u], Weights.w1[93u]), fma(_4354, f16vec2(Weights.w1[76u], Weights.w1[77u]), fma(_4337, f16vec2(Weights.w1[60u], Weights.w1[61u]), fma(_4320, f16vec2(Weights.w1[44u], Weights.w1[45u]), fma(_4303, f16vec2(Weights.w1[28u], Weights.w1[29u]), fma(_4286, f16vec2(Weights.w1[12u], Weights.w1[13u]), f16vec2(Biases.b1[12u], Biases.b1[13u])))))))))));
+    f16vec2 _4455 = fma(_4439, f16vec2(Weights.w1[158u], Weights.w1[159u]), fma(_4422, f16vec2(Weights.w1[142u], Weights.w1[143u]), fma(_4405, f16vec2(Weights.w1[126u], Weights.w1[127u]), fma(_4388, f16vec2(Weights.w1[110u], Weights.w1[111u]), fma(_4371, f16vec2(Weights.w1[94u], Weights.w1[95u]), fma(_4354, f16vec2(Weights.w1[78u], Weights.w1[79u]), fma(_4337, f16vec2(Weights.w1[62u], Weights.w1[63u]), fma(_4320, f16vec2(Weights.w1[46u], Weights.w1[47u]), fma(_4303, f16vec2(Weights.w1[30u], Weights.w1[31u]), fma(_4286, f16vec2(Weights.w1[14u], Weights.w1[15u]), f16vec2(Biases.b1[14u], Biases.b1[15u])))))))))));
+    f16vec2 _4456 = f16vec2(_2227[5].x);
+    f16vec2 _4473 = f16vec2(_2227[5].y);
+    f16vec2 _4490 = f16vec2(_2227[6].x);
+    f16vec2 _4507 = f16vec2(_2227[6].y);
+    f16vec2 _4524 = f16vec2(_2227[7].x);
+    f16vec2 _4541 = f16vec2(_2227[7].y);
+    f16vec2 _4558 = f16vec2(_2227[8].x);
+    f16vec2 _4575 = f16vec2(_2227[8].y);
+    f16vec2 _4592 = f16vec2(_2227[9].x);
+    f16vec2 _4609 = f16vec2(_2227[9].y);
+    f16vec2 _4611 = fma(_4609, f16vec2(Weights.w1[304u], Weights.w1[305u]), fma(_4592, f16vec2(Weights.w1[288u], Weights.w1[289u]), fma(_4575, f16vec2(Weights.w1[272u], Weights.w1[273u]), fma(_4558, f16vec2(Weights.w1[256u], Weights.w1[257u]), fma(_4541, f16vec2(Weights.w1[240u], Weights.w1[241u]), fma(_4524, f16vec2(Weights.w1[224u], Weights.w1[225u]), fma(_4507, f16vec2(Weights.w1[208u], Weights.w1[209u]), fma(_4490, f16vec2(Weights.w1[192u], Weights.w1[193u]), fma(_4473, f16vec2(Weights.w1[176u], Weights.w1[177u]), fma(_4456, f16vec2(Weights.w1[160u], Weights.w1[161u]), _4441))))))))));
+    f16vec2 _4613 = fma(_4609, f16vec2(Weights.w1[306u], Weights.w1[307u]), fma(_4592, f16vec2(Weights.w1[290u], Weights.w1[291u]), fma(_4575, f16vec2(Weights.w1[274u], Weights.w1[275u]), fma(_4558, f16vec2(Weights.w1[258u], Weights.w1[259u]), fma(_4541, f16vec2(Weights.w1[242u], Weights.w1[243u]), fma(_4524, f16vec2(Weights.w1[226u], Weights.w1[227u]), fma(_4507, f16vec2(Weights.w1[210u], Weights.w1[211u]), fma(_4490, f16vec2(Weights.w1[194u], Weights.w1[195u]), fma(_4473, f16vec2(Weights.w1[178u], Weights.w1[179u]), fma(_4456, f16vec2(Weights.w1[162u], Weights.w1[163u]), _4443))))))))));
+    f16vec2 _4615 = fma(_4609, f16vec2(Weights.w1[308u], Weights.w1[309u]), fma(_4592, f16vec2(Weights.w1[292u], Weights.w1[293u]), fma(_4575, f16vec2(Weights.w1[276u], Weights.w1[277u]), fma(_4558, f16vec2(Weights.w1[260u], Weights.w1[261u]), fma(_4541, f16vec2(Weights.w1[244u], Weights.w1[245u]), fma(_4524, f16vec2(Weights.w1[228u], Weights.w1[229u]), fma(_4507, f16vec2(Weights.w1[212u], Weights.w1[213u]), fma(_4490, f16vec2(Weights.w1[196u], Weights.w1[197u]), fma(_4473, f16vec2(Weights.w1[180u], Weights.w1[181u]), fma(_4456, f16vec2(Weights.w1[164u], Weights.w1[165u]), _4445))))))))));
+    f16vec2 _4617 = fma(_4609, f16vec2(Weights.w1[310u], Weights.w1[311u]), fma(_4592, f16vec2(Weights.w1[294u], Weights.w1[295u]), fma(_4575, f16vec2(Weights.w1[278u], Weights.w1[279u]), fma(_4558, f16vec2(Weights.w1[262u], Weights.w1[263u]), fma(_4541, f16vec2(Weights.w1[246u], Weights.w1[247u]), fma(_4524, f16vec2(Weights.w1[230u], Weights.w1[231u]), fma(_4507, f16vec2(Weights.w1[214u], Weights.w1[215u]), fma(_4490, f16vec2(Weights.w1[198u], Weights.w1[199u]), fma(_4473, f16vec2(Weights.w1[182u], Weights.w1[183u]), fma(_4456, f16vec2(Weights.w1[166u], Weights.w1[167u]), _4447))))))))));
+    f16vec2 _4619 = fma(_4609, f16vec2(Weights.w1[312u], Weights.w1[313u]), fma(_4592, f16vec2(Weights.w1[296u], Weights.w1[297u]), fma(_4575, f16vec2(Weights.w1[280u], Weights.w1[281u]), fma(_4558, f16vec2(Weights.w1[264u], Weights.w1[265u]), fma(_4541, f16vec2(Weights.w1[248u], Weights.w1[249u]), fma(_4524, f16vec2(Weights.w1[232u], Weights.w1[233u]), fma(_4507, f16vec2(Weights.w1[216u], Weights.w1[217u]), fma(_4490, f16vec2(Weights.w1[200u], Weights.w1[201u]), fma(_4473, f16vec2(Weights.w1[184u], Weights.w1[185u]), fma(_4456, f16vec2(Weights.w1[168u], Weights.w1[169u]), _4449))))))))));
+    f16vec2 _4621 = fma(_4609, f16vec2(Weights.w1[314u], Weights.w1[315u]), fma(_4592, f16vec2(Weights.w1[298u], Weights.w1[299u]), fma(_4575, f16vec2(Weights.w1[282u], Weights.w1[283u]), fma(_4558, f16vec2(Weights.w1[266u], Weights.w1[267u]), fma(_4541, f16vec2(Weights.w1[250u], Weights.w1[251u]), fma(_4524, f16vec2(Weights.w1[234u], Weights.w1[235u]), fma(_4507, f16vec2(Weights.w1[218u], Weights.w1[219u]), fma(_4490, f16vec2(Weights.w1[202u], Weights.w1[203u]), fma(_4473, f16vec2(Weights.w1[186u], Weights.w1[187u]), fma(_4456, f16vec2(Weights.w1[170u], Weights.w1[171u]), _4451))))))))));
+    f16vec2 _4623 = fma(_4609, f16vec2(Weights.w1[316u], Weights.w1[317u]), fma(_4592, f16vec2(Weights.w1[300u], Weights.w1[301u]), fma(_4575, f16vec2(Weights.w1[284u], Weights.w1[285u]), fma(_4558, f16vec2(Weights.w1[268u], Weights.w1[269u]), fma(_4541, f16vec2(Weights.w1[252u], Weights.w1[253u]), fma(_4524, f16vec2(Weights.w1[236u], Weights.w1[237u]), fma(_4507, f16vec2(Weights.w1[220u], Weights.w1[221u]), fma(_4490, f16vec2(Weights.w1[204u], Weights.w1[205u]), fma(_4473, f16vec2(Weights.w1[188u], Weights.w1[189u]), fma(_4456, f16vec2(Weights.w1[172u], Weights.w1[173u]), _4453))))))))));
+    f16vec2 _4625 = fma(_4609, f16vec2(Weights.w1[318u], Weights.w1[319u]), fma(_4592, f16vec2(Weights.w1[302u], Weights.w1[303u]), fma(_4575, f16vec2(Weights.w1[286u], Weights.w1[287u]), fma(_4558, f16vec2(Weights.w1[270u], Weights.w1[271u]), fma(_4541, f16vec2(Weights.w1[254u], Weights.w1[255u]), fma(_4524, f16vec2(Weights.w1[238u], Weights.w1[239u]), fma(_4507, f16vec2(Weights.w1[222u], Weights.w1[223u]), fma(_4490, f16vec2(Weights.w1[206u], Weights.w1[207u]), fma(_4473, f16vec2(Weights.w1[190u], Weights.w1[191u]), fma(_4456, f16vec2(Weights.w1[174u], Weights.w1[175u]), _4455))))))))));
+    f16vec2 _4626 = f16vec2(_2227[10].x);
+    f16vec2 _4643 = f16vec2(_2227[10].y);
+    f16vec2 _4660 = f16vec2(_2227[11].x);
+    f16vec2 _4677 = f16vec2(_2227[11].y);
+    f16vec2 _4694 = f16vec2(_2227[12].x);
+    f16vec2 _4711 = f16vec2(_2227[12].y);
+    f16vec2 _4728 = f16vec2(_2227[13].x);
+    f16vec2 _4745 = f16vec2(_2227[13].y);
+    f16vec2 _4762 = f16vec2(_2227[14].x);
+    f16vec2 _4779 = f16vec2(_2227[14].y);
+    f16vec2 _4781 = fma(_4779, f16vec2(Weights.w1[464u], Weights.w1[465u]), fma(_4762, f16vec2(Weights.w1[448u], Weights.w1[449u]), fma(_4745, f16vec2(Weights.w1[432u], Weights.w1[433u]), fma(_4728, f16vec2(Weights.w1[416u], Weights.w1[417u]), fma(_4711, f16vec2(Weights.w1[400u], Weights.w1[401u]), fma(_4694, f16vec2(Weights.w1[384u], Weights.w1[385u]), fma(_4677, f16vec2(Weights.w1[368u], Weights.w1[369u]), fma(_4660, f16vec2(Weights.w1[352u], Weights.w1[353u]), fma(_4643, f16vec2(Weights.w1[336u], Weights.w1[337u]), fma(_4626, f16vec2(Weights.w1[320u], Weights.w1[321u]), _4611))))))))));
+    f16vec2 _4783 = fma(_4779, f16vec2(Weights.w1[466u], Weights.w1[467u]), fma(_4762, f16vec2(Weights.w1[450u], Weights.w1[451u]), fma(_4745, f16vec2(Weights.w1[434u], Weights.w1[435u]), fma(_4728, f16vec2(Weights.w1[418u], Weights.w1[419u]), fma(_4711, f16vec2(Weights.w1[402u], Weights.w1[403u]), fma(_4694, f16vec2(Weights.w1[386u], Weights.w1[387u]), fma(_4677, f16vec2(Weights.w1[370u], Weights.w1[371u]), fma(_4660, f16vec2(Weights.w1[354u], Weights.w1[355u]), fma(_4643, f16vec2(Weights.w1[338u], Weights.w1[339u]), fma(_4626, f16vec2(Weights.w1[322u], Weights.w1[323u]), _4613))))))))));
+    f16vec2 _4785 = fma(_4779, f16vec2(Weights.w1[468u], Weights.w1[469u]), fma(_4762, f16vec2(Weights.w1[452u], Weights.w1[453u]), fma(_4745, f16vec2(Weights.w1[436u], Weights.w1[437u]), fma(_4728, f16vec2(Weights.w1[420u], Weights.w1[421u]), fma(_4711, f16vec2(Weights.w1[404u], Weights.w1[405u]), fma(_4694, f16vec2(Weights.w1[388u], Weights.w1[389u]), fma(_4677, f16vec2(Weights.w1[372u], Weights.w1[373u]), fma(_4660, f16vec2(Weights.w1[356u], Weights.w1[357u]), fma(_4643, f16vec2(Weights.w1[340u], Weights.w1[341u]), fma(_4626, f16vec2(Weights.w1[324u], Weights.w1[325u]), _4615))))))))));
+    f16vec2 _4787 = fma(_4779, f16vec2(Weights.w1[470u], Weights.w1[471u]), fma(_4762, f16vec2(Weights.w1[454u], Weights.w1[455u]), fma(_4745, f16vec2(Weights.w1[438u], Weights.w1[439u]), fma(_4728, f16vec2(Weights.w1[422u], Weights.w1[423u]), fma(_4711, f16vec2(Weights.w1[406u], Weights.w1[407u]), fma(_4694, f16vec2(Weights.w1[390u], Weights.w1[391u]), fma(_4677, f16vec2(Weights.w1[374u], Weights.w1[375u]), fma(_4660, f16vec2(Weights.w1[358u], Weights.w1[359u]), fma(_4643, f16vec2(Weights.w1[342u], Weights.w1[343u]), fma(_4626, f16vec2(Weights.w1[326u], Weights.w1[327u]), _4617))))))))));
+    f16vec2 _4789 = fma(_4779, f16vec2(Weights.w1[472u], Weights.w1[473u]), fma(_4762, f16vec2(Weights.w1[456u], Weights.w1[457u]), fma(_4745, f16vec2(Weights.w1[440u], Weights.w1[441u]), fma(_4728, f16vec2(Weights.w1[424u], Weights.w1[425u]), fma(_4711, f16vec2(Weights.w1[408u], Weights.w1[409u]), fma(_4694, f16vec2(Weights.w1[392u], Weights.w1[393u]), fma(_4677, f16vec2(Weights.w1[376u], Weights.w1[377u]), fma(_4660, f16vec2(Weights.w1[360u], Weights.w1[361u]), fma(_4643, f16vec2(Weights.w1[344u], Weights.w1[345u]), fma(_4626, f16vec2(Weights.w1[328u], Weights.w1[329u]), _4619))))))))));
+    f16vec2 _4791 = fma(_4779, f16vec2(Weights.w1[474u], Weights.w1[475u]), fma(_4762, f16vec2(Weights.w1[458u], Weights.w1[459u]), fma(_4745, f16vec2(Weights.w1[442u], Weights.w1[443u]), fma(_4728, f16vec2(Weights.w1[426u], Weights.w1[427u]), fma(_4711, f16vec2(Weights.w1[410u], Weights.w1[411u]), fma(_4694, f16vec2(Weights.w1[394u], Weights.w1[395u]), fma(_4677, f16vec2(Weights.w1[378u], Weights.w1[379u]), fma(_4660, f16vec2(Weights.w1[362u], Weights.w1[363u]), fma(_4643, f16vec2(Weights.w1[346u], Weights.w1[347u]), fma(_4626, f16vec2(Weights.w1[330u], Weights.w1[331u]), _4621))))))))));
+    f16vec2 _4793 = fma(_4779, f16vec2(Weights.w1[476u], Weights.w1[477u]), fma(_4762, f16vec2(Weights.w1[460u], Weights.w1[461u]), fma(_4745, f16vec2(Weights.w1[444u], Weights.w1[445u]), fma(_4728, f16vec2(Weights.w1[428u], Weights.w1[429u]), fma(_4711, f16vec2(Weights.w1[412u], Weights.w1[413u]), fma(_4694, f16vec2(Weights.w1[396u], Weights.w1[397u]), fma(_4677, f16vec2(Weights.w1[380u], Weights.w1[381u]), fma(_4660, f16vec2(Weights.w1[364u], Weights.w1[365u]), fma(_4643, f16vec2(Weights.w1[348u], Weights.w1[349u]), fma(_4626, f16vec2(Weights.w1[332u], Weights.w1[333u]), _4623))))))))));
+    f16vec2 _4795 = fma(_4779, f16vec2(Weights.w1[478u], Weights.w1[479u]), fma(_4762, f16vec2(Weights.w1[462u], Weights.w1[463u]), fma(_4745, f16vec2(Weights.w1[446u], Weights.w1[447u]), fma(_4728, f16vec2(Weights.w1[430u], Weights.w1[431u]), fma(_4711, f16vec2(Weights.w1[414u], Weights.w1[415u]), fma(_4694, f16vec2(Weights.w1[398u], Weights.w1[399u]), fma(_4677, f16vec2(Weights.w1[382u], Weights.w1[383u]), fma(_4660, f16vec2(Weights.w1[366u], Weights.w1[367u]), fma(_4643, f16vec2(Weights.w1[350u], Weights.w1[351u]), fma(_4626, f16vec2(Weights.w1[334u], Weights.w1[335u]), _4625))))))))));
+    f16vec2 _4796 = f16vec2(_2227[15].x);
+    f16vec2 _4813 = f16vec2(_2227[15].y);
+    f16vec2 _4830 = f16vec2(_2227[16].x);
+    f16vec2 _4847 = f16vec2(_2227[16].y);
+    f16vec2 _4864 = f16vec2(_2227[17].x);
+    f16vec2 _4881 = f16vec2(_2227[17].y);
+    f16vec2 _4898 = f16vec2(_2227[18].x);
+    f16vec2 _4915 = f16vec2(_2227[18].y);
+    f16vec2 _4932 = f16vec2(_2227[19].x);
+    f16vec2 _4949 = f16vec2(_2227[19].y);
+    f16vec2 _4951 = fma(_4949, f16vec2(Weights.w1[624u], Weights.w1[625u]), fma(_4932, f16vec2(Weights.w1[608u], Weights.w1[609u]), fma(_4915, f16vec2(Weights.w1[592u], Weights.w1[593u]), fma(_4898, f16vec2(Weights.w1[576u], Weights.w1[577u]), fma(_4881, f16vec2(Weights.w1[560u], Weights.w1[561u]), fma(_4864, f16vec2(Weights.w1[544u], Weights.w1[545u]), fma(_4847, f16vec2(Weights.w1[528u], Weights.w1[529u]), fma(_4830, f16vec2(Weights.w1[512u], Weights.w1[513u]), fma(_4813, f16vec2(Weights.w1[496u], Weights.w1[497u]), fma(_4796, f16vec2(Weights.w1[480u], Weights.w1[481u]), _4781))))))))));
+    f16vec2 _4953 = fma(_4949, f16vec2(Weights.w1[626u], Weights.w1[627u]), fma(_4932, f16vec2(Weights.w1[610u], Weights.w1[611u]), fma(_4915, f16vec2(Weights.w1[594u], Weights.w1[595u]), fma(_4898, f16vec2(Weights.w1[578u], Weights.w1[579u]), fma(_4881, f16vec2(Weights.w1[562u], Weights.w1[563u]), fma(_4864, f16vec2(Weights.w1[546u], Weights.w1[547u]), fma(_4847, f16vec2(Weights.w1[530u], Weights.w1[531u]), fma(_4830, f16vec2(Weights.w1[514u], Weights.w1[515u]), fma(_4813, f16vec2(Weights.w1[498u], Weights.w1[499u]), fma(_4796, f16vec2(Weights.w1[482u], Weights.w1[483u]), _4783))))))))));
+    f16vec2 _4955 = fma(_4949, f16vec2(Weights.w1[628u], Weights.w1[629u]), fma(_4932, f16vec2(Weights.w1[612u], Weights.w1[613u]), fma(_4915, f16vec2(Weights.w1[596u], Weights.w1[597u]), fma(_4898, f16vec2(Weights.w1[580u], Weights.w1[581u]), fma(_4881, f16vec2(Weights.w1[564u], Weights.w1[565u]), fma(_4864, f16vec2(Weights.w1[548u], Weights.w1[549u]), fma(_4847, f16vec2(Weights.w1[532u], Weights.w1[533u]), fma(_4830, f16vec2(Weights.w1[516u], Weights.w1[517u]), fma(_4813, f16vec2(Weights.w1[500u], Weights.w1[501u]), fma(_4796, f16vec2(Weights.w1[484u], Weights.w1[485u]), _4785))))))))));
+    f16vec2 _4957 = fma(_4949, f16vec2(Weights.w1[630u], Weights.w1[631u]), fma(_4932, f16vec2(Weights.w1[614u], Weights.w1[615u]), fma(_4915, f16vec2(Weights.w1[598u], Weights.w1[599u]), fma(_4898, f16vec2(Weights.w1[582u], Weights.w1[583u]), fma(_4881, f16vec2(Weights.w1[566u], Weights.w1[567u]), fma(_4864, f16vec2(Weights.w1[550u], Weights.w1[551u]), fma(_4847, f16vec2(Weights.w1[534u], Weights.w1[535u]), fma(_4830, f16vec2(Weights.w1[518u], Weights.w1[519u]), fma(_4813, f16vec2(Weights.w1[502u], Weights.w1[503u]), fma(_4796, f16vec2(Weights.w1[486u], Weights.w1[487u]), _4787))))))))));
+    f16vec2 _4959 = fma(_4949, f16vec2(Weights.w1[632u], Weights.w1[633u]), fma(_4932, f16vec2(Weights.w1[616u], Weights.w1[617u]), fma(_4915, f16vec2(Weights.w1[600u], Weights.w1[601u]), fma(_4898, f16vec2(Weights.w1[584u], Weights.w1[585u]), fma(_4881, f16vec2(Weights.w1[568u], Weights.w1[569u]), fma(_4864, f16vec2(Weights.w1[552u], Weights.w1[553u]), fma(_4847, f16vec2(Weights.w1[536u], Weights.w1[537u]), fma(_4830, f16vec2(Weights.w1[520u], Weights.w1[521u]), fma(_4813, f16vec2(Weights.w1[504u], Weights.w1[505u]), fma(_4796, f16vec2(Weights.w1[488u], Weights.w1[489u]), _4789))))))))));
+    f16vec2 _4961 = fma(_4949, f16vec2(Weights.w1[634u], Weights.w1[635u]), fma(_4932, f16vec2(Weights.w1[618u], Weights.w1[619u]), fma(_4915, f16vec2(Weights.w1[602u], Weights.w1[603u]), fma(_4898, f16vec2(Weights.w1[586u], Weights.w1[587u]), fma(_4881, f16vec2(Weights.w1[570u], Weights.w1[571u]), fma(_4864, f16vec2(Weights.w1[554u], Weights.w1[555u]), fma(_4847, f16vec2(Weights.w1[538u], Weights.w1[539u]), fma(_4830, f16vec2(Weights.w1[522u], Weights.w1[523u]), fma(_4813, f16vec2(Weights.w1[506u], Weights.w1[507u]), fma(_4796, f16vec2(Weights.w1[490u], Weights.w1[491u]), _4791))))))))));
+    f16vec2 _4963 = fma(_4949, f16vec2(Weights.w1[636u], Weights.w1[637u]), fma(_4932, f16vec2(Weights.w1[620u], Weights.w1[621u]), fma(_4915, f16vec2(Weights.w1[604u], Weights.w1[605u]), fma(_4898, f16vec2(Weights.w1[588u], Weights.w1[589u]), fma(_4881, f16vec2(Weights.w1[572u], Weights.w1[573u]), fma(_4864, f16vec2(Weights.w1[556u], Weights.w1[557u]), fma(_4847, f16vec2(Weights.w1[540u], Weights.w1[541u]), fma(_4830, f16vec2(Weights.w1[524u], Weights.w1[525u]), fma(_4813, f16vec2(Weights.w1[508u], Weights.w1[509u]), fma(_4796, f16vec2(Weights.w1[492u], Weights.w1[493u]), _4793))))))))));
+    f16vec2 _4965 = fma(_4949, f16vec2(Weights.w1[638u], Weights.w1[639u]), fma(_4932, f16vec2(Weights.w1[622u], Weights.w1[623u]), fma(_4915, f16vec2(Weights.w1[606u], Weights.w1[607u]), fma(_4898, f16vec2(Weights.w1[590u], Weights.w1[591u]), fma(_4881, f16vec2(Weights.w1[574u], Weights.w1[575u]), fma(_4864, f16vec2(Weights.w1[558u], Weights.w1[559u]), fma(_4847, f16vec2(Weights.w1[542u], Weights.w1[543u]), fma(_4830, f16vec2(Weights.w1[526u], Weights.w1[527u]), fma(_4813, f16vec2(Weights.w1[510u], Weights.w1[511u]), fma(_4796, f16vec2(Weights.w1[494u], Weights.w1[495u]), _4795))))))))));
+    f16vec2 _4966 = f16vec2(_2227[20].x);
+    f16vec2 _4983 = f16vec2(_2227[20].y);
+    f16vec2 _5000 = f16vec2(_2227[21].x);
+    f16vec2 _5017 = f16vec2(_2227[21].y);
+    f16vec2 _5034 = f16vec2(_2227[22].x);
+    f16vec2 _5051 = f16vec2(_2227[22].y);
+    f16vec2 _5068 = f16vec2(_2227[23].x);
+    f16vec2 _5085 = f16vec2(_2227[23].y);
+    return f16vec2[](fma(_5085, f16vec2(Weights.w1[752u], Weights.w1[753u]), fma(_5068, f16vec2(Weights.w1[736u], Weights.w1[737u]), fma(_5051, f16vec2(Weights.w1[720u], Weights.w1[721u]), fma(_5034, f16vec2(Weights.w1[704u], Weights.w1[705u]), fma(_5017, f16vec2(Weights.w1[688u], Weights.w1[689u]), fma(_5000, f16vec2(Weights.w1[672u], Weights.w1[673u]), fma(_4983, f16vec2(Weights.w1[656u], Weights.w1[657u]), fma(_4966, f16vec2(Weights.w1[640u], Weights.w1[641u]), _4951)))))))), fma(_5085, f16vec2(Weights.w1[754u], Weights.w1[755u]), fma(_5068, f16vec2(Weights.w1[738u], Weights.w1[739u]), fma(_5051, f16vec2(Weights.w1[722u], Weights.w1[723u]), fma(_5034, f16vec2(Weights.w1[706u], Weights.w1[707u]), fma(_5017, f16vec2(Weights.w1[690u], Weights.w1[691u]), fma(_5000, f16vec2(Weights.w1[674u], Weights.w1[675u]), fma(_4983, f16vec2(Weights.w1[658u], Weights.w1[659u]), fma(_4966, f16vec2(Weights.w1[642u], Weights.w1[643u]), _4953)))))))), fma(_5085, f16vec2(Weights.w1[756u], Weights.w1[757u]), fma(_5068, f16vec2(Weights.w1[740u], Weights.w1[741u]), fma(_5051, f16vec2(Weights.w1[724u], Weights.w1[725u]), fma(_5034, f16vec2(Weights.w1[708u], Weights.w1[709u]), fma(_5017, f16vec2(Weights.w1[692u], Weights.w1[693u]), fma(_5000, f16vec2(Weights.w1[676u], Weights.w1[677u]), fma(_4983, f16vec2(Weights.w1[660u], Weights.w1[661u]), fma(_4966, f16vec2(Weights.w1[644u], Weights.w1[645u]), _4955)))))))), fma(_5085, f16vec2(Weights.w1[758u], Weights.w1[759u]), fma(_5068, f16vec2(Weights.w1[742u], Weights.w1[743u]), fma(_5051, f16vec2(Weights.w1[726u], Weights.w1[727u]), fma(_5034, f16vec2(Weights.w1[710u], Weights.w1[711u]), fma(_5017, f16vec2(Weights.w1[694u], Weights.w1[695u]), fma(_5000, f16vec2(Weights.w1[678u], Weights.w1[679u]), fma(_4983, f16vec2(Weights.w1[662u], Weights.w1[663u]), fma(_4966, f16vec2(Weights.w1[646u], Weights.w1[647u]), _4957)))))))), fma(_5085, f16vec2(Weights.w1[760u], Weights.w1[761u]), fma(_5068, f16vec2(Weights.w1[744u], Weights.w1[745u]), fma(_5051, f16vec2(Weights.w1[728u], Weights.w1[729u]), fma(_5034, f16vec2(Weights.w1[712u], Weights.w1[713u]), fma(_5017, f16vec2(Weights.w1[696u], Weights.w1[697u]), fma(_5000, f16vec2(Weights.w1[680u], Weights.w1[681u]), fma(_4983, f16vec2(Weights.w1[664u], Weights.w1[665u]), fma(_4966, f16vec2(Weights.w1[648u], Weights.w1[649u]), _4959)))))))), fma(_5085, f16vec2(Weights.w1[762u], Weights.w1[763u]), fma(_5068, f16vec2(Weights.w1[746u], Weights.w1[747u]), fma(_5051, f16vec2(Weights.w1[730u], Weights.w1[731u]), fma(_5034, f16vec2(Weights.w1[714u], Weights.w1[715u]), fma(_5017, f16vec2(Weights.w1[698u], Weights.w1[699u]), fma(_5000, f16vec2(Weights.w1[682u], Weights.w1[683u]), fma(_4983, f16vec2(Weights.w1[666u], Weights.w1[667u]), fma(_4966, f16vec2(Weights.w1[650u], Weights.w1[651u]), _4961)))))))), fma(_5085, f16vec2(Weights.w1[764u], Weights.w1[765u]), fma(_5068, f16vec2(Weights.w1[748u], Weights.w1[749u]), fma(_5051, f16vec2(Weights.w1[732u], Weights.w1[733u]), fma(_5034, f16vec2(Weights.w1[716u], Weights.w1[717u]), fma(_5017, f16vec2(Weights.w1[700u], Weights.w1[701u]), fma(_5000, f16vec2(Weights.w1[684u], Weights.w1[685u]), fma(_4983, f16vec2(Weights.w1[668u], Weights.w1[669u]), fma(_4966, f16vec2(Weights.w1[652u], Weights.w1[653u]), _4963)))))))), fma(_5085, f16vec2(Weights.w1[766u], Weights.w1[767u]), fma(_5068, f16vec2(Weights.w1[750u], Weights.w1[751u]), fma(_5051, f16vec2(Weights.w1[734u], Weights.w1[735u]), fma(_5034, f16vec2(Weights.w1[718u], Weights.w1[719u]), fma(_5017, f16vec2(Weights.w1[702u], Weights.w1[703u]), fma(_5000, f16vec2(Weights.w1[686u], Weights.w1[687u]), fma(_4983, f16vec2(Weights.w1[670u], Weights.w1[671u]), fma(_4966, f16vec2(Weights.w1[654u], Weights.w1[655u]), _4965)))))))));
+}
+
+LightingNetworkStage2 evaluateLightingNetworkStage1(LightingNetworkStage1 inputValue, LightingNetworkNetworkContext context)
+{
+    f16vec2 _297[8] = _2226(inputValue.value);
+    f16vec2 tempArg[8] = _297;
+    LightingNetworkStage2 outputValue;
+    outputValue.value = _297;
+    f16vec2 _8369[8] = outputValue.value;
+    uint _8368 = 0u;
+    f16vec2 _8367[8];
+    uint _8375;
+    for (;;)
+    {
+        _8375 = _8368;
+        if (_8375 < 8u)
+        {
+            _8367[_8375] = max(_8369[_8375], _303[_8375]);
+            _8368 = _8375 + 1u;
+            continue;
+        }
+        else
+        {
+            break;
+        }
+    }
+    outputValue.value = _8367;
+    outputValue.provenance = uvec4(2u, context.selectedRoute, 16u, 1u);
+    return outputValue;
+}
+
+LightingNetworkActivationHistory buildLightingNetworkHistory(LightingNetworkStage2 activation, LightingNetworkNetworkContext context)
+{
+    LightingNetworkActivationHistory history;
+    history.selectedFrame = context.selectedRoute;
+    for (uint frameIndex = 0u; frameIndex < 2u; frameIndex++)
+    {
+        history.frames[frameIndex].activation = activation;
+        history.frames[frameIndex].state = uvec4(frameIndex, context.selectedRoute, 2u, 1u);
+    }
+    return history;
+}
+
+bool validateLightingNetworkFrame(LightingNetworkHistoryFrame frame, LightingNetworkNetworkContext context)
+{
+    bool resident = frame.state.w != 0u;
+    bool stageMatches = frame.state.z == 2u;
+    bool routeKnown = frame.state.y == context.selectedRoute;
+    return (resident && stageMatches) && routeKnown;
+}
+
+LightingNetworkStage2 resolveLightingNetworkHistory(LightingNetworkActivationHistory history, LightingNetworkNetworkContext context)
+{
+    uint selectedFrame = history.selectedFrame & 1u;
+    LightingNetworkHistoryFrame selected;
+    switch (selectedFrame)
+    {
+        case 0u:
+        {
+            selected = history.frames[0];
+            break;
+        }
+        case 1u:
+        {
+            selected = history.frames[1];
+            break;
+        }
+        default:
+        {
+            selected = history.frames[0];
+            break;
+        }
+    }
+    LightingNetworkHistoryFrame param = selected;
+    LightingNetworkNetworkContext param_1 = context;
+    if (validateLightingNetworkFrame(param, param_1))
+    {
+        return selected.activation;
+    }
+    return history.frames[0].activation;
+}
+
+LightingNetworkStage2 routeLightingNetworkActivation(LightingNetworkStage2 activation, LightingNetworkNetworkContext context)
+{
+    LightingNetworkStage2 param = activation;
+    LightingNetworkNetworkContext param_1 = context;
+    LightingNetworkActivationHistory _472 = buildLightingNetworkHistory(param, param_1);
+    LightingNetworkActivationHistory history = _472;
+    LightingNetworkActivationHistory param_2 = _472;
+    LightingNetworkNetworkContext param_3 = context;
+    return resolveLightingNetworkHistory(param_2, param_3);
+}
+
+f16vec2[24] _5104(f16vec2 _5105[8])
+{
+    f16vec2 _6797 = f16vec2(_5105[0].x);
+    f16vec2 _6846 = f16vec2(_5105[0].y);
+    f16vec2 _6895 = f16vec2(_5105[1].x);
+    f16vec2 _6944 = f16vec2(_5105[1].y);
+    f16vec2 _6993 = f16vec2(_5105[2].x);
+    f16vec2 _7042 = f16vec2(_5105[2].y);
+    f16vec2 _7091 = f16vec2(_5105[3].x);
+    f16vec2 _7140 = f16vec2(_5105[3].y);
+    f16vec2 _7189 = f16vec2(_5105[4].x);
+    f16vec2 _7238 = f16vec2(_5105[4].y);
+    f16vec2 _7240 = fma(_7238, f16vec2(Weights.w2[432u], Weights.w2[433u]), fma(_7189, f16vec2(Weights.w2[384u], Weights.w2[385u]), fma(_7140, f16vec2(Weights.w2[336u], Weights.w2[337u]), fma(_7091, f16vec2(Weights.w2[288u], Weights.w2[289u]), fma(_7042, f16vec2(Weights.w2[240u], Weights.w2[241u]), fma(_6993, f16vec2(Weights.w2[192u], Weights.w2[193u]), fma(_6944, f16vec2(Weights.w2[144u], Weights.w2[145u]), fma(_6895, f16vec2(Weights.w2[96u], Weights.w2[97u]), fma(_6846, f16vec2(Weights.w2[48u], Weights.w2[49u]), fma(_6797, f16vec2(Weights.w2[0u], Weights.w2[1u]), f16vec2(Biases.b2[0u], Biases.b2[1u])))))))))));
+    f16vec2 _7242 = fma(_7238, f16vec2(Weights.w2[434u], Weights.w2[435u]), fma(_7189, f16vec2(Weights.w2[386u], Weights.w2[387u]), fma(_7140, f16vec2(Weights.w2[338u], Weights.w2[339u]), fma(_7091, f16vec2(Weights.w2[290u], Weights.w2[291u]), fma(_7042, f16vec2(Weights.w2[242u], Weights.w2[243u]), fma(_6993, f16vec2(Weights.w2[194u], Weights.w2[195u]), fma(_6944, f16vec2(Weights.w2[146u], Weights.w2[147u]), fma(_6895, f16vec2(Weights.w2[98u], Weights.w2[99u]), fma(_6846, f16vec2(Weights.w2[50u], Weights.w2[51u]), fma(_6797, f16vec2(Weights.w2[2u], Weights.w2[3u]), f16vec2(Biases.b2[2u], Biases.b2[3u])))))))))));
+    f16vec2 _7244 = fma(_7238, f16vec2(Weights.w2[436u], Weights.w2[437u]), fma(_7189, f16vec2(Weights.w2[388u], Weights.w2[389u]), fma(_7140, f16vec2(Weights.w2[340u], Weights.w2[341u]), fma(_7091, f16vec2(Weights.w2[292u], Weights.w2[293u]), fma(_7042, f16vec2(Weights.w2[244u], Weights.w2[245u]), fma(_6993, f16vec2(Weights.w2[196u], Weights.w2[197u]), fma(_6944, f16vec2(Weights.w2[148u], Weights.w2[149u]), fma(_6895, f16vec2(Weights.w2[100u], Weights.w2[101u]), fma(_6846, f16vec2(Weights.w2[52u], Weights.w2[53u]), fma(_6797, f16vec2(Weights.w2[4u], Weights.w2[5u]), f16vec2(Biases.b2[4u], Biases.b2[5u])))))))))));
+    f16vec2 _7246 = fma(_7238, f16vec2(Weights.w2[438u], Weights.w2[439u]), fma(_7189, f16vec2(Weights.w2[390u], Weights.w2[391u]), fma(_7140, f16vec2(Weights.w2[342u], Weights.w2[343u]), fma(_7091, f16vec2(Weights.w2[294u], Weights.w2[295u]), fma(_7042, f16vec2(Weights.w2[246u], Weights.w2[247u]), fma(_6993, f16vec2(Weights.w2[198u], Weights.w2[199u]), fma(_6944, f16vec2(Weights.w2[150u], Weights.w2[151u]), fma(_6895, f16vec2(Weights.w2[102u], Weights.w2[103u]), fma(_6846, f16vec2(Weights.w2[54u], Weights.w2[55u]), fma(_6797, f16vec2(Weights.w2[6u], Weights.w2[7u]), f16vec2(Biases.b2[6u], Biases.b2[7u])))))))))));
+    f16vec2 _7248 = fma(_7238, f16vec2(Weights.w2[440u], Weights.w2[441u]), fma(_7189, f16vec2(Weights.w2[392u], Weights.w2[393u]), fma(_7140, f16vec2(Weights.w2[344u], Weights.w2[345u]), fma(_7091, f16vec2(Weights.w2[296u], Weights.w2[297u]), fma(_7042, f16vec2(Weights.w2[248u], Weights.w2[249u]), fma(_6993, f16vec2(Weights.w2[200u], Weights.w2[201u]), fma(_6944, f16vec2(Weights.w2[152u], Weights.w2[153u]), fma(_6895, f16vec2(Weights.w2[104u], Weights.w2[105u]), fma(_6846, f16vec2(Weights.w2[56u], Weights.w2[57u]), fma(_6797, f16vec2(Weights.w2[8u], Weights.w2[9u]), f16vec2(Biases.b2[8u], Biases.b2[9u])))))))))));
+    f16vec2 _7250 = fma(_7238, f16vec2(Weights.w2[442u], Weights.w2[443u]), fma(_7189, f16vec2(Weights.w2[394u], Weights.w2[395u]), fma(_7140, f16vec2(Weights.w2[346u], Weights.w2[347u]), fma(_7091, f16vec2(Weights.w2[298u], Weights.w2[299u]), fma(_7042, f16vec2(Weights.w2[250u], Weights.w2[251u]), fma(_6993, f16vec2(Weights.w2[202u], Weights.w2[203u]), fma(_6944, f16vec2(Weights.w2[154u], Weights.w2[155u]), fma(_6895, f16vec2(Weights.w2[106u], Weights.w2[107u]), fma(_6846, f16vec2(Weights.w2[58u], Weights.w2[59u]), fma(_6797, f16vec2(Weights.w2[10u], Weights.w2[11u]), f16vec2(Biases.b2[10u], Biases.b2[11u])))))))))));
+    f16vec2 _7252 = fma(_7238, f16vec2(Weights.w2[444u], Weights.w2[445u]), fma(_7189, f16vec2(Weights.w2[396u], Weights.w2[397u]), fma(_7140, f16vec2(Weights.w2[348u], Weights.w2[349u]), fma(_7091, f16vec2(Weights.w2[300u], Weights.w2[301u]), fma(_7042, f16vec2(Weights.w2[252u], Weights.w2[253u]), fma(_6993, f16vec2(Weights.w2[204u], Weights.w2[205u]), fma(_6944, f16vec2(Weights.w2[156u], Weights.w2[157u]), fma(_6895, f16vec2(Weights.w2[108u], Weights.w2[109u]), fma(_6846, f16vec2(Weights.w2[60u], Weights.w2[61u]), fma(_6797, f16vec2(Weights.w2[12u], Weights.w2[13u]), f16vec2(Biases.b2[12u], Biases.b2[13u])))))))))));
+    f16vec2 _7254 = fma(_7238, f16vec2(Weights.w2[446u], Weights.w2[447u]), fma(_7189, f16vec2(Weights.w2[398u], Weights.w2[399u]), fma(_7140, f16vec2(Weights.w2[350u], Weights.w2[351u]), fma(_7091, f16vec2(Weights.w2[302u], Weights.w2[303u]), fma(_7042, f16vec2(Weights.w2[254u], Weights.w2[255u]), fma(_6993, f16vec2(Weights.w2[206u], Weights.w2[207u]), fma(_6944, f16vec2(Weights.w2[158u], Weights.w2[159u]), fma(_6895, f16vec2(Weights.w2[110u], Weights.w2[111u]), fma(_6846, f16vec2(Weights.w2[62u], Weights.w2[63u]), fma(_6797, f16vec2(Weights.w2[14u], Weights.w2[15u]), f16vec2(Biases.b2[14u], Biases.b2[15u])))))))))));
+    f16vec2 _7256 = fma(_7238, f16vec2(Weights.w2[448u], Weights.w2[449u]), fma(_7189, f16vec2(Weights.w2[400u], Weights.w2[401u]), fma(_7140, f16vec2(Weights.w2[352u], Weights.w2[353u]), fma(_7091, f16vec2(Weights.w2[304u], Weights.w2[305u]), fma(_7042, f16vec2(Weights.w2[256u], Weights.w2[257u]), fma(_6993, f16vec2(Weights.w2[208u], Weights.w2[209u]), fma(_6944, f16vec2(Weights.w2[160u], Weights.w2[161u]), fma(_6895, f16vec2(Weights.w2[112u], Weights.w2[113u]), fma(_6846, f16vec2(Weights.w2[64u], Weights.w2[65u]), fma(_6797, f16vec2(Weights.w2[16u], Weights.w2[17u]), f16vec2(Biases.b2[16u], Biases.b2[17u])))))))))));
+    f16vec2 _7258 = fma(_7238, f16vec2(Weights.w2[450u], Weights.w2[451u]), fma(_7189, f16vec2(Weights.w2[402u], Weights.w2[403u]), fma(_7140, f16vec2(Weights.w2[354u], Weights.w2[355u]), fma(_7091, f16vec2(Weights.w2[306u], Weights.w2[307u]), fma(_7042, f16vec2(Weights.w2[258u], Weights.w2[259u]), fma(_6993, f16vec2(Weights.w2[210u], Weights.w2[211u]), fma(_6944, f16vec2(Weights.w2[162u], Weights.w2[163u]), fma(_6895, f16vec2(Weights.w2[114u], Weights.w2[115u]), fma(_6846, f16vec2(Weights.w2[66u], Weights.w2[67u]), fma(_6797, f16vec2(Weights.w2[18u], Weights.w2[19u]), f16vec2(Biases.b2[18u], Biases.b2[19u])))))))))));
+    f16vec2 _7260 = fma(_7238, f16vec2(Weights.w2[452u], Weights.w2[453u]), fma(_7189, f16vec2(Weights.w2[404u], Weights.w2[405u]), fma(_7140, f16vec2(Weights.w2[356u], Weights.w2[357u]), fma(_7091, f16vec2(Weights.w2[308u], Weights.w2[309u]), fma(_7042, f16vec2(Weights.w2[260u], Weights.w2[261u]), fma(_6993, f16vec2(Weights.w2[212u], Weights.w2[213u]), fma(_6944, f16vec2(Weights.w2[164u], Weights.w2[165u]), fma(_6895, f16vec2(Weights.w2[116u], Weights.w2[117u]), fma(_6846, f16vec2(Weights.w2[68u], Weights.w2[69u]), fma(_6797, f16vec2(Weights.w2[20u], Weights.w2[21u]), f16vec2(Biases.b2[20u], Biases.b2[21u])))))))))));
+    f16vec2 _7262 = fma(_7238, f16vec2(Weights.w2[454u], Weights.w2[455u]), fma(_7189, f16vec2(Weights.w2[406u], Weights.w2[407u]), fma(_7140, f16vec2(Weights.w2[358u], Weights.w2[359u]), fma(_7091, f16vec2(Weights.w2[310u], Weights.w2[311u]), fma(_7042, f16vec2(Weights.w2[262u], Weights.w2[263u]), fma(_6993, f16vec2(Weights.w2[214u], Weights.w2[215u]), fma(_6944, f16vec2(Weights.w2[166u], Weights.w2[167u]), fma(_6895, f16vec2(Weights.w2[118u], Weights.w2[119u]), fma(_6846, f16vec2(Weights.w2[70u], Weights.w2[71u]), fma(_6797, f16vec2(Weights.w2[22u], Weights.w2[23u]), f16vec2(Biases.b2[22u], Biases.b2[23u])))))))))));
+    f16vec2 _7264 = fma(_7238, f16vec2(Weights.w2[456u], Weights.w2[457u]), fma(_7189, f16vec2(Weights.w2[408u], Weights.w2[409u]), fma(_7140, f16vec2(Weights.w2[360u], Weights.w2[361u]), fma(_7091, f16vec2(Weights.w2[312u], Weights.w2[313u]), fma(_7042, f16vec2(Weights.w2[264u], Weights.w2[265u]), fma(_6993, f16vec2(Weights.w2[216u], Weights.w2[217u]), fma(_6944, f16vec2(Weights.w2[168u], Weights.w2[169u]), fma(_6895, f16vec2(Weights.w2[120u], Weights.w2[121u]), fma(_6846, f16vec2(Weights.w2[72u], Weights.w2[73u]), fma(_6797, f16vec2(Weights.w2[24u], Weights.w2[25u]), f16vec2(Biases.b2[24u], Biases.b2[25u])))))))))));
+    f16vec2 _7266 = fma(_7238, f16vec2(Weights.w2[458u], Weights.w2[459u]), fma(_7189, f16vec2(Weights.w2[410u], Weights.w2[411u]), fma(_7140, f16vec2(Weights.w2[362u], Weights.w2[363u]), fma(_7091, f16vec2(Weights.w2[314u], Weights.w2[315u]), fma(_7042, f16vec2(Weights.w2[266u], Weights.w2[267u]), fma(_6993, f16vec2(Weights.w2[218u], Weights.w2[219u]), fma(_6944, f16vec2(Weights.w2[170u], Weights.w2[171u]), fma(_6895, f16vec2(Weights.w2[122u], Weights.w2[123u]), fma(_6846, f16vec2(Weights.w2[74u], Weights.w2[75u]), fma(_6797, f16vec2(Weights.w2[26u], Weights.w2[27u]), f16vec2(Biases.b2[26u], Biases.b2[27u])))))))))));
+    f16vec2 _7268 = fma(_7238, f16vec2(Weights.w2[460u], Weights.w2[461u]), fma(_7189, f16vec2(Weights.w2[412u], Weights.w2[413u]), fma(_7140, f16vec2(Weights.w2[364u], Weights.w2[365u]), fma(_7091, f16vec2(Weights.w2[316u], Weights.w2[317u]), fma(_7042, f16vec2(Weights.w2[268u], Weights.w2[269u]), fma(_6993, f16vec2(Weights.w2[220u], Weights.w2[221u]), fma(_6944, f16vec2(Weights.w2[172u], Weights.w2[173u]), fma(_6895, f16vec2(Weights.w2[124u], Weights.w2[125u]), fma(_6846, f16vec2(Weights.w2[76u], Weights.w2[77u]), fma(_6797, f16vec2(Weights.w2[28u], Weights.w2[29u]), f16vec2(Biases.b2[28u], Biases.b2[29u])))))))))));
+    f16vec2 _7270 = fma(_7238, f16vec2(Weights.w2[462u], Weights.w2[463u]), fma(_7189, f16vec2(Weights.w2[414u], Weights.w2[415u]), fma(_7140, f16vec2(Weights.w2[366u], Weights.w2[367u]), fma(_7091, f16vec2(Weights.w2[318u], Weights.w2[319u]), fma(_7042, f16vec2(Weights.w2[270u], Weights.w2[271u]), fma(_6993, f16vec2(Weights.w2[222u], Weights.w2[223u]), fma(_6944, f16vec2(Weights.w2[174u], Weights.w2[175u]), fma(_6895, f16vec2(Weights.w2[126u], Weights.w2[127u]), fma(_6846, f16vec2(Weights.w2[78u], Weights.w2[79u]), fma(_6797, f16vec2(Weights.w2[30u], Weights.w2[31u]), f16vec2(Biases.b2[30u], Biases.b2[31u])))))))))));
+    f16vec2 _7272 = fma(_7238, f16vec2(Weights.w2[464u], Weights.w2[465u]), fma(_7189, f16vec2(Weights.w2[416u], Weights.w2[417u]), fma(_7140, f16vec2(Weights.w2[368u], Weights.w2[369u]), fma(_7091, f16vec2(Weights.w2[320u], Weights.w2[321u]), fma(_7042, f16vec2(Weights.w2[272u], Weights.w2[273u]), fma(_6993, f16vec2(Weights.w2[224u], Weights.w2[225u]), fma(_6944, f16vec2(Weights.w2[176u], Weights.w2[177u]), fma(_6895, f16vec2(Weights.w2[128u], Weights.w2[129u]), fma(_6846, f16vec2(Weights.w2[80u], Weights.w2[81u]), fma(_6797, f16vec2(Weights.w2[32u], Weights.w2[33u]), f16vec2(Biases.b2[32u], Biases.b2[33u])))))))))));
+    f16vec2 _7274 = fma(_7238, f16vec2(Weights.w2[466u], Weights.w2[467u]), fma(_7189, f16vec2(Weights.w2[418u], Weights.w2[419u]), fma(_7140, f16vec2(Weights.w2[370u], Weights.w2[371u]), fma(_7091, f16vec2(Weights.w2[322u], Weights.w2[323u]), fma(_7042, f16vec2(Weights.w2[274u], Weights.w2[275u]), fma(_6993, f16vec2(Weights.w2[226u], Weights.w2[227u]), fma(_6944, f16vec2(Weights.w2[178u], Weights.w2[179u]), fma(_6895, f16vec2(Weights.w2[130u], Weights.w2[131u]), fma(_6846, f16vec2(Weights.w2[82u], Weights.w2[83u]), fma(_6797, f16vec2(Weights.w2[34u], Weights.w2[35u]), f16vec2(Biases.b2[34u], Biases.b2[35u])))))))))));
+    f16vec2 _7276 = fma(_7238, f16vec2(Weights.w2[468u], Weights.w2[469u]), fma(_7189, f16vec2(Weights.w2[420u], Weights.w2[421u]), fma(_7140, f16vec2(Weights.w2[372u], Weights.w2[373u]), fma(_7091, f16vec2(Weights.w2[324u], Weights.w2[325u]), fma(_7042, f16vec2(Weights.w2[276u], Weights.w2[277u]), fma(_6993, f16vec2(Weights.w2[228u], Weights.w2[229u]), fma(_6944, f16vec2(Weights.w2[180u], Weights.w2[181u]), fma(_6895, f16vec2(Weights.w2[132u], Weights.w2[133u]), fma(_6846, f16vec2(Weights.w2[84u], Weights.w2[85u]), fma(_6797, f16vec2(Weights.w2[36u], Weights.w2[37u]), f16vec2(Biases.b2[36u], Biases.b2[37u])))))))))));
+    f16vec2 _7278 = fma(_7238, f16vec2(Weights.w2[470u], Weights.w2[471u]), fma(_7189, f16vec2(Weights.w2[422u], Weights.w2[423u]), fma(_7140, f16vec2(Weights.w2[374u], Weights.w2[375u]), fma(_7091, f16vec2(Weights.w2[326u], Weights.w2[327u]), fma(_7042, f16vec2(Weights.w2[278u], Weights.w2[279u]), fma(_6993, f16vec2(Weights.w2[230u], Weights.w2[231u]), fma(_6944, f16vec2(Weights.w2[182u], Weights.w2[183u]), fma(_6895, f16vec2(Weights.w2[134u], Weights.w2[135u]), fma(_6846, f16vec2(Weights.w2[86u], Weights.w2[87u]), fma(_6797, f16vec2(Weights.w2[38u], Weights.w2[39u]), f16vec2(Biases.b2[38u], Biases.b2[39u])))))))))));
+    f16vec2 _7280 = fma(_7238, f16vec2(Weights.w2[472u], Weights.w2[473u]), fma(_7189, f16vec2(Weights.w2[424u], Weights.w2[425u]), fma(_7140, f16vec2(Weights.w2[376u], Weights.w2[377u]), fma(_7091, f16vec2(Weights.w2[328u], Weights.w2[329u]), fma(_7042, f16vec2(Weights.w2[280u], Weights.w2[281u]), fma(_6993, f16vec2(Weights.w2[232u], Weights.w2[233u]), fma(_6944, f16vec2(Weights.w2[184u], Weights.w2[185u]), fma(_6895, f16vec2(Weights.w2[136u], Weights.w2[137u]), fma(_6846, f16vec2(Weights.w2[88u], Weights.w2[89u]), fma(_6797, f16vec2(Weights.w2[40u], Weights.w2[41u]), f16vec2(Biases.b2[40u], Biases.b2[41u])))))))))));
+    f16vec2 _7282 = fma(_7238, f16vec2(Weights.w2[474u], Weights.w2[475u]), fma(_7189, f16vec2(Weights.w2[426u], Weights.w2[427u]), fma(_7140, f16vec2(Weights.w2[378u], Weights.w2[379u]), fma(_7091, f16vec2(Weights.w2[330u], Weights.w2[331u]), fma(_7042, f16vec2(Weights.w2[282u], Weights.w2[283u]), fma(_6993, f16vec2(Weights.w2[234u], Weights.w2[235u]), fma(_6944, f16vec2(Weights.w2[186u], Weights.w2[187u]), fma(_6895, f16vec2(Weights.w2[138u], Weights.w2[139u]), fma(_6846, f16vec2(Weights.w2[90u], Weights.w2[91u]), fma(_6797, f16vec2(Weights.w2[42u], Weights.w2[43u]), f16vec2(Biases.b2[42u], Biases.b2[43u])))))))))));
+    f16vec2 _7284 = fma(_7238, f16vec2(Weights.w2[476u], Weights.w2[477u]), fma(_7189, f16vec2(Weights.w2[428u], Weights.w2[429u]), fma(_7140, f16vec2(Weights.w2[380u], Weights.w2[381u]), fma(_7091, f16vec2(Weights.w2[332u], Weights.w2[333u]), fma(_7042, f16vec2(Weights.w2[284u], Weights.w2[285u]), fma(_6993, f16vec2(Weights.w2[236u], Weights.w2[237u]), fma(_6944, f16vec2(Weights.w2[188u], Weights.w2[189u]), fma(_6895, f16vec2(Weights.w2[140u], Weights.w2[141u]), fma(_6846, f16vec2(Weights.w2[92u], Weights.w2[93u]), fma(_6797, f16vec2(Weights.w2[44u], Weights.w2[45u]), f16vec2(Biases.b2[44u], Biases.b2[45u])))))))))));
+    f16vec2 _7286 = fma(_7238, f16vec2(Weights.w2[478u], Weights.w2[479u]), fma(_7189, f16vec2(Weights.w2[430u], Weights.w2[431u]), fma(_7140, f16vec2(Weights.w2[382u], Weights.w2[383u]), fma(_7091, f16vec2(Weights.w2[334u], Weights.w2[335u]), fma(_7042, f16vec2(Weights.w2[286u], Weights.w2[287u]), fma(_6993, f16vec2(Weights.w2[238u], Weights.w2[239u]), fma(_6944, f16vec2(Weights.w2[190u], Weights.w2[191u]), fma(_6895, f16vec2(Weights.w2[142u], Weights.w2[143u]), fma(_6846, f16vec2(Weights.w2[94u], Weights.w2[95u]), fma(_6797, f16vec2(Weights.w2[46u], Weights.w2[47u]), f16vec2(Biases.b2[46u], Biases.b2[47u])))))))))));
+    f16vec2 _7287 = f16vec2(_5105[5].x);
+    f16vec2 _7336 = f16vec2(_5105[5].y);
+    f16vec2 _7385 = f16vec2(_5105[6].x);
+    f16vec2 _7434 = f16vec2(_5105[6].y);
+    f16vec2 _7483 = f16vec2(_5105[7].x);
+    f16vec2 _7532 = f16vec2(_5105[7].y);
+    return f16vec2[](fma(_7532, f16vec2(Weights.w2[720u], Weights.w2[721u]), fma(_7483, f16vec2(Weights.w2[672u], Weights.w2[673u]), fma(_7434, f16vec2(Weights.w2[624u], Weights.w2[625u]), fma(_7385, f16vec2(Weights.w2[576u], Weights.w2[577u]), fma(_7336, f16vec2(Weights.w2[528u], Weights.w2[529u]), fma(_7287, f16vec2(Weights.w2[480u], Weights.w2[481u]), _7240)))))), fma(_7532, f16vec2(Weights.w2[722u], Weights.w2[723u]), fma(_7483, f16vec2(Weights.w2[674u], Weights.w2[675u]), fma(_7434, f16vec2(Weights.w2[626u], Weights.w2[627u]), fma(_7385, f16vec2(Weights.w2[578u], Weights.w2[579u]), fma(_7336, f16vec2(Weights.w2[530u], Weights.w2[531u]), fma(_7287, f16vec2(Weights.w2[482u], Weights.w2[483u]), _7242)))))), fma(_7532, f16vec2(Weights.w2[724u], Weights.w2[725u]), fma(_7483, f16vec2(Weights.w2[676u], Weights.w2[677u]), fma(_7434, f16vec2(Weights.w2[628u], Weights.w2[629u]), fma(_7385, f16vec2(Weights.w2[580u], Weights.w2[581u]), fma(_7336, f16vec2(Weights.w2[532u], Weights.w2[533u]), fma(_7287, f16vec2(Weights.w2[484u], Weights.w2[485u]), _7244)))))), fma(_7532, f16vec2(Weights.w2[726u], Weights.w2[727u]), fma(_7483, f16vec2(Weights.w2[678u], Weights.w2[679u]), fma(_7434, f16vec2(Weights.w2[630u], Weights.w2[631u]), fma(_7385, f16vec2(Weights.w2[582u], Weights.w2[583u]), fma(_7336, f16vec2(Weights.w2[534u], Weights.w2[535u]), fma(_7287, f16vec2(Weights.w2[486u], Weights.w2[487u]), _7246)))))), fma(_7532, f16vec2(Weights.w2[728u], Weights.w2[729u]), fma(_7483, f16vec2(Weights.w2[680u], Weights.w2[681u]), fma(_7434, f16vec2(Weights.w2[632u], Weights.w2[633u]), fma(_7385, f16vec2(Weights.w2[584u], Weights.w2[585u]), fma(_7336, f16vec2(Weights.w2[536u], Weights.w2[537u]), fma(_7287, f16vec2(Weights.w2[488u], Weights.w2[489u]), _7248)))))), fma(_7532, f16vec2(Weights.w2[730u], Weights.w2[731u]), fma(_7483, f16vec2(Weights.w2[682u], Weights.w2[683u]), fma(_7434, f16vec2(Weights.w2[634u], Weights.w2[635u]), fma(_7385, f16vec2(Weights.w2[586u], Weights.w2[587u]), fma(_7336, f16vec2(Weights.w2[538u], Weights.w2[539u]), fma(_7287, f16vec2(Weights.w2[490u], Weights.w2[491u]), _7250)))))), fma(_7532, f16vec2(Weights.w2[732u], Weights.w2[733u]), fma(_7483, f16vec2(Weights.w2[684u], Weights.w2[685u]), fma(_7434, f16vec2(Weights.w2[636u], Weights.w2[637u]), fma(_7385, f16vec2(Weights.w2[588u], Weights.w2[589u]), fma(_7336, f16vec2(Weights.w2[540u], Weights.w2[541u]), fma(_7287, f16vec2(Weights.w2[492u], Weights.w2[493u]), _7252)))))), fma(_7532, f16vec2(Weights.w2[734u], Weights.w2[735u]), fma(_7483, f16vec2(Weights.w2[686u], Weights.w2[687u]), fma(_7434, f16vec2(Weights.w2[638u], Weights.w2[639u]), fma(_7385, f16vec2(Weights.w2[590u], Weights.w2[591u]), fma(_7336, f16vec2(Weights.w2[542u], Weights.w2[543u]), fma(_7287, f16vec2(Weights.w2[494u], Weights.w2[495u]), _7254)))))), fma(_7532, f16vec2(Weights.w2[736u], Weights.w2[737u]), fma(_7483, f16vec2(Weights.w2[688u], Weights.w2[689u]), fma(_7434, f16vec2(Weights.w2[640u], Weights.w2[641u]), fma(_7385, f16vec2(Weights.w2[592u], Weights.w2[593u]), fma(_7336, f16vec2(Weights.w2[544u], Weights.w2[545u]), fma(_7287, f16vec2(Weights.w2[496u], Weights.w2[497u]), _7256)))))), fma(_7532, f16vec2(Weights.w2[738u], Weights.w2[739u]), fma(_7483, f16vec2(Weights.w2[690u], Weights.w2[691u]), fma(_7434, f16vec2(Weights.w2[642u], Weights.w2[643u]), fma(_7385, f16vec2(Weights.w2[594u], Weights.w2[595u]), fma(_7336, f16vec2(Weights.w2[546u], Weights.w2[547u]), fma(_7287, f16vec2(Weights.w2[498u], Weights.w2[499u]), _7258)))))), fma(_7532, f16vec2(Weights.w2[740u], Weights.w2[741u]), fma(_7483, f16vec2(Weights.w2[692u], Weights.w2[693u]), fma(_7434, f16vec2(Weights.w2[644u], Weights.w2[645u]), fma(_7385, f16vec2(Weights.w2[596u], Weights.w2[597u]), fma(_7336, f16vec2(Weights.w2[548u], Weights.w2[549u]), fma(_7287, f16vec2(Weights.w2[500u], Weights.w2[501u]), _7260)))))), fma(_7532, f16vec2(Weights.w2[742u], Weights.w2[743u]), fma(_7483, f16vec2(Weights.w2[694u], Weights.w2[695u]), fma(_7434, f16vec2(Weights.w2[646u], Weights.w2[647u]), fma(_7385, f16vec2(Weights.w2[598u], Weights.w2[599u]), fma(_7336, f16vec2(Weights.w2[550u], Weights.w2[551u]), fma(_7287, f16vec2(Weights.w2[502u], Weights.w2[503u]), _7262)))))), fma(_7532, f16vec2(Weights.w2[744u], Weights.w2[745u]), fma(_7483, f16vec2(Weights.w2[696u], Weights.w2[697u]), fma(_7434, f16vec2(Weights.w2[648u], Weights.w2[649u]), fma(_7385, f16vec2(Weights.w2[600u], Weights.w2[601u]), fma(_7336, f16vec2(Weights.w2[552u], Weights.w2[553u]), fma(_7287, f16vec2(Weights.w2[504u], Weights.w2[505u]), _7264)))))), fma(_7532, f16vec2(Weights.w2[746u], Weights.w2[747u]), fma(_7483, f16vec2(Weights.w2[698u], Weights.w2[699u]), fma(_7434, f16vec2(Weights.w2[650u], Weights.w2[651u]), fma(_7385, f16vec2(Weights.w2[602u], Weights.w2[603u]), fma(_7336, f16vec2(Weights.w2[554u], Weights.w2[555u]), fma(_7287, f16vec2(Weights.w2[506u], Weights.w2[507u]), _7266)))))), fma(_7532, f16vec2(Weights.w2[748u], Weights.w2[749u]), fma(_7483, f16vec2(Weights.w2[700u], Weights.w2[701u]), fma(_7434, f16vec2(Weights.w2[652u], Weights.w2[653u]), fma(_7385, f16vec2(Weights.w2[604u], Weights.w2[605u]), fma(_7336, f16vec2(Weights.w2[556u], Weights.w2[557u]), fma(_7287, f16vec2(Weights.w2[508u], Weights.w2[509u]), _7268)))))), fma(_7532, f16vec2(Weights.w2[750u], Weights.w2[751u]), fma(_7483, f16vec2(Weights.w2[702u], Weights.w2[703u]), fma(_7434, f16vec2(Weights.w2[654u], Weights.w2[655u]), fma(_7385, f16vec2(Weights.w2[606u], Weights.w2[607u]), fma(_7336, f16vec2(Weights.w2[558u], Weights.w2[559u]), fma(_7287, f16vec2(Weights.w2[510u], Weights.w2[511u]), _7270)))))), fma(_7532, f16vec2(Weights.w2[752u], Weights.w2[753u]), fma(_7483, f16vec2(Weights.w2[704u], Weights.w2[705u]), fma(_7434, f16vec2(Weights.w2[656u], Weights.w2[657u]), fma(_7385, f16vec2(Weights.w2[608u], Weights.w2[609u]), fma(_7336, f16vec2(Weights.w2[560u], Weights.w2[561u]), fma(_7287, f16vec2(Weights.w2[512u], Weights.w2[513u]), _7272)))))), fma(_7532, f16vec2(Weights.w2[754u], Weights.w2[755u]), fma(_7483, f16vec2(Weights.w2[706u], Weights.w2[707u]), fma(_7434, f16vec2(Weights.w2[658u], Weights.w2[659u]), fma(_7385, f16vec2(Weights.w2[610u], Weights.w2[611u]), fma(_7336, f16vec2(Weights.w2[562u], Weights.w2[563u]), fma(_7287, f16vec2(Weights.w2[514u], Weights.w2[515u]), _7274)))))), fma(_7532, f16vec2(Weights.w2[756u], Weights.w2[757u]), fma(_7483, f16vec2(Weights.w2[708u], Weights.w2[709u]), fma(_7434, f16vec2(Weights.w2[660u], Weights.w2[661u]), fma(_7385, f16vec2(Weights.w2[612u], Weights.w2[613u]), fma(_7336, f16vec2(Weights.w2[564u], Weights.w2[565u]), fma(_7287, f16vec2(Weights.w2[516u], Weights.w2[517u]), _7276)))))), fma(_7532, f16vec2(Weights.w2[758u], Weights.w2[759u]), fma(_7483, f16vec2(Weights.w2[710u], Weights.w2[711u]), fma(_7434, f16vec2(Weights.w2[662u], Weights.w2[663u]), fma(_7385, f16vec2(Weights.w2[614u], Weights.w2[615u]), fma(_7336, f16vec2(Weights.w2[566u], Weights.w2[567u]), fma(_7287, f16vec2(Weights.w2[518u], Weights.w2[519u]), _7278)))))), fma(_7532, f16vec2(Weights.w2[760u], Weights.w2[761u]), fma(_7483, f16vec2(Weights.w2[712u], Weights.w2[713u]), fma(_7434, f16vec2(Weights.w2[664u], Weights.w2[665u]), fma(_7385, f16vec2(Weights.w2[616u], Weights.w2[617u]), fma(_7336, f16vec2(Weights.w2[568u], Weights.w2[569u]), fma(_7287, f16vec2(Weights.w2[520u], Weights.w2[521u]), _7280)))))), fma(_7532, f16vec2(Weights.w2[762u], Weights.w2[763u]), fma(_7483, f16vec2(Weights.w2[714u], Weights.w2[715u]), fma(_7434, f16vec2(Weights.w2[666u], Weights.w2[667u]), fma(_7385, f16vec2(Weights.w2[618u], Weights.w2[619u]), fma(_7336, f16vec2(Weights.w2[570u], Weights.w2[571u]), fma(_7287, f16vec2(Weights.w2[522u], Weights.w2[523u]), _7282)))))), fma(_7532, f16vec2(Weights.w2[764u], Weights.w2[765u]), fma(_7483, f16vec2(Weights.w2[716u], Weights.w2[717u]), fma(_7434, f16vec2(Weights.w2[668u], Weights.w2[669u]), fma(_7385, f16vec2(Weights.w2[620u], Weights.w2[621u]), fma(_7336, f16vec2(Weights.w2[572u], Weights.w2[573u]), fma(_7287, f16vec2(Weights.w2[524u], Weights.w2[525u]), _7284)))))), fma(_7532, f16vec2(Weights.w2[766u], Weights.w2[767u]), fma(_7483, f16vec2(Weights.w2[718u], Weights.w2[719u]), fma(_7434, f16vec2(Weights.w2[670u], Weights.w2[671u]), fma(_7385, f16vec2(Weights.w2[622u], Weights.w2[623u]), fma(_7336, f16vec2(Weights.w2[574u], Weights.w2[575u]), fma(_7287, f16vec2(Weights.w2[526u], Weights.w2[527u]), _7286)))))));
+}
+
+LightingNetworkStage3 evaluateLightingNetworkStage2(LightingNetworkStage2 inputValue, LightingNetworkNetworkContext context)
+{
+    f16vec2 _333[24] = _5104(inputValue.value);
+    f16vec2 tempArg[24] = _333;
+    LightingNetworkStage3 outputValue;
+    outputValue.value = _333;
+    f16vec2 _8386[24] = outputValue.value;
+    uint _8385 = 0u;
+    f16vec2 _8384[24];
+    uint _8392;
+    for (;;)
+    {
+        _8392 = _8385;
+        if (_8392 < 24u)
+        {
+            _8384[_8392] = max(_8386[_8392], _265[_8392]);
+            _8385 = _8392 + 1u;
+            continue;
+        }
+        else
+        {
+            break;
+        }
+    }
+    outputValue.value = _8384;
+    outputValue.provenance = uvec4(3u, context.selectedRoute, 48u, 1u);
+    return outputValue;
+}
+
+f16vec2[2] _7583(f16vec2 _7584[24])
+{
+    f16vec2 _8078 = f16vec2(_7584[0].x);
+    f16vec2 _8083 = f16vec2(_7584[0].y);
+    f16vec2 _8088 = f16vec2(_7584[1].x);
+    f16vec2 _8093 = f16vec2(_7584[1].y);
+    f16vec2 _8098 = f16vec2(_7584[2].x);
+    f16vec2 _8103 = f16vec2(_7584[2].y);
+    f16vec2 _8108 = f16vec2(_7584[3].x);
+    f16vec2 _8113 = f16vec2(_7584[3].y);
+    f16vec2 _8118 = f16vec2(_7584[4].x);
+    f16vec2 _8123 = f16vec2(_7584[4].y);
+    f16vec2 _8125 = fma(_8123, f16vec2(Weights.w3[36u], Weights.w3[37u]), fma(_8118, f16vec2(Weights.w3[32u], Weights.w3[33u]), fma(_8113, f16vec2(Weights.w3[28u], Weights.w3[29u]), fma(_8108, f16vec2(Weights.w3[24u], Weights.w3[25u]), fma(_8103, f16vec2(Weights.w3[20u], Weights.w3[21u]), fma(_8098, f16vec2(Weights.w3[16u], Weights.w3[17u]), fma(_8093, f16vec2(Weights.w3[12u], Weights.w3[13u]), fma(_8088, f16vec2(Weights.w3[8u], Weights.w3[9u]), fma(_8083, f16vec2(Weights.w3[4u], Weights.w3[5u]), fma(_8078, f16vec2(Weights.w3[0u], Weights.w3[1u]), f16vec2(Biases.b3[0u], Biases.b3[1u])))))))))));
+    f16vec2 _8127 = fma(_8123, f16vec2(Weights.w3[38u], Weights.w3[39u]), fma(_8118, f16vec2(Weights.w3[34u], Weights.w3[35u]), fma(_8113, f16vec2(Weights.w3[30u], Weights.w3[31u]), fma(_8108, f16vec2(Weights.w3[26u], Weights.w3[27u]), fma(_8103, f16vec2(Weights.w3[22u], Weights.w3[23u]), fma(_8098, f16vec2(Weights.w3[18u], Weights.w3[19u]), fma(_8093, f16vec2(Weights.w3[14u], Weights.w3[15u]), fma(_8088, f16vec2(Weights.w3[10u], Weights.w3[11u]), fma(_8083, f16vec2(Weights.w3[6u], Weights.w3[7u]), fma(_8078, f16vec2(Weights.w3[2u], Weights.w3[3u]), f16vec2(Biases.b3[2u], Biases.b3[3u])))))))))));
+    f16vec2 _8128 = f16vec2(_7584[5].x);
+    f16vec2 _8133 = f16vec2(_7584[5].y);
+    f16vec2 _8138 = f16vec2(_7584[6].x);
+    f16vec2 _8143 = f16vec2(_7584[6].y);
+    f16vec2 _8148 = f16vec2(_7584[7].x);
+    f16vec2 _8153 = f16vec2(_7584[7].y);
+    f16vec2 _8158 = f16vec2(_7584[8].x);
+    f16vec2 _8163 = f16vec2(_7584[8].y);
+    f16vec2 _8168 = f16vec2(_7584[9].x);
+    f16vec2 _8173 = f16vec2(_7584[9].y);
+    f16vec2 _8175 = fma(_8173, f16vec2(Weights.w3[76u], Weights.w3[77u]), fma(_8168, f16vec2(Weights.w3[72u], Weights.w3[73u]), fma(_8163, f16vec2(Weights.w3[68u], Weights.w3[69u]), fma(_8158, f16vec2(Weights.w3[64u], Weights.w3[65u]), fma(_8153, f16vec2(Weights.w3[60u], Weights.w3[61u]), fma(_8148, f16vec2(Weights.w3[56u], Weights.w3[57u]), fma(_8143, f16vec2(Weights.w3[52u], Weights.w3[53u]), fma(_8138, f16vec2(Weights.w3[48u], Weights.w3[49u]), fma(_8133, f16vec2(Weights.w3[44u], Weights.w3[45u]), fma(_8128, f16vec2(Weights.w3[40u], Weights.w3[41u]), _8125))))))))));
+    f16vec2 _8177 = fma(_8173, f16vec2(Weights.w3[78u], Weights.w3[79u]), fma(_8168, f16vec2(Weights.w3[74u], Weights.w3[75u]), fma(_8163, f16vec2(Weights.w3[70u], Weights.w3[71u]), fma(_8158, f16vec2(Weights.w3[66u], Weights.w3[67u]), fma(_8153, f16vec2(Weights.w3[62u], Weights.w3[63u]), fma(_8148, f16vec2(Weights.w3[58u], Weights.w3[59u]), fma(_8143, f16vec2(Weights.w3[54u], Weights.w3[55u]), fma(_8138, f16vec2(Weights.w3[50u], Weights.w3[51u]), fma(_8133, f16vec2(Weights.w3[46u], Weights.w3[47u]), fma(_8128, f16vec2(Weights.w3[42u], Weights.w3[43u]), _8127))))))))));
+    f16vec2 _8178 = f16vec2(_7584[10].x);
+    f16vec2 _8183 = f16vec2(_7584[10].y);
+    f16vec2 _8188 = f16vec2(_7584[11].x);
+    f16vec2 _8193 = f16vec2(_7584[11].y);
+    f16vec2 _8198 = f16vec2(_7584[12].x);
+    f16vec2 _8203 = f16vec2(_7584[12].y);
+    f16vec2 _8208 = f16vec2(_7584[13].x);
+    f16vec2 _8213 = f16vec2(_7584[13].y);
+    f16vec2 _8218 = f16vec2(_7584[14].x);
+    f16vec2 _8223 = f16vec2(_7584[14].y);
+    f16vec2 _8225 = fma(_8223, f16vec2(Weights.w3[116u], Weights.w3[117u]), fma(_8218, f16vec2(Weights.w3[112u], Weights.w3[113u]), fma(_8213, f16vec2(Weights.w3[108u], Weights.w3[109u]), fma(_8208, f16vec2(Weights.w3[104u], Weights.w3[105u]), fma(_8203, f16vec2(Weights.w3[100u], Weights.w3[101u]), fma(_8198, f16vec2(Weights.w3[96u], Weights.w3[97u]), fma(_8193, f16vec2(Weights.w3[92u], Weights.w3[93u]), fma(_8188, f16vec2(Weights.w3[88u], Weights.w3[89u]), fma(_8183, f16vec2(Weights.w3[84u], Weights.w3[85u]), fma(_8178, f16vec2(Weights.w3[80u], Weights.w3[81u]), _8175))))))))));
+    f16vec2 _8227 = fma(_8223, f16vec2(Weights.w3[118u], Weights.w3[119u]), fma(_8218, f16vec2(Weights.w3[114u], Weights.w3[115u]), fma(_8213, f16vec2(Weights.w3[110u], Weights.w3[111u]), fma(_8208, f16vec2(Weights.w3[106u], Weights.w3[107u]), fma(_8203, f16vec2(Weights.w3[102u], Weights.w3[103u]), fma(_8198, f16vec2(Weights.w3[98u], Weights.w3[99u]), fma(_8193, f16vec2(Weights.w3[94u], Weights.w3[95u]), fma(_8188, f16vec2(Weights.w3[90u], Weights.w3[91u]), fma(_8183, f16vec2(Weights.w3[86u], Weights.w3[87u]), fma(_8178, f16vec2(Weights.w3[82u], Weights.w3[83u]), _8177))))))))));
+    f16vec2 _8228 = f16vec2(_7584[15].x);
+    f16vec2 _8233 = f16vec2(_7584[15].y);
+    f16vec2 _8238 = f16vec2(_7584[16].x);
+    f16vec2 _8243 = f16vec2(_7584[16].y);
+    f16vec2 _8248 = f16vec2(_7584[17].x);
+    f16vec2 _8253 = f16vec2(_7584[17].y);
+    f16vec2 _8258 = f16vec2(_7584[18].x);
+    f16vec2 _8263 = f16vec2(_7584[18].y);
+    f16vec2 _8268 = f16vec2(_7584[19].x);
+    f16vec2 _8273 = f16vec2(_7584[19].y);
+    f16vec2 _8275 = fma(_8273, f16vec2(Weights.w3[156u], Weights.w3[157u]), fma(_8268, f16vec2(Weights.w3[152u], Weights.w3[153u]), fma(_8263, f16vec2(Weights.w3[148u], Weights.w3[149u]), fma(_8258, f16vec2(Weights.w3[144u], Weights.w3[145u]), fma(_8253, f16vec2(Weights.w3[140u], Weights.w3[141u]), fma(_8248, f16vec2(Weights.w3[136u], Weights.w3[137u]), fma(_8243, f16vec2(Weights.w3[132u], Weights.w3[133u]), fma(_8238, f16vec2(Weights.w3[128u], Weights.w3[129u]), fma(_8233, f16vec2(Weights.w3[124u], Weights.w3[125u]), fma(_8228, f16vec2(Weights.w3[120u], Weights.w3[121u]), _8225))))))))));
+    f16vec2 _8277 = fma(_8273, f16vec2(Weights.w3[158u], Weights.w3[159u]), fma(_8268, f16vec2(Weights.w3[154u], Weights.w3[155u]), fma(_8263, f16vec2(Weights.w3[150u], Weights.w3[151u]), fma(_8258, f16vec2(Weights.w3[146u], Weights.w3[147u]), fma(_8253, f16vec2(Weights.w3[142u], Weights.w3[143u]), fma(_8248, f16vec2(Weights.w3[138u], Weights.w3[139u]), fma(_8243, f16vec2(Weights.w3[134u], Weights.w3[135u]), fma(_8238, f16vec2(Weights.w3[130u], Weights.w3[131u]), fma(_8233, f16vec2(Weights.w3[126u], Weights.w3[127u]), fma(_8228, f16vec2(Weights.w3[122u], Weights.w3[123u]), _8227))))))))));
+    f16vec2 _8278 = f16vec2(_7584[20].x);
+    f16vec2 _8283 = f16vec2(_7584[20].y);
+    f16vec2 _8288 = f16vec2(_7584[21].x);
+    f16vec2 _8293 = f16vec2(_7584[21].y);
+    f16vec2 _8298 = f16vec2(_7584[22].x);
+    f16vec2 _8303 = f16vec2(_7584[22].y);
+    f16vec2 _8308 = f16vec2(_7584[23].x);
+    f16vec2 _8313 = f16vec2(_7584[23].y);
+    return f16vec2[](fma(_8313, f16vec2(Weights.w3[188u], Weights.w3[189u]), fma(_8308, f16vec2(Weights.w3[184u], Weights.w3[185u]), fma(_8303, f16vec2(Weights.w3[180u], Weights.w3[181u]), fma(_8298, f16vec2(Weights.w3[176u], Weights.w3[177u]), fma(_8293, f16vec2(Weights.w3[172u], Weights.w3[173u]), fma(_8288, f16vec2(Weights.w3[168u], Weights.w3[169u]), fma(_8283, f16vec2(Weights.w3[164u], Weights.w3[165u]), fma(_8278, f16vec2(Weights.w3[160u], Weights.w3[161u]), _8275)))))))), fma(_8313, f16vec2(Weights.w3[190u], Weights.w3[191u]), fma(_8308, f16vec2(Weights.w3[186u], Weights.w3[187u]), fma(_8303, f16vec2(Weights.w3[182u], Weights.w3[183u]), fma(_8298, f16vec2(Weights.w3[178u], Weights.w3[179u]), fma(_8293, f16vec2(Weights.w3[174u], Weights.w3[175u]), fma(_8288, f16vec2(Weights.w3[170u], Weights.w3[171u]), fma(_8283, f16vec2(Weights.w3[166u], Weights.w3[167u]), fma(_8278, f16vec2(Weights.w3[162u], Weights.w3[163u]), _8277)))))))));
+}
+
+LightingNetworkStage4 evaluateLightingNetworkStage3(LightingNetworkStage3 inputValue, LightingNetworkNetworkContext context)
+{
+    f16vec2 _370[2] = _7583(inputValue.value);
+    f16vec2 tempArg[2] = _370;
+    LightingNetworkStage4 outputValue;
+    outputValue.value = _370;
+    f16vec2 _8404[2] = outputValue.value;
+    uint _8403 = 0u;
+    f16vec2 _8402[2];
+    uint _8410;
+    for (;;)
+    {
+        _8410 = _8403;
+        if (_8410 < 2u)
+        {
+            _8402[_8410] = max(_8404[_8410], _376[_8410]);
+            _8403 = _8410 + 1u;
+            continue;
+        }
+        else
+        {
+            break;
+        }
+    }
+    outputValue.value = _8402;
+    outputValue.provenance = uvec4(4u, context.selectedRoute, 4u, 1u);
+    return outputValue;
+}
+
+void _8420(uint _8421, f16vec2 _8422)
+{
+    OutY.values[_8421] = _8422.x;
+    OutY.values[_8421 + 1u] = _8422.y;
+}
+
+void storeLightingNetworkOutput(LightingNetworkStage4 outputValue)
+{
+    f16vec2 _8430[2] = outputValue.value;
+    uint _8431 = 0u;
+    uint _8436;
+    for (;;)
+    {
+        _8436 = _8431;
+        if (_8436 < 4u)
+        {
+            _8420(0u + _8436, _8430[_8436 / 2u]);
+            _8431 = _8436 + 2u;
+            continue;
+        }
+        else
+        {
+            break;
+        }
+    }
+}
+
+void main()
+{
+    LightingNetworkNetworkContext context = buildLightingNetworkContext();
+    LightingNetworkNetworkContext param = context;
+    if (!validateLightingNetworkContext(param))
+    {
+        context.enabled = true;
+    }
+    LightingNetworkNetworkContext param_1 = context;
+    LightingNetworkStage0 _500 = loadLightingNetworkInput(param_1);
+    LightingNetworkStage0 stage0 = _500;
+    LightingNetworkStage0 param_2 = _500;
+    LightingNetworkNetworkContext param_3 = context;
+    LightingNetworkStage1 _506 = evaluateLightingNetworkStage0(param_2, param_3);
+    LightingNetworkStage1 stage1 = _506;
+    LightingNetworkStage1 param_4 = _506;
+    LightingNetworkNetworkContext param_5 = context;
+    LightingNetworkStage2 _512 = evaluateLightingNetworkStage1(param_4, param_5);
+    LightingNetworkStage2 stage2 = _512;
+    LightingNetworkStage2 param_6 = _512;
+    LightingNetworkNetworkContext param_7 = context;
+    LightingNetworkStage2 _517 = routeLightingNetworkActivation(param_6, param_7);
+    stage2 = _517;
+    LightingNetworkStage2 param_8 = _517;
+    LightingNetworkNetworkContext param_9 = context;
+    LightingNetworkStage3 _523 = evaluateLightingNetworkStage2(param_8, param_9);
+    LightingNetworkStage3 stage3 = _523;
+    LightingNetworkStage3 param_10 = _523;
+    LightingNetworkNetworkContext param_11 = context;
+    LightingNetworkStage4 _529 = evaluateLightingNetworkStage3(param_10, param_11);
+    LightingNetworkStage4 stage4 = _529;
+    LightingNetworkStage4 param_12 = _529;
+    storeLightingNetworkOutput(param_12);
+}
+

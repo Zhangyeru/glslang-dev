@@ -1,0 +1,282 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA {
+    float data[];
+} A;
+
+layout(set = 0, binding = 1) buffer InputB {
+    float data[];
+} B;
+
+layout(set = 0, binding = 2) buffer InputC {
+    float data[];
+} C;
+
+layout(set = 0, binding = 3) buffer OutputD {
+    float data[];
+} D;
+
+const int CALL_GRAPH_ROWS = 32;
+const int CALL_GRAPH_COLUMNS = 16;
+const int CALL_GRAPH_INNER = 24;
+const int CALL_GRAPH_ROUTE_COUNT = 2;
+const ivec2 CALL_GRAPH_SHAPE_A = ivec2(CALL_GRAPH_ROWS, CALL_GRAPH_INNER);
+const ivec2 CALL_GRAPH_SHAPE_B = ivec2(CALL_GRAPH_INNER, CALL_GRAPH_COLUMNS);
+const ivec2 CALL_GRAPH_SHAPE_D = ivec2(CALL_GRAPH_ROWS, CALL_GRAPH_COLUMNS);
+const ivec2 CALL_GRAPH_ZERO_OFFSET = ivec2(0);
+
+struct CallGraphLeftMatrix {
+    coopmatHW<float, CALL_GRAPH_ROWS, CALL_GRAPH_INNER> value;
+    uvec4 state;
+};
+
+struct CallGraphWeightMatrix {
+    coopmatHW<float, CALL_GRAPH_INNER, CALL_GRAPH_COLUMNS> value;
+    uvec4 state;
+};
+
+struct CallGraphAccumulatorMatrix {
+    coopmatHW<float, CALL_GRAPH_ROWS, CALL_GRAPH_COLUMNS> value;
+    uvec4 state;
+};
+
+struct CallGraphMatrixLane {
+    CallGraphLeftMatrix left;
+    CallGraphWeightMatrix weights;
+    uvec4 scheduling;
+};
+
+struct CallGraphMatrixRequest {
+    CallGraphMatrixLane lanes[CALL_GRAPH_ROUTE_COUNT];
+    CallGraphAccumulatorMatrix accumulator;
+    uint selectedLane;
+    bool ready;
+};
+
+struct CallGraphMatrixResult {
+    coopmatHW<float, CALL_GRAPH_ROWS, CALL_GRAPH_COLUMNS> value;
+    uvec4 completion;
+};
+
+struct CallGraphVectorInput {
+    coopvecHW<float, CALL_GRAPH_INNER> value;
+    uvec4 state;
+};
+
+struct CallGraphVectorBias {
+    coopvecHW<float, CALL_GRAPH_COLUMNS> value;
+    uvec4 state;
+};
+
+struct CallGraphVectorResult {
+    coopvecHW<float, CALL_GRAPH_COLUMNS> value;
+    uvec4 completion;
+};
+
+uint selectCallGraphRoute()
+{
+    uint dispatchKey = gl_GlobalInvocationID.x ^ gl_LocalInvocationIndex;
+    return dispatchKey & 1u;
+}
+
+CallGraphLeftMatrix loadCallGraphLeft()
+{
+    CallGraphLeftMatrix result;
+    coopMatLoadHW(
+        result.value,
+        A.data,
+        CALL_GRAPH_SHAPE_A,
+        CALL_GRAPH_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    result.state = uvec4(CALL_GRAPH_ROWS, CALL_GRAPH_INNER, 0u, 1u);
+    return result;
+}
+
+CallGraphWeightMatrix loadCallGraphWeights()
+{
+    CallGraphWeightMatrix result;
+    coopMatLoadHW(
+        result.value,
+        B.data,
+        CALL_GRAPH_SHAPE_B,
+        CALL_GRAPH_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    result.state = uvec4(CALL_GRAPH_INNER, CALL_GRAPH_COLUMNS, 1u, 1u);
+    return result;
+}
+
+CallGraphAccumulatorMatrix loadCallGraphAccumulator()
+{
+    CallGraphAccumulatorMatrix result;
+    coopMatLoadHW(
+        result.value,
+        C.data,
+        CALL_GRAPH_SHAPE_D,
+        CALL_GRAPH_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    result.state = uvec4(CALL_GRAPH_ROWS, CALL_GRAPH_COLUMNS, 2u, 1u);
+    return result;
+}
+
+CallGraphMatrixRequest buildCallGraphMatrixRequest(
+    CallGraphLeftMatrix left,
+    CallGraphWeightMatrix weights,
+    CallGraphAccumulatorMatrix accumulator,
+    uint selectedLane)
+{
+    CallGraphMatrixRequest request;
+    request.accumulator = accumulator;
+    request.selectedLane = selectedLane;
+    request.ready =
+        left.state.w != 0u &&
+        weights.state.w != 0u &&
+        accumulator.state.w != 0u;
+
+    for (uint laneIndex = 0u;
+         laneIndex < CALL_GRAPH_ROUTE_COUNT;
+         ++laneIndex) {
+        request.lanes[laneIndex].left = left;
+        request.lanes[laneIndex].weights = weights;
+        request.lanes[laneIndex].scheduling =
+            uvec4(laneIndex, selectedLane, laneIndex == selectedLane ? 1u : 0u, 1u);
+    }
+    return request;
+}
+
+CallGraphMatrixRequest stabilizeCallGraphMatrixRequest(CallGraphMatrixRequest request)
+{
+    uint selectedLane = request.selectedLane & 1u;
+    CallGraphMatrixLane resident = request.lanes[selectedLane];
+
+    for (uint probe = 0u; probe < 3u; ++probe) {
+        uint candidateIndex = (selectedLane + probe) & 1u;
+        CallGraphMatrixLane candidate = request.lanes[candidateIndex];
+        bool candidateReady =
+            candidate.left.state.w != 0u &&
+            candidate.weights.state.w != 0u;
+        resident = candidateReady ? candidate : resident;
+    }
+
+    switch (selectedLane) {
+    case 0u:
+        request.lanes[0] = resident;
+        break;
+    case 1u:
+        request.lanes[1] = resident;
+        break;
+    default:
+        request.lanes[0] = resident;
+        request.selectedLane = 0u;
+        break;
+    }
+    return request;
+}
+
+CallGraphMatrixResult executeCallGraphFirstMatrixPass(CallGraphMatrixRequest request)
+{
+    uint laneIndex = request.selectedLane & 1u;
+    CallGraphMatrixLane lane = request.lanes[laneIndex];
+    CallGraphMatrixResult result;
+    coopMatMulAddHW(
+        result.value,
+        lane.left.value,
+        lane.weights.value,
+        request.accumulator.value);
+    result.completion =
+        uvec4(0u, laneIndex, request.ready ? 1u : 0u, 1u);
+    return result;
+}
+
+CallGraphMatrixResult executeCallGraphSecondMatrixPass(
+    CallGraphMatrixRequest request,
+    CallGraphMatrixResult firstPass)
+{
+    uint laneIndex = request.selectedLane & 1u;
+    CallGraphMatrixLane lane = request.lanes[laneIndex];
+    CallGraphMatrixResult result;
+    coopMatMulAddHW(
+        result.value,
+        lane.left.value,
+        lane.weights.value,
+        firstPass.value);
+    result.completion =
+        uvec4(1u, laneIndex, firstPass.completion.w, 1u);
+    return result;
+}
+
+void storeCallGraphMatrixResult(CallGraphMatrixResult result)
+{
+    coopMatStoreHW(
+        result.value,
+        D.data,
+        CALL_GRAPH_SHAPE_D,
+        CALL_GRAPH_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+}
+
+CallGraphVectorInput loadCallGraphVectorInput()
+{
+    CallGraphVectorInput inputValue;
+    coopVecLoadHW(inputValue.value, A.data, 0u);
+    inputValue.state = uvec4(CALL_GRAPH_INNER, 0u, 0u, 1u);
+    return inputValue;
+}
+
+CallGraphVectorBias loadCallGraphVectorBias(uint passIndex)
+{
+    CallGraphVectorBias bias;
+    coopVecLoadHW(bias.value, D.data, 0u);
+    bias.state = uvec4(CALL_GRAPH_COLUMNS, passIndex, 0u, 1u);
+    return bias;
+}
+
+CallGraphVectorResult executeCallGraphVectorPass(
+    CallGraphVectorInput inputValue,
+    CallGraphWeightMatrix weights,
+    CallGraphVectorBias bias,
+    uint passIndex)
+{
+    CallGraphVectorResult result;
+    coopVecMatMulAddHW(
+        result.value,
+        inputValue.value,
+        weights.value,
+        bias.value);
+    result.completion =
+        uvec4(passIndex, CALL_GRAPH_INNER, CALL_GRAPH_COLUMNS, 1u);
+    return result;
+}
+
+void storeCallGraphVectorResult(CallGraphVectorResult result)
+{
+    coopVecStoreHW(result.value, D.data, 0u);
+}
+
+void main()
+{
+    uint selectedLane = selectCallGraphRoute();
+    CallGraphLeftMatrix left = loadCallGraphLeft();
+    CallGraphWeightMatrix weights = loadCallGraphWeights();
+    CallGraphAccumulatorMatrix accumulator = loadCallGraphAccumulator();
+
+    CallGraphMatrixRequest request =
+        buildCallGraphMatrixRequest(left, weights, accumulator, selectedLane);
+    CallGraphMatrixRequest stableRequest =
+        stabilizeCallGraphMatrixRequest(request);
+    CallGraphMatrixResult firstPass =
+        executeCallGraphFirstMatrixPass(stableRequest);
+    CallGraphMatrixResult secondPass =
+        executeCallGraphSecondMatrixPass(stableRequest, firstPass);
+    storeCallGraphMatrixResult(secondPass);
+
+    CallGraphVectorInput vectorInput = loadCallGraphVectorInput();
+    for (uint passIndex = 0u; passIndex < 2u; ++passIndex) {
+        CallGraphVectorBias bias = loadCallGraphVectorBias(passIndex);
+        CallGraphVectorResult vectorResult =
+            executeCallGraphVectorPass(vectorInput, weights, bias, passIndex);
+        storeCallGraphVectorResult(vectorResult);
+    }
+}

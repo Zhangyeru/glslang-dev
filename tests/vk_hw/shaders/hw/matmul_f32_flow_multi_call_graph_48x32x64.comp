@@ -1,0 +1,228 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA {
+    float data[];
+} A;
+
+layout(set = 0, binding = 1) buffer InputB {
+    float data[];
+} B;
+
+layout(set = 0, binding = 2) buffer InputC {
+    float data[];
+} C;
+
+layout(set = 0, binding = 3) buffer OutputD {
+    float data[];
+} D;
+
+const ivec2 SHAPE_A = ivec2(48, 64);
+const ivec2 SHAPE_B = ivec2(64, 32);
+const ivec2 SHAPE_D = ivec2(48, 32);
+const ivec2 ZERO_OFFSET = ivec2(0);
+
+struct MatrixAValue {
+    coopmatHW<float, 48, 64> value;
+};
+
+struct MatrixBValue {
+    coopmatHW<float, 64, 32> value;
+};
+
+struct MatrixCValue {
+    coopmatHW<float, 48, 32> value;
+};
+
+struct MatrixDValue {
+    coopmatHW<float, 48, 32> value;
+};
+
+struct MatrixAChannel {
+    MatrixAValue resident;
+};
+
+struct MatrixBChannel {
+    MatrixBValue resident;
+};
+
+struct MatrixCChannel {
+    MatrixCValue resident;
+};
+
+struct MatrixDChannel {
+    MatrixDValue resident;
+};
+
+struct RouteState {
+    uint index;
+    bool dimensionsValid;
+};
+
+struct DispatchMetadata {
+    RouteState route;
+};
+
+struct MatmulResponse {
+    MatrixDChannel outputTile;
+    uint route;
+    bool complete;
+};
+
+/* Pick the logical execution lane used by the render-graph scheduler. */
+uint selectExecutionRoute()
+{
+    uint route = (gl_WorkGroupID.x ^ gl_WorkGroupID.y ^ gl_WorkGroupID.z) & 1u;
+    switch (route) {
+    case 0u:
+        return 0u;
+    case 1u:
+        return 1u;
+    default:
+        return 0u;
+    }
+}
+
+/* Validate the three matrix extents before the request enters the call graph. */
+bool validateMatrixContract()
+{
+    ivec2 shapes[3] = ivec2[3](SHAPE_A, SHAPE_B, SHAPE_D);
+    bool valid = true;
+    for (uint index = 0u; index < 3u; ++index) {
+        valid = valid && all(greaterThan(shapes[index], ivec2(0)));
+    }
+    valid = valid && SHAPE_A.y == SHAPE_B.x;
+    valid = valid && SHAPE_A.x == SHAPE_D.x;
+    valid = valid && SHAPE_B.y == SHAPE_D.y;
+    return valid;
+}
+
+/* Acquire all three producer resources into a nested request payload. */
+MatrixAChannel acquireLeftOperand()
+{
+    coopmatHW<float, 48, 64> lhs;
+    coopMatLoadHW(lhs, A.data, SHAPE_A, ZERO_OFFSET, gl_CooperativeMatrixLayoutRowMajorHW);
+
+    MatrixAChannel channel;
+    channel.resident.value = lhs;
+    return channel;
+}
+
+/* Acquire the model weights through their own OperandAB wrapper channel. */
+MatrixBChannel acquireRightOperand()
+{
+    coopmatHW<float, 64, 32> rhs;
+    coopMatLoadHW(rhs, B.data, SHAPE_B, ZERO_OFFSET, gl_CooperativeMatrixLayoutRowMajorHW);
+
+    MatrixBChannel channel;
+    channel.resident.value = rhs;
+    return channel;
+}
+
+/* Acquire the previous render pass as a distinct accumulator channel. */
+MatrixCChannel acquireAccumulator()
+{
+    coopmatHW<float, 48, 32> accumulator;
+    coopMatLoadHW(accumulator, C.data, SHAPE_D, ZERO_OFFSET, gl_CooperativeMatrixLayoutRowMajorHW);
+
+    MatrixCChannel channel;
+    channel.resident.value = accumulator;
+    return channel;
+}
+
+/* Normalize scalar scheduling metadata without mixing cooperative roles. */
+DispatchMetadata buildDispatchMetadata(uint route)
+{
+    DispatchMetadata metadata;
+    metadata.route.index = route;
+    metadata.route.dimensionsValid = validateMatrixContract();
+    if (!metadata.route.dimensionsValid) {
+        metadata.route.index = 0u;
+        return metadata;
+    }
+
+    switch (metadata.route.index) {
+    case 0u:
+        metadata.route.index = 0u;
+        break;
+    case 1u:
+        metadata.route.index = 1u;
+        break;
+    default:
+        metadata.route.index = 0u;
+        break;
+    }
+    return metadata;
+}
+
+/* Execute the neural matrix instruction behind a wrapper-only f32 ABI. */
+MatmulResponse executeMatmul(MatrixAChannel lhs,
+                             MatrixBChannel rhs,
+                             MatrixCChannel accumulator,
+                             DispatchMetadata metadata)
+{
+    MatrixDValue computed;
+    coopMatMulAddHW(computed.value,
+                    lhs.resident.value,
+                    rhs.resident.value,
+                    accumulator.resident.value);
+
+    MatmulResponse response;
+    response.outputTile.resident = computed;
+    response.route = metadata.route.index;
+    response.complete = metadata.route.dimensionsValid;
+    return response;
+}
+
+/* Preserve the result while applying the pipeline completion policy. */
+MatmulResponse finalizeResponse(MatmulResponse response)
+{
+    if (response.complete) {
+        response.complete = true;
+    } else {
+        response.complete = false;
+    }
+
+    switch (response.route) {
+    case 0u:
+        return response;
+    case 1u:
+        return response;
+    default:
+        response.route = 0u;
+        return response;
+    }
+}
+
+/* Commit the only completed tile to the frame output resource. */
+void commitResponse(MatmulResponse response)
+{
+    if (response.complete) {
+        coopMatStoreHW(response.outputTile.resident.value,
+                       D.data,
+                       SHAPE_D,
+                       ZERO_OFFSET,
+                       gl_CooperativeMatrixLayoutRowMajorHW);
+        return;
+    }
+
+    coopMatStoreHW(response.outputTile.resident.value,
+                   D.data,
+                   SHAPE_D,
+                   ZERO_OFFSET,
+                   gl_CooperativeMatrixLayoutRowMajorHW);
+}
+
+void main()
+{
+    uint route = selectExecutionRoute();
+    MatrixAChannel lhs = acquireLeftOperand();
+    MatrixBChannel rhs = acquireRightOperand();
+    MatrixCChannel accumulator = acquireAccumulator();
+    DispatchMetadata metadata = buildDispatchMetadata(route);
+    MatmulResponse computed = executeMatmul(lhs, rhs, accumulator, metadata);
+    MatmulResponse finalized = finalizeResponse(computed);
+    commitResponse(finalized);
+}

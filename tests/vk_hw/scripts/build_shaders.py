@@ -146,7 +146,14 @@ def compile_hw_shader(glslang, spirv_opt, spirv_val, spirv_dis, shader, out_dir,
     lowered_asm = out_dir / f"{stem}.lowered.spvasm"
     lowering_pass = lowering_pass_for_stem(shader.stem)
 
-    run([glslang, "-V", str(shader), "-o", str(hw_spv)])
+    glslang_command = [glslang]
+    if re.search(r"_flow_[a-z]", shader.stem):
+        # Production flow shaders place cooperative values behind user
+        # function/aggregate boundaries.  Request SPIR-V 1.6 explicitly so
+        # their SSBO variables use StorageBuffer in every frontend path.
+        glslang_command.extend(["--target-env", target_env])
+    glslang_command.extend(["-V", str(shader), "-o", str(hw_spv)])
+    run(glslang_command)
     run([spirv_opt, lowering_pass, str(hw_spv), "-o", str(lowered_spv)])
     run([*validator_cmd(spirv_val, target_env, shader), str(lowered_spv)])
     run([spirv_dis, str(lowered_spv), "-o", str(lowered_asm)])

@@ -34,7 +34,12 @@ def parse_case(path):
     else:
         stem = path.stem
 
-    suffix = r"(?:_(?:scalar|ssbo_direct|ubo|constbias|constw|constx|convert|biasconvert|cconvert|arith))?"
+    flow_tag = r"flow(?:_[a-z][a-z0-9]*)*"
+    suffix = (
+        rf"(?:_(?:scalar|ssbo_direct|ubo|constbias|constw|constx|convert|"
+        rf"biasconvert|cconvert|arith|{flow_tag}))?"
+    )
+    flow_prefix = rf"(?:{flow_tag}_)?"
 
     m = re.match(
         rf"reduce_(row|column)_(add|min|max)_({DTYPE_RE})(?:_(scalar))?_(\d+)x(\d+)$",
@@ -127,7 +132,7 @@ def parse_case(path):
 
     m = re.match(
         rf"mlp_({DTYPE_RE})x({DTYPE_RE})_to_({DTYPE_RE})(_biasconvert)?_"
-        rf"(\d+x\d+(?:_\d+x\d+)*)$",
+        rf"{flow_prefix}(\d+x\d+(?:_\d+x\d+)*)$",
         stem,
     )
     if m:
@@ -155,7 +160,10 @@ def parse_case(path):
             "layer_dims": layer_dims,
         }
 
-    m = re.match(rf"mlp_({DTYPE_RE})_(\d+x\d+(?:_\d+x\d+)*)$", stem)
+    m = re.match(
+        rf"mlp_({DTYPE_RE})_{flow_prefix}(\d+x\d+(?:_\d+x\d+)*)$",
+        stem,
+    )
     if m:
         dtype, encoded_layers = m.groups()
         layers = [layer.split("x") for layer in encoded_layers.split("_")]
@@ -170,7 +178,7 @@ def parse_case(path):
 
     m = re.match(
         rf"load_store_({DTYPE_RE})"
-        rf"(?:_(?:scalar|convert|arith|flow(?:_[a-z][a-z0-9]*)*))?"
+        rf"(?:_(?:scalar|convert|arith|{flow_tag}))?"
         rf"(?:_(\d+)x(\d+))?$",
         stem,
     )

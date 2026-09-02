@@ -1,0 +1,252 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA {
+    float16_t data[];
+} A;
+
+layout(set = 0, binding = 1) buffer InputB {
+    float16_t data[];
+} B;
+
+layout(set = 0, binding = 2) buffer InputC {
+    float16_t data[];
+} C;
+
+layout(set = 0, binding = 3) buffer OutputD {
+    float16_t data[];
+} D;
+
+const int SKINNING_ROWS = 32;
+const int SKINNING_COLUMNS = 48;
+const int SKINNING_INNER = 64;
+const int SKINNING_ROUTE_COUNT = 2;
+
+const ivec2 SKINNING_SHAPE_A = ivec2(SKINNING_ROWS, SKINNING_INNER);
+const ivec2 SKINNING_SHAPE_B = ivec2(SKINNING_INNER, SKINNING_COLUMNS);
+const ivec2 SKINNING_SHAPE_D = ivec2(SKINNING_ROWS, SKINNING_COLUMNS);
+const ivec2 SKINNING_ZERO_OFFSET = ivec2(0);
+
+struct SkinningLeftTile {
+    coopmatHW<float16_t, SKINNING_ROWS, SKINNING_INNER> value;
+    uvec4 residency;
+};
+
+struct SkinningRightTile {
+    coopmatHW<float16_t, SKINNING_INNER, SKINNING_COLUMNS> value;
+    uvec4 residency;
+};
+
+struct SkinningAccumulatorTile {
+    coopmatHW<float16_t, SKINNING_ROWS, SKINNING_COLUMNS> value;
+    uvec4 revision;
+};
+
+struct SkinningRequestLane {
+    SkinningLeftTile left;
+    SkinningRightTile right;
+    uvec4 scheduling;
+};
+
+struct SkinningDispatchRequest {
+    SkinningRequestLane lanes[SKINNING_ROUTE_COUNT];
+    SkinningAccumulatorTile accumulator;
+    uint selectedLane;
+    bool contractValid;
+};
+
+struct SkinningResultTile {
+    coopmatHW<float16_t, SKINNING_ROWS, SKINNING_COLUMNS> value;
+    uvec4 completion;
+};
+
+struct SkinningResponse {
+    SkinningResultTile result;
+    uint selectedLane;
+    bool committed;
+};
+
+uint selectSkinningLane()
+{
+    uint workgroupKey = gl_WorkGroupID.x ^ (gl_WorkGroupID.y << 1u);
+    uint invocationKey = gl_LocalInvocationIndex + gl_GlobalInvocationID.x;
+    return (workgroupKey ^ invocationKey) & 1u;
+}
+
+bool validateSkinningContract()
+{
+    ivec2 shapes[3] = ivec2[3](
+        SKINNING_SHAPE_A,
+        SKINNING_SHAPE_B,
+        SKINNING_SHAPE_D);
+
+    bool positiveDimensions = true;
+    for (uint shapeIndex = 0u; shapeIndex < 3u; ++shapeIndex) {
+        positiveDimensions =
+            positiveDimensions && all(greaterThan(shapes[shapeIndex], ivec2(0)));
+    }
+
+    bool innerMatches = SKINNING_SHAPE_A.y == SKINNING_SHAPE_B.x;
+    bool rowsMatch = SKINNING_SHAPE_A.x == SKINNING_SHAPE_D.x;
+    bool columnsMatch = SKINNING_SHAPE_B.y == SKINNING_SHAPE_D.y;
+    return positiveDimensions && innerMatches && rowsMatch && columnsMatch;
+}
+
+SkinningLeftTile registerSkinningLeftTile(SkinningLeftTile tile)
+{
+    tile.residency = uvec4(SKINNING_ROWS, SKINNING_INNER, 0u, 1u);
+    return tile;
+}
+
+SkinningRightTile registerSkinningRightTile(SkinningRightTile tile)
+{
+    tile.residency = uvec4(SKINNING_INNER, SKINNING_COLUMNS, 1u, 1u);
+    return tile;
+}
+
+SkinningAccumulatorTile registerSkinningAccumulatorTile(
+    SkinningAccumulatorTile tile)
+{
+    tile.revision = uvec4(SKINNING_ROWS, SKINNING_COLUMNS, 2u, 1u);
+    return tile;
+}
+
+SkinningDispatchRequest buildSkinningRequest(
+    SkinningLeftTile left,
+    SkinningRightTile right,
+    SkinningAccumulatorTile accumulator,
+    uint selectedLane)
+{
+    SkinningDispatchRequest request;
+    request.accumulator = accumulator;
+    request.selectedLane = selectedLane;
+    request.contractValid = validateSkinningContract();
+
+    for (uint lane = 0u; lane < SKINNING_ROUTE_COUNT; ++lane) {
+        request.lanes[lane].left = left;
+        request.lanes[lane].right = right;
+        request.lanes[lane].scheduling =
+            uvec4(lane, selectedLane, lane == selectedLane ? 1u : 0u, 1u);
+    }
+
+    return request;
+}
+
+SkinningDispatchRequest normalizeSkinningRequest(SkinningDispatchRequest request)
+{
+    uint selectedLane = request.selectedLane & 1u;
+    SkinningRequestLane residentLane = request.lanes[selectedLane];
+
+    for (uint probe = 0u; probe < 3u; ++probe) {
+        uint candidateIndex = (selectedLane + probe) & 1u;
+        SkinningRequestLane candidate = request.lanes[candidateIndex];
+        bool candidateReady =
+            candidate.left.residency.w != 0u &&
+            candidate.right.residency.w != 0u;
+        residentLane = candidateReady ? candidate : residentLane;
+    }
+
+    switch (selectedLane) {
+    case 0u:
+        request.lanes[0] = residentLane;
+        break;
+    case 1u:
+        request.lanes[1] = residentLane;
+        break;
+    default:
+        request.lanes[0] = residentLane;
+        request.selectedLane = 0u;
+        break;
+    }
+
+    return request;
+}
+
+SkinningResponse executeSkinningRequest(SkinningDispatchRequest request)
+{
+    uint laneIndex = request.selectedLane & 1u;
+    SkinningRequestLane lane = request.lanes[laneIndex];
+
+    SkinningResponse response;
+    coopMatMulAddHW(
+        response.result.value,
+        lane.left.value,
+        lane.right.value,
+        request.accumulator.value);
+
+    response.result.completion =
+        uvec4(laneIndex, SKINNING_ROWS, SKINNING_COLUMNS, 1u);
+    response.selectedLane = laneIndex;
+    response.committed = request.contractValid;
+    return response;
+}
+
+SkinningResponse finalizeSkinningResponse(SkinningResponse response)
+{
+    bool resultReady = response.result.completion.w != 0u;
+    response.committed = response.committed && resultReady;
+
+    switch (response.selectedLane) {
+    case 0u:
+        return response;
+    case 1u:
+        return response;
+    default:
+        response.selectedLane = 0u;
+        return response;
+    }
+}
+
+SkinningResponse prepareSkinningCommit(SkinningResponse response)
+{
+    if (!response.committed) {
+        response.committed = true;
+    }
+    return response;
+}
+
+void main()
+{
+    uint selectedLane = selectSkinningLane();
+    SkinningLeftTile loadedLeft;
+    SkinningRightTile loadedRight;
+    SkinningAccumulatorTile loadedAccumulator;
+    coopMatLoadHW(
+        loadedLeft.value,
+        A.data,
+        SKINNING_SHAPE_A,
+        SKINNING_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(
+        loadedRight.value,
+        B.data,
+        SKINNING_SHAPE_B,
+        SKINNING_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(
+        loadedAccumulator.value,
+        C.data,
+        SKINNING_SHAPE_D,
+        SKINNING_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    SkinningLeftTile left = registerSkinningLeftTile(loadedLeft);
+    SkinningRightTile right = registerSkinningRightTile(loadedRight);
+    SkinningAccumulatorTile accumulator =
+        registerSkinningAccumulatorTile(loadedAccumulator);
+
+    SkinningDispatchRequest request =
+        buildSkinningRequest(left, right, accumulator, selectedLane);
+    SkinningDispatchRequest normalized = normalizeSkinningRequest(request);
+    SkinningResponse response = executeSkinningRequest(normalized);
+    SkinningResponse finalResponse = finalizeSkinningResponse(response);
+    SkinningResponse committedResponse = prepareSkinningCommit(finalResponse);
+    coopMatStoreHW(
+        committedResponse.result.value,
+        D.data,
+        SKINNING_SHAPE_D,
+        SKINNING_ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+}
