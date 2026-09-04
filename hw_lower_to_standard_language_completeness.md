@@ -53,6 +53,8 @@ cooperative vector，则属于需要实现的语言闭包。
 - Cooperative 类型嵌套在普通 array、struct 和 pointer 中
 - Function 参数、返回值和局部变量中的 cooperative 类型
 - Function type 重写、去重和 canonicalization
+- Extension-free 模式将固定 constituent 数量的 replicated composite 展开为 core composite，并删除
+  `ReplicatedCompositesEXT` capability 与 `SPV_EXT_replicated_composites` declaration
 
 ### 3.2 HW vec/mat 指令
 
@@ -166,7 +168,8 @@ Matmul 当前支持：
 - 顶层 CTest：8/8 通过
 - Vulkan function：105/105 通过，无 skip
 - Vulkan perf：84/84 满足 `lowered_ns / baseline_ns <= 3.0`
-- Extension-free 成功时无 HW opcode、type 或 nested reference residue
+- Extension-free 成功时无 HW opcode/type/nested reference，也无 replicated-composites opcode、capability 或
+  extension residue
 
 ## 4. 当前仍可能失败的合法 vec/mat 语言形态
 
@@ -474,7 +477,8 @@ Validator 接受集合是 lower 必须覆盖的集合。
 只有同时满足以下条件，才能称为 vec/mat lowering 语言完备：
 
 1. 任意 validator 接受的 vec/mat-only module 不返回 `Failure`。
-2. Extension-free 后不存在 HW opcode、type、capability、extension 或嵌套 type reference。
+2. Extension-free 后不存在 HW opcode、type、capability、extension 或嵌套 type reference，也不存在
+   replicated-composites opcode、capability 或 extension。
 3. Lowered module 通过 `spirv-val`。
 4. Scalar lowering 与原 HW shader 的运行结果一致。
 5. 禁用 direct、fusion、packed 后仍能成功 lower。

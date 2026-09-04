@@ -326,6 +326,34 @@ OpExtension "SPV_NV_cooperative_matrix"
 """
         self.assertFalse(has_hw_residue(assembly))
 
+    def test_detects_replicated_composite_residue(self):
+        for assembly in (
+                "OpCapability ReplicatedCompositesEXT\n",
+                'OpExtension "SPV_EXT_replicated_composites"\n',
+                'OpSourceExtension "GL_EXT_replicated_composites"\n',
+                "%c = OpConstantCompositeReplicateEXT %v4 %one\n",
+                "%s = OpSpecConstantCompositeReplicateEXT %v4 %spec\n",
+                "%v = OpCompositeConstructReplicateEXT %v4 %value\n"):
+            with self.subTest(assembly=assembly):
+                self.assertTrue(has_hw_residue(assembly))
+
+    def test_replicated_composite_names_do_not_cause_false_positives(self):
+        self.assertFalse(has_hw_residue(
+            'OpExtension "SPV_EXT_spec_constant_composites"\n'
+            'OpSourceExtension "GL_EXT_spec_constant_composites"\n'
+            'OpName %value "OpCompositeConstructReplicateEXT"\n'
+            '; OpCapability ReplicatedCompositesEXT\n'))
+
+    def test_unsupported_contract_can_check_hw_independently(self):
+        assembly = """\
+OpCapability ReplicatedCompositesEXT
+OpExtension "SPV_EXT_replicated_composites"
+%value = OpCompositeConstructReplicateEXT %v4 %scalar
+"""
+        self.assertTrue(has_hw_residue(assembly))
+        self.assertFalse(has_hw_residue(
+            assembly, include_replicated_composites=False))
+
     def test_relreg_is_only_detected_on_selection_merge_operand(self):
         self.assertTrue(has_hw_residue(
             "OpSelectionMerge %merge Flatten|Relreg\n"))

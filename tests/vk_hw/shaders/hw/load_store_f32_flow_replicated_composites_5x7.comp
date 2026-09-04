@@ -1,0 +1,50 @@
+#version 460 core
+#extension GL_HW_neural_shader : require
+
+#pragma use_replicated_composites
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA { float data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float data[]; } B;
+layout(set = 0, binding = 2) buffer InputC { float data[]; } C;
+layout(set = 0, binding = 3) buffer OutputD { float data[]; } D;
+
+layout(constant_id = 0) const float SPEC_ONE = 1.0;
+const vec4 CONSTANT_ONE = vec4(1.0);
+const vec4 SPEC_ONE_VECTOR = vec4(SPEC_ONE);
+
+struct HomogeneousPair {
+    vec4 first;
+    vec4 second;
+};
+
+void main()
+{
+    const ivec2 shape = ivec2(5, 7);
+    const ivec2 zeroOffset = ivec2(0);
+
+    float runtimeZero = A.data[gl_LocalInvocationIndex] -
+                        A.data[gl_LocalInvocationIndex];
+    vec4 runtimeVector = vec4(runtimeZero);
+    mat4 runtimeMatrix = mat4(runtimeVector, runtimeVector,
+                              runtimeVector, runtimeVector);
+    vec4 runtimeArray[2] = vec4[2](runtimeVector, runtimeVector);
+    HomogeneousPair runtimePair =
+        HomogeneousPair(runtimeVector, runtimeVector);
+
+    float zero = runtimeMatrix[3][2] + runtimeArray[1].z +
+                 runtimePair.second.w;
+    float one = CONSTANT_ONE.x * SPEC_ONE_VECTOR.y;
+
+    coopmatHW<float, 5, 7> value;
+    coopmatHW<float, 5, 7> matrixZero =
+        coopmatHW<float, 5, 7>(zero);
+    coopmatHW<float, 5, 7> matrixOne =
+        coopmatHW<float, 5, 7>(one);
+    coopMatLoadHW(value, A.data, shape, zeroOffset,
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    value = (value + matrixZero) * matrixOne;
+    coopMatStoreHW(value, D.data, shape, zeroOffset,
+                   gl_CooperativeMatrixLayoutRowMajorHW);
+}

@@ -20,6 +20,11 @@ SPIRV_INSTRUCTION_RE = re.compile(
 HW_CAPABILITY_RE = re.compile(r"[A-Za-z0-9_]*(?:HW|AZD)")
 HW_EXTENSION_RE = re.compile(r"SPV_(?:HW|AZD)_[A-Za-z0-9_]+")
 HW_SOURCE_EXTENSION_RE = re.compile(r"GL_(?:HW|AZD)_[A-Za-z0-9_]+")
+REPLICATED_COMPOSITE_OPCODES = frozenset({
+    "OpConstantCompositeReplicateEXT",
+    "OpSpecConstantCompositeReplicateEXT",
+    "OpCompositeConstructReplicateEXT",
+})
 QUOTED_OPERAND_RE = re.compile(r'"([^"\\]*(?:\\.[^"\\]*)*)"')
 
 
@@ -44,12 +49,12 @@ def _quoted_operand(operands):
     return match.group(1) if match else None
 
 
-def has_hw_residue(asm_text):
-    """Return whether SPIR-V assembly contains an actual HW/AZD construct.
+def has_hw_residue(asm_text, include_replicated_composites=True):
+    """Return whether lowered assembly contains a forbidden construct.
 
     Parse only instruction/opcode positions so debug names, strings, comments,
-    and standard cooperative KHR/NV instructions cannot be mistaken for HW
-    residue.
+    standard cooperative KHR/NV instructions, and unrelated EXT declarations
+    cannot be mistaken for residue.
     """
     for raw_line in asm_text.splitlines():
         line = _strip_spirv_comment(raw_line).rstrip()
@@ -59,20 +64,30 @@ def has_hw_residue(asm_text):
 
         opcode = instruction.group("opcode")
         operands = instruction.group("operands") or ""
-        if opcode.endswith("HW"):
+        if (opcode.endswith("HW") or
+                (include_replicated_composites and
+                 opcode in REPLICATED_COMPOSITE_OPCODES)):
             return True
 
         if opcode == "OpCapability":
             capability = operands.split(maxsplit=1)[0] if operands else ""
-            if HW_CAPABILITY_RE.fullmatch(capability):
+            if (HW_CAPABILITY_RE.fullmatch(capability) or
+                    (include_replicated_composites and
+                     capability == "ReplicatedCompositesEXT")):
                 return True
         elif opcode == "OpExtension":
             extension = _quoted_operand(operands)
-            if extension and HW_EXTENSION_RE.fullmatch(extension):
+            if (extension and
+                    (HW_EXTENSION_RE.fullmatch(extension) or
+                     (include_replicated_composites and
+                      extension == "SPV_EXT_replicated_composites"))):
                 return True
         elif opcode == "OpSourceExtension":
             extension = _quoted_operand(operands)
-            if extension and HW_SOURCE_EXTENSION_RE.fullmatch(extension):
+            if (extension and
+                    (HW_SOURCE_EXTENSION_RE.fullmatch(extension) or
+                     (include_replicated_composites and
+                      extension == "GL_EXT_replicated_composites"))):
                 return True
         elif opcode == "OpSelectionMerge":
             merge_operands = operands.split()
@@ -185,7 +200,7 @@ def compile_unsupported_shader(glslang, spirv_opt, spirv_val, spirv_dis,
     run([spirv_dis, str(partial_spv), "-o", str(partial_asm)])
 
     asm_text = partial_asm.read_text(encoding="utf-8")
-    if not has_hw_residue(asm_text):
+    if not has_hw_residue(asm_text, include_replicated_composites=False):
         raise RuntimeError(
             "FAIL: cooperative-only lowering unexpectedly removed every HW "
             f"feature from unsupported input: {partial_asm}")
