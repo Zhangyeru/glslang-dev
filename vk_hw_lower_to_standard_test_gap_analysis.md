@@ -468,11 +468,12 @@ Production flow 之外，建议恢复或重新建立以下 focused regression：
 
 其中 GLSL 无法稳定生成的 instruction 应使用 `.spvasm` 输入，不应因为前端不可表达而放弃 Vulkan 运行覆盖。
 
-## 9. P2：需要与 lowering 功能开发同步加入的测试
+## 9. Validator 排除项与 P2 lowering 测试
 
-以下能力当前仍属于实现缺口，不能只添加普通“应通过”shader：
+9.1、9.2 描述 validator 已排除的输入边界，不属于 lower-pass 实现缺口；实际需要与 lowering 功能同步开发的
+P2 项从 9.3 开始。
 
-### 9.1 Core opcode 闭包
+### 9.1 Core opcode validator-negative coverage
 
 - FRem、FMod；
 - SRem、SMod、UMod；
@@ -482,13 +483,19 @@ Production flow 之外，建议恢复或重新建立以下 focused regression：
 - OpDot；
 - 部分 matrix shift/bitwise 组合。
 
-### 9.2 GLSL.std.450 扩展
+这些形式应留在 `spirv-val` negative regression 中，不应加入 vk_hw 成功 lowering 或 Vulkan function case。
+`OpSelect` 仍是合法 structural operation；cooperative-vector integer shift/bitwise 仍属于 positive coverage。
+
+### 9.2 GLSL.std.450 validator-negative coverage
 
 - cooperative matrix result；
 - Sin、Cos、Sqrt、Abs、Floor、Ceil；
 - Pow；
 - Length、Distance、Normalize、Cross；
-- scalar/cooperative 混合合法签名。
+- scalar/cooperative 混合签名。
+
+当前 positive 集合仅为语言完备性文档 3.5 中的 cooperative-vector 白名单。上述形式应由 validator-negative
+测试覆盖，不要求 lower fallback，也不应进入 vk_hw 成功运行矩阵。
 
 ### 9.3 严格浮点
 
@@ -513,11 +520,21 @@ Production flow 之外，建议恢复或重新建立以下 focused regression：
 
 ### 9.5 类型边界和 hard limit
 
-- validator 接受时的 f64/i64/u64/bool component；
-- accumulator narrowing；
-- result 与 C/bias 类型不同；
-- mixed-width cooperative UDiv；
-- float/integer cross-domain matmul；
+以下是 validator-negative coverage，不需要加入 vk_hw 成功 lowering 或 Vulkan function case：
+
+- f64/i64/u64/bool cooperative component；
+- matmul accumulator narrowing；
+- matmul result 与 C/bias 类型不同；
+- mixed-width 或非 unsigned cooperative UDiv；
+- float/integer cross-domain matmul。
+
+跨位宽 HW load/store 继续属于合法 positive coverage。Generic lower 已实现“等位宽异类型 bitcast，跨位宽
+标准数值转换”，包括 f16 cooperative ← f32[]、f32 cooperative ↔ i64/u64/f64 buffer leaf；转换保持一个
+component 对应一个 leaf lane。SPIRV-Tools focused tests 覆盖转换方向、signedness、nested pointer、loop 和
+direct/fusion recovery；本阶段不修改 vk_hw shader/golden，后续仍需补充这些访问的 Vulkan 数值运行覆盖。
+
+以下 hard limit 仍为需要与 lowering 功能开发同步处理的合法输入缺口：
+
 - 超过 `max_elements` 但可由 loop 表达的合法 shape；
 - 超过 `max_matmul_macs` 但可由 rolled helper 表达的合法 matmul。
 

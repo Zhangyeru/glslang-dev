@@ -171,43 +171,44 @@ Matmul 当前支持：
 - Extension-free 成功时无 HW opcode/type/nested reference，也无 replicated-composites opcode、capability 或
   extension residue
 
-## 4. 当前仍可能失败的合法 vec/mat 语言形态
+## 4. Validator 排除项与仍可能失败的合法 vec/mat 语言形态
 
-### 4.1 Core opcode 没有形成完整闭包
+### 4.1 Core opcode validator 边界（非 lowering 缺口）
 
-当前未覆盖的典型操作：
+当前 validator 只允许 3.3、3.4 所列 core conversion、arithmetic、scale 和 structural opcode 作用于
+HW cooperative vec/mat。以下形式会在进入 lower pass 前被 `spirv-val` 拒绝：
 
 - `OpFRem`
 - `OpFMod`
 - `OpSRem`
 - `OpSMod`
 - `OpUMod`
-- 浮点和整数 comparison
-- Logical operation
+- 以 cooperative vec/mat 为数值 operand 的浮点和整数 comparison
+- 以 cooperative vec/mat 为 operand/result 的 logical operation
 - Cooperative `OpVectorShuffle`
 - `OpDot`
 - 部分 matrix shift/bitwise 组合
 
-应以 validator 接受集合为准生成完整 opcode 清单。纯逐元素操作应统一进入通用 elementwise lowering，
-而不是继续依赖零散白名单。
+其中 `OpSelect` 是 validator 明确允许、lower 已支持的 structural operation，不属于上述 logical 排除项；
+integer shift/bitwise 当前只允许 cooperative vector，不允许 cooperative matrix。
 
-### 4.2 GLSL.std.450 不完整
+这些 validator-invalid 形式不属于 lower-pass 语言完备性目标，也不需要 scalar fallback。若未来 validator
+扩大合法 core opcode 集合，lower 必须在同一个变更中同步扩展并增加 positive lowering 测试。
 
-当前缺口：
+### 4.2 GLSL.std.450 validator 边界（非 lowering 缺口）
+
+当前 validator 允许的 cooperative GLSL.std.450 集合就是 3.5 所列 cooperative-vector 白名单，并要求
+result 和 cooperative operands 的类型、分量类型与长度满足对应指令约束。以下形式会被 `spirv-val` 拒绝：
 
 - Cooperative matrix result
 - 大量一元浮点函数，如 Sin、Cos、Sqrt、Abs、Floor、Ceil
 - Pow 等多 operand 指令
 - Length、Distance、Normalize、Cross 等 geometric/reduction 指令
-- Scalar 与 cooperative operand 混合的合法签名
+- Scalar 与 cooperative operand 混合的签名
 
-建议将 ExtInst 分为：
-
-1. 纯 elementwise
-2. 多 operand elementwise
-3. Reduction/geometric
-
-前两类使用统一逐元素框架，第三类按明确语义单独实现。
+因此这些形式不是 lower 未实现的合法输入：不需要实现 cooperative matrix ExtInst、额外 transcendental、
+geometric/reduction 或 mixed scalar/cooperative fallback。这里只需要保持 validator 白名单与 3.5、lower
+实现及测试矩阵一致。
 
 ### 4.3 `NoContraction` 无法 lowering
 
@@ -258,6 +259,8 @@ Matmul 当前支持：
 - leaf 可为 numeric scalar 或 ordinary numeric vector
 - flatten 顺序固定为 outer array → inner array → vector lane
 - cooperative component 与 leaf component 类型不同时，只要 bit width 相同即在 load/store 边界使用 `OpBitcast`
+- bit width 不同时，每个 cooperative component 仍对应一个 buffer scalar/vector lane；load 后或 store 前执行
+  标准数值转换，详见 4.6
 - Matrix RowMajor/ColumnMajor subregion 的 shape/offset 地址计算继续作用于上述统一 flatten index
 - load storage class：Workgroup、StorageBuffer、PhysicalStorageBuffer、Uniform
 - store storage class：Workgroup、StorageBuffer、PhysicalStorageBuffer
@@ -271,27 +274,42 @@ Matmul 当前支持：
 lower failure。
 
 本阶段的明确边界：不插入 bounds clamp/check；动态 matrix layout 仍属于 4.4；storage class 集合保持与
-validator 一致，不在 lower 内私自扩展。现有 HW memory validator/GLSL overload 仍允许 cooperative component
-与 buffer leaf component 具有不同 bit width；本阶段不猜测其跨宽度 raw-memory 重组或数值 conversion，
-该类型语义归入 4.6，后续必须按扩展规范实现，不能通过收窄 validator 规避。
+validator 一致，不在 lower 内私自扩展。跨位宽 memory access 使用 4.6 的数值转换约定，保持原 pointer
+layout 和地址计算；涉及这些访问的 pointer 不进入 direct/fusion 或 packed pointer-chunk helper。
 
-### 4.6 类型规则尚未形成闭包
+### 4.6 类型 validator 边界与跨位宽 memory conversion
 
-当前拒绝：
+Cooperative vec/mat component 只允许 f16/f32、i8/u8、i16/u16、i32/u32。以下组合由 `spirv-val`
+拒绝，不属于 lower-pass 的合法输入缺口：
 
-- f64
-- i64/u64
-- bool component
-- Accumulator narrowing
-- Result 与 C/Bias 不同类型
-- Mixed-width cooperative UDiv
-- Float/integer 跨域 matmul
+- f64、i64/u64、bool cooperative component（类型声明即拒绝，不限于 matmul）
+- Matmul accumulator 比 A/Input 或 B/Matrix 的 component 更窄
+- Matmul Result 与 C/Bias 的 cooperative 类型不完全一致
+- Cooperative `OpUDiv` 的 operand/result component 位宽不一致，或不是 unsigned integer
+- Float/integer 跨域 matmul；同数值域的 mixed-precision widening matmul 仍然合法
 
-需要以 HW extension grammar 和 validator 为准：
+上述限制针对 cooperative 类型，不限制普通 buffer leaf 使用 f64/i64/u64。HW load/store 的跨位宽
+输入继续由 validator 接受，generic lowering 实现以下 memory conversion 约定：
 
-- Validator 接受的组合必须 lower
-- Validator 拒绝的组合不属于完备性目标
-- 语义不明确时先补规范和 validator，不能在 lower 中猜测 conversion
+| Source → target component | Lowered conversion |
+|---|---|
+| 完全相同类型 | 直接使用 |
+| 等位宽异类型 | `OpBitcast`，保持既有按位重解释语义 |
+| 跨位宽 float → float | `OpFConvert` |
+| 跨位宽 float → integer | 按 target signedness 使用 `OpConvertFToS` / `OpConvertFToU` |
+| 跨位宽 integer → float | 按 source signedness 使用 `OpConvertSToF` / `OpConvertUToF` |
+| 跨位宽 integer → integer | 按 source signedness 使用 `OpSConvert` / `OpUConvert`；target signedness 不同时，再用等位宽 `OpBitcast` |
+
+Load 的 source 是 buffer leaf，target 是 cooperative component；store 的方向相反。例如 f16 cooperative
+从 f32[] 加载时，生成 `OpLoad f32 → OpFConvert f16`；存回 f32[] 时，生成 `OpFConvert f32 → OpStore`。
+一个逻辑 component 对应一个 leaf lane，不按字节拼接或拆分；offset、stride、alignment 按原 backing memory
+计算。整数 narrowing 保留低位，浮点 conversion 遵循标准 SPIR-V conversion 和模块 float controls；不额外
+提供饱和、clamp 或对超出可表示范围的浮点转整数结果作保证。
+
+跨位宽访问在原 memory site 执行逐 scalar access 和 conversion，支持小 shape 展开、大 shape structured loop，
+也支持转换后重建 packed cooperative aggregate。它们不被捕获为 direct/fusion 的 buffer source/destination，
+后续计算可以消费已经物化并转换的 cooperative value。生成 conversion 时补齐必要的标准数值 capability。
+Lower 内部保留防御性类型检查；本阶段不修改 glslang 前端。
 
 ### 4.7 固定 hard limit 仍可能拒绝合法 shader
 
@@ -394,19 +412,18 @@ Validator 接受集合是 lower 必须覆盖的集合。
 
 ### 阶段 2：完成 scalar canonical lowering
 
-- 补齐所有合法 core elementwise opcode
-- 补齐 comparison、logical、shuffle、dot
+- 保证 validator 已接受的 core conversion、arithmetic、scale 和 structural opcode 都有 scalar fallback
+- 为 validator 拒绝的 comparison、logical、shuffle、dot 等形式保留 negative validation coverage
 - 任意 shape 使用 structured loop
 - 任意合法 pointer path 可以寻址
 - 所有 SSA/composite/function 构造能够重写
 - Extension-free 后无 HW residue
 
-### 阶段 3：补齐 ExtInst
+### 阶段 3：ExtInst 白名单覆盖
 
-- Cooperative vector 完整 GLSL.std.450
-- Cooperative matrix GLSL.std.450
-- Scalar/cooperative 混合 operand
-- Reduction/geometric 独立实现
+- 覆盖 3.5 中 validator 已接受的 cooperative-vector GLSL.std.450 白名单
+- 覆盖 packed、scalar、small-unrolled 和 structured-loop 路径
+- 为 matrix result、额外 transcendental、geometric/reduction 和 mixed operand 保留 negative validation coverage
 
 ### 阶段 4：严格浮点与动态参数
 
