@@ -5171,6 +5171,9 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         spv::Id typeId = builder.getContainedTypeId(builder.getTypeId(operands[0]));
         assert(builder.isCooperativeVectorHWType(typeId));
         result = createCooperativeVectorHWMatMul(builder, typeId, operands);
+        builder.addDecoration(result,
+                              TranslateNoContractionDecoration(
+                                  glslangOperands[0]->getAsTyped()->getType().getQualifier()));
         builder.createStore(result, operands[0]);
         result = 0;
     } else if (node->getOp() == glslang::EOpCooperativeVectorMatMulNV ||
@@ -5218,6 +5221,9 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         spv::Id typeId = builder.getContainedTypeId(builder.getTypeId(operands[0]));
         assert(builder.isCooperativeVectorHWType(typeId));
         result = createCooperativeVectorHWMatMulAdd(builder, typeId, operands);
+        builder.addDecoration(result,
+                              TranslateNoContractionDecoration(
+                                  glslangOperands[0]->getAsTyped()->getType().getQualifier()));
         builder.createStore(result, operands[0]);
         result = 0;
     } else if (node->getOp() == glslang::EOpCooperativeVectorLoadHW) {
@@ -5319,12 +5325,18 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         spv::Id typeId = builder.getContainedTypeId(builder.getTypeId(operands[0]));
         assert(builder.isCooperativeMatrixHWType(typeId));
         spv::Id matrix = createCooperativeMatrixHWMul(builder, typeId, operands);
+        builder.addDecoration(matrix,
+                              TranslateNoContractionDecoration(
+                                  glslangOperands[0]->getAsTyped()->getType().getQualifier()));
         builder.createStore(matrix, operands[0]);
         result = 0;
     } else if (node->getOp() == glslang::EOpCooperativeMatrixMulAddHW) {
         spv::Id typeId = builder.getContainedTypeId(builder.getTypeId(operands[0]));
         assert(builder.isCooperativeMatrixHWType(typeId));
         spv::Id matrix = createCooperativeMatrixHWMulAdd(builder, typeId, operands);
+        builder.addDecoration(matrix,
+                              TranslateNoContractionDecoration(
+                                  glslangOperands[0]->getAsTyped()->getType().getQualifier()));
         builder.createStore(matrix, operands[0]);
         result = 0;
     } else if (atomic) {

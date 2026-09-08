@@ -1,0 +1,22 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+void main()
+{
+    coopmatHW<float, 2, 2> matrixA;
+    coopmatHW<float, 2, 2> matrixB;
+    coopmatHW<float, 2, 2> matrixAccumulator;
+    precise coopmatHW<float, 2, 2> matrixMul;
+    precise coopmatHW<float, 2, 2> matrixMulAdd;
+    coopvecHW<float, 2> vectorInput;
+    coopvecHW<float, 2> vectorBias;
+    precise coopvecHW<float, 2> vectorMul;
+    precise coopvecHW<float, 2> vectorMulAdd;
+
+    coopMatMulHW(matrixMul, matrixA, matrixB);
+    coopMatMulAddHW(matrixMulAdd, matrixA, matrixB, matrixAccumulator);
+    coopVecMatMulHW(vectorMul, vectorInput, matrixB);
+    coopVecMatMulAddHW(vectorMulAdd, vectorInput, matrixB, vectorBias);
+}

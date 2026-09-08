@@ -499,15 +499,19 @@ P2 项从 9.3 开始。
 
 ### 9.3 严格浮点
 
-- NoContraction matrix matmul；
-- NoContraction vector matmul/matmuladd；
-- FPFastMathMode None；
-- FPFastMathDefault；
-- rounding mode；
-- denorm preserve/flush；
-- NaN/Inf；
-- signed zero；
-- 多 entry point 不同 float-control。
+该项已完成。SPIRV-Tools focused tests 已覆盖：
+
+- direct/grouped `NoContraction` matrix matmul 与 vector matmul/matmuladd；
+- packed/default mode、force-scalar、mixed f16 operand 到 f32 accumulator；
+- 小 shape 逐 K 展开和大 shape structured loop；
+- strict path 对 direct、store fusion 和两层 MLP fusion 的阻断；
+- 显式 `FPFastMathMode None`、`FPFastMathDefault` 与 relaxed/strict 隔离；
+- RTE/RTZ、denorm preserve/flush、NaN/Inf、signed zero；
+- `ContractionOff` 的独立及共享函数调用树，以及多 entry point 的不同 float-control。
+
+Vulkan 侧由 `multiops_f32_flow_precise_contract_17x17x15.comp` 覆盖 GLSL `precise` 经 struct、函数返回和多个
+调用点进入 matrix/vector matmuladd 后的 strict lowering及数值结果。`ContractionOff` 仅允许 Kernel execution
+model，因此使用合法 OpenCL memory model 的 SPIR-V optimizer tests覆盖，不加入 Vulkan GLCompute shader。
 
 ### 9.4 Specialization 与动态控制
 

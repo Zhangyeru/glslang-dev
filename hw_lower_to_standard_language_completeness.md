@@ -82,6 +82,7 @@ Matmul 当前支持：
 - 整数 mixed width 和 signedness
 - Constant、value argument 和直接 buffer source
 - 大 shape structured-loop fallback
+- `NoContraction` 与 `ContractionOff` 严格逐 K `FMul + FAdd` 路径
 
 ### 3.3 Core conversion 与算术
 
@@ -166,7 +167,7 @@ Matmul 当前支持：
 
 - SPIR-V Tools CTest：32/32 通过
 - 顶层 CTest：8/8 通过
-- Vulkan function：105/105 通过，无 skip
+- Vulkan function：107/107 通过，无 skip
 - Vulkan perf：84/84 满足 `lowered_ns / baseline_ns <= 3.0`
 - Extension-free 成功时无 HW opcode/type/nested reference，也无 replicated-composites opcode、capability 或
   extension residue
@@ -210,17 +211,30 @@ result 和 cooperative operands 的类型、分量类型与长度满足对应指
 geometric/reduction 或 mixed scalar/cooperative fallback。这里只需要保持 validator 白名单与 3.5、lower
 实现及测试矩阵一致。
 
-### 4.3 `NoContraction` 无法 lowering
+### 4.3 `NoContraction` 严格浮点 lowering（已完成）
 
-当前 cooperative matmul 遇到 `NoContraction` 会失败。需要增加严格浮点路径：
+Cooperative matrix/vector matmul 的 `NoContraction` 已形成完整闭包：validator 允许 direct 或 decoration-group
+形式修饰 HW vector matmul/matmuladd；glslang 会把 `precise` cooperative 输出传播到对应 HW 结果指令。
 
-- 使用 FMul + FAdd，而不是 Fma
-- 保持逐 K 顺序
-- 传播 `NoContraction`
-- 正确处理 `FPFastMathMode None`
-- 正确处理 `FPFastMathDefault`
-- 支持 rounding、denorm、NaN/Inf 和 signed-zero contract
-- 支持多 entry point 的不同 float-control 配置
+Lowering 采用以下 contract：
+
+- 原 HW matmul 带 `NoContraction`，或其函数位于任一 `ContractionOff` entry point 的调用树中时，启用严格路径；
+- 小 shape 使用 scalar fallback，大 shape 使用 structured-loop fallback，均按 K=0 到 K-1 顺序计算；
+- 浮点 operand 先扩展到 accumulator 类型，再生成普通 `OpFMul` 和 `OpFAdd`，不生成 Fma；
+- 源于 `NoContraction` 时，生成的每条 `OpFMul` 和 `OpFAdd` 都传播 `NoContraction`；仅源于
+  `ContractionOff` 时由 entry-point execution mode 约束；
+- strict matmul 禁止 direct、store fusion 和两层 MLP fusion；共享函数只要被一个 `ContractionOff` 入口调用，
+  就保守使用 strict lowering；
+- 整数 matmul 继续按逐 K `OpIMul + OpIAdd` lowering，合法的 `NoContraction` 输入不会导致失败。
+
+Fast-math 状态同时保存 mask 与 decoration 是否显式存在，因此显式 `FPFastMathMode None` 不会与无 decoration
+共享错误 helper，并会覆盖 entry point 的 `FPFastMathDefault`。RTE/RTZ、denorm preserve/flush 和
+`SignedZeroInfNanPreserve` 保留在原 entry-point 调用树上，生成的浮点操作自然继承相应 contract；不同 entry
+point 可以对独立或共享调用树使用不同 float-control 配置。
+
+Validator 原有冲突规则保持不变，包括同一结果不能同时使用 `NoContraction` 与 `FPFastMathMode`、同一 entry
+point 不能同时使用 `FPFastMathDefault` 与 `ContractionOff`，以及 `FPFastMathDefault` 调用树中不能包含
+`NoContraction`。
 
 ### 4.4 Specialization constant 和动态控制不完整
 

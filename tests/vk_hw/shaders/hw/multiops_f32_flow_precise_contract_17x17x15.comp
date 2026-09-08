@@ -1,0 +1,119 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer InputA {
+    float data[];
+} A;
+layout(set = 0, binding = 1) buffer InputB {
+    float data[];
+} B;
+layout(set = 0, binding = 2) buffer InputC {
+    float data[];
+} C;
+layout(set = 0, binding = 3) buffer OutputD {
+    float data[];
+} D;
+
+const int ROWS = 17;
+const int COLUMNS = 17;
+const int INNER = 15;
+const ivec2 MATRIX_SHAPE_A = ivec2(ROWS, INNER);
+const ivec2 MATRIX_SHAPE_B = ivec2(INNER, COLUMNS);
+const ivec2 MATRIX_SHAPE_D = ivec2(ROWS, COLUMNS);
+const ivec2 ZERO_OFFSET = ivec2(0);
+
+struct MatrixResult {
+    precise coopmatHW<float, ROWS, COLUMNS> value;
+};
+
+struct MatrixPayload {
+    coopmatHW<float, ROWS, INNER> lhs;
+    coopmatHW<float, INNER, COLUMNS> rhs;
+    MatrixResult accumulator;
+};
+
+struct VectorInput {
+    coopvecHW<float, INNER> value;
+};
+
+struct VectorBias {
+    coopvecHW<float, COLUMNS> value;
+};
+
+struct VectorResult {
+    precise coopvecHW<float, COLUMNS> value;
+};
+
+MatrixPayload loadMatrixPayload()
+{
+    MatrixPayload payload;
+    coopMatLoadHW(
+        payload.lhs,
+        A.data,
+        MATRIX_SHAPE_A,
+        ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(
+        payload.rhs,
+        B.data,
+        MATRIX_SHAPE_B,
+        ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(
+        payload.accumulator.value,
+        C.data,
+        MATRIX_SHAPE_D,
+        ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+    return payload;
+}
+
+MatrixResult executeMatrixPass(
+    MatrixPayload payload,
+    MatrixResult accumulator)
+{
+    MatrixResult result;
+    coopMatMulAddHW(result.value, payload.lhs, payload.rhs, accumulator.value);
+    return result;
+}
+
+VectorResult executeVectorPass(
+    VectorInput inputValue,
+    MatrixPayload payload,
+    VectorBias bias)
+{
+    VectorResult result;
+    coopVecMatMulAddHW(
+        result.value, inputValue.value, payload.rhs, bias.value);
+    return result;
+}
+
+void main()
+{
+    MatrixPayload payload = loadMatrixPayload();
+    MatrixResult matrixResult0 =
+        executeMatrixPass(payload, payload.accumulator);
+    MatrixResult matrixResult1 =
+        executeMatrixPass(payload, matrixResult0);
+    coopMatStoreHW(
+        matrixResult1.value,
+        D.data,
+        MATRIX_SHAPE_D,
+        ZERO_OFFSET,
+        gl_CooperativeMatrixLayoutRowMajorHW);
+
+    VectorInput vectorInput;
+    VectorBias vectorBias;
+    coopVecLoadHW(vectorInput.value, A.data, 0u);
+    coopVecLoadHW(vectorBias.value, D.data, 0u);
+    VectorResult vectorResult0 =
+        executeVectorPass(vectorInput, payload, vectorBias);
+    coopVecStoreHW(vectorResult0.value, D.data, 0u);
+
+    coopVecLoadHW(vectorBias.value, D.data, 0u);
+    VectorResult vectorResult1 =
+        executeVectorPass(vectorInput, payload, vectorBias);
+    coopVecStoreHW(vectorResult1.value, D.data, 0u);
+}
