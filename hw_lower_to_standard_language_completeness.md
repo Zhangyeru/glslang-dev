@@ -158,7 +158,6 @@ Matmul 当前支持：
 - f32 accumulator 专用 unroll 上限
 - Constant/value operand fallback
 - f16→f32→f16 无损往返转换链消除
-- Matrix/vector store fusion
 - 两层 MLP fusion
 - Shared source 与 kill-list 闭包检查
 - 小型 force-scalar 浮点 elementwise 静态展开
@@ -223,7 +222,7 @@ Lowering 采用以下 contract：
 - 浮点 operand 先扩展到 accumulator 类型，再生成普通 `OpFMul` 和 `OpFAdd`，不生成 Fma；
 - 源于 `NoContraction` 时，生成的每条 `OpFMul` 和 `OpFAdd` 都传播 `NoContraction`；仅源于
   `ContractionOff` 时由 entry-point execution mode 约束；
-- strict matmul 禁止 direct、store fusion 和两层 MLP fusion；共享函数只要被一个 `ContractionOff` 入口调用，
+- strict matmul 禁止 direct 和两层 MLP fusion；共享函数只要被一个 `ContractionOff` 入口调用，
   就保守使用 strict lowering；
 - 整数 matmul 继续按逐 K `OpIMul + OpIAdd` lowering，合法的 `NoContraction` 输入不会导致失败。
 
@@ -463,7 +462,6 @@ Validator 接受集合是 lower 必须覆盖的集合。
 - Packed vec2
 - Unrolled
 - Direct
-- Store fusion
 - MLP fusion
 
 所有优化都必须保持 fallback contract，不能扩大 pass 的失败集合。

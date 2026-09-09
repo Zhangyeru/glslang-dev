@@ -207,7 +207,7 @@ precision 则在乘加前扩展到 accumulator component type。各优化路径�
 
 SSBO direct 的目标是避免先把 cooperative matrix/vector 从 SSBO 完整物化到 Function aggregate，再执行单个
 matmul。它捕获可安全移动的原始 buffer pointer，在生成的 helper 中按需加载 operand，但仍产生原 matmul 的结果值。
-把 matmul 与 store 一起替换的功能属于 6.5 节的 fusion，不属于本节。
+当前不把 matmul 与 store 合并：matmul 产生 lowered aggregate，后续 store 由普通 memory lowering 独立处理。
 
 #### 6.4.1 各 direct 路径准入条件
 
@@ -221,7 +221,7 @@ matmul。它捕获可安全移动的原始 buffer pointer，在生成的 helper 
 | 检查项 | 准入条件 | 不满足时 |
 | --- | --- | --- |
 | Lowering 模式 | `kPreferPackedVec2` | `kForceScalar` 走 generic 路径 |
-| 浮点顺序 | direct helper 按 N 方向打包输出，对每个输出严格按 K 递增顺序、以 C/bias/零为初值执行 Fma，因此不要求 `AllowReassoc`；`NoContraction` 仍由 preflight 明确拒绝 | `NoContraction` 使整个 pass 失败 |
+| 浮点顺序 | direct helper 按 N 方向打包输出，对每个输出严格按 K 递增顺序、以 C/bias/零为初值执行 Fma，因此不要求 `AllowReassoc` | `NoContraction` 或 `ContractionOff` 禁用 direct，改走严格逐 K generic lowering |
 | Matrix 来源 | 可追溯到 RowMajor `OpCooperativeMatrixLoadHW`；pointer 可捕获；shape/offset module-visible；MemoryAccess 可移动 | 仅该 operand 改用 constant/value |
 | Matrix direct type transport | 允许不改变 operand type 的 transport；显式 matrix-use bitcast 要求 component type 与 shape 完全相同，use tag 可以变化，例如 frontend 为 converted C 生成的 `MatrixUseAHW -> MatrixAccumulatorHW` | component type 或 shape 变化会取消整条 Matrix direct 并走 generic 路径 |
 | Vector direct matrix type transport | 允许不改变 operand type 的 transport，以及同 component type、同 shape 的 `MatrixUseAHW -> MatrixUseBHW` 显式 bitcast | component type、shape 或 use 方向不兼容时取消整条 Vector direct 并走 generic 路径 |
@@ -258,33 +258,17 @@ Converted bias 的常量 offset 会合并到 helper 的 scalar/vec2 索引；原
 ### 6.5 Fusion
 
 Fusion 会把多个 HW 指令及其封闭 transport chain 一起替换，而不是像 SSBO direct 那样只改变单个 matmul 的
-operand 获取方式。当前包含单算子 store fusion 和两层 vector-matmul fusion。
+operand 获取方式。当前只包含两层 vector-matmul fusion。
 
 #### 6.5.1 Fusion 路径与准入条件
 
 | 路径 | 匹配范围 | 类型与 Shape | 数据流 / 内存条件 | 回退行为 |
 | --- | --- | --- | --- | --- |
-| Matrix store fusion | 三个 matrix load → `OpCooperativeMatrixMulAddHW` → matrix store | A/B/C/result 同为 packed f16 或 f32；`K % 2 == 0`、`N % 2 == 0`，M 可不对齐 | 四端均为 RowMajor，pointer 可捕获，shape/offset module-visible，MemoryAccess 可移动，use-chain 封闭 | 取消 fusion，继续尝试 matrix direct 或 generic lowering |
-| Vector store fusion | vector load + matrix load → vector-matmul → vector store | operand/result 同为 packed f16 或 f32；`K % 2 == 0`、`N % 2 == 0` | input/output offset 为 0；matrix 为 RowMajor；input/matrix/output root 已知、互不冲突且无 alias decoration；use-chain 封闭 | 取消 fusion，继续尝试 vector direct 或 generic lowering |
-| 带 bias 的 vector store fusion | vector store fusion 中的 matmul 换成 vector-matmul-add | 与无 bias 版本相同 | bias 必须是无类型转换的 `OpConstantComposite`，最多 8 个 vec2 pack（16 个 scalar） | 取消 fusion，继续尝试 vector direct 或 generic lowering |
 | 两层 vector-matmul fusion | `matmul0 (+ bias0) -> optional ReLU -> matmul1 (+ bias1)` | 全 f16，或 f16 输入/权重配合 f32 bias/累加及显式层间 f32→f16 conversion；`K > 0`、`N > 16`、`1 <= P <= 16` | 同一 basic block，中间值封闭，满足逐 pair 展开预算 | pair 保持原样，后续逐层 lowering |
 
-所有 fusion 路径只在 `kPreferPackedVec2` 下启用，并要求相关浮点运算允许重结合且不带 `NoContraction`。
+该 fusion 只在 `kPreferPackedVec2` 下启用，并要求相关浮点运算不带 `NoContraction`。
 
-#### 6.5.2 单算子 store fusion
-
-Matrix store fusion 将 A/B/C 的 load、matrix-mul-add 和最终 store 替换为一个直接读写 buffer 的 helper。
-Vector store fusion 中，无 bias 版本使用两个 vec2 accumulator，并在写回前分别 horizontal reduce；常量 bias
-版本使用单个 vec2 accumulator 累加 2 个 `OpDot` 的结果，最后加入 bias 并直接写回。原指令的完整
-`FPFastMathMode` 会传播到生成的 Fma、`OpDot` 和 `OpFAdd`。
-
-这类 fusion 对 load/store 的可移动性和死 use-chain 采用保守检查；任一待删除值仍有 live user，或 memory operand
-无法安全传播时，都不会执行整条替换。相关实现：
-
-- [`TryLowerFusedMatrixMatmulStore`](External/spirv-tools/source/opt/hw_lower_to_standard_direct.cpp)
-- [`TryLowerFusedVectorMatmulStore`](External/spirv-tools/source/opt/hw_lower_to_standard_direct.cpp)
-
-#### 6.5.3 两层 vector-matmul 匹配
+#### 6.5.2 两层 vector-matmul 匹配
 
 `kPreferPackedVec2` 模式会在主 lowering 前运行内部 pass `HwFuseTwoLayerVectorMatmulPass`。`kForceScalar` 不运行该 fusion。pass 以第二层 vector-matmul 为入口，匹配：
 
@@ -313,7 +297,7 @@ output = hidden[N] * matrix1[N×P] (+ bias1[P])
 
 不满足这些条件时，fusion 不修改该 pair，后续主 pass 仍会分别 lower 原来的两层，因此“不融合”不等于“不支持”。
 
-#### 6.5.4 两层 fusion 生成的计算
+#### 6.5.3 两层 fusion 生成的计算
 
 fusion 直接生成标准 scalar/vec2 算术，不物化完整 hidden cooperative vector：
 
@@ -330,7 +314,7 @@ f32→f16→f32 SSA conversion 折叠为 identity。
 
 上述遍历在 fusion pass 中按常量 shape 静态展开，不生成 runtime loop；`max_unrolled_matmul_macs` 同时承担代码尺寸预算。N 最后一段的奇数 hidden lane 以及奇数 P 的无效 output lane 使用零补齐，并跳过不存在的第二行更新，不生成越界 extract 或 load。
 
-#### 6.5.5 多层链配对
+#### 6.5.4 多层链配对
 
 更长的线性链采用贪心、非重叠的两层配对。每个候选都把当前 matmul 当作第二层，并向前追溯尚未消费的第一层；成功 rewrite 后生成的是普通 composite，不会再次充当另一 pair 的 cooperative 第一层。因此：
 
@@ -343,7 +327,7 @@ f32→f16→f32 SSA conversion 折叠为 identity。
 `--activation-dtype` 描述非最终层 ReLU 后的存储/舍入类型，缺省等于 `--accum-dtype`。旧的 `--d0` 到
 `--d3` 三层形式仍保留兼容。
 
-#### 6.5.6 两层 fusion 内的 matrix/bias direct load
+#### 6.5.5 两层 fusion 内的 matrix/bias direct load
 
 fusion 会分别尝试将 matrix0、matrix1、bias0 和 bias1 从原 cooperative load 改成按需 scalar load。四个 operand 独立判定：某个 operand 不满足 direct 条件时，仅该 operand 保留 aggregate extract 路径，不会关闭其他 operand 的 direct load，也不会单独导致整个 pair 取消 fusion。
 
@@ -357,13 +341,13 @@ matrix direct load 要求：
 
 bias direct load 要求来源为同 type `OpCooperativeVectorLoadHW`，offset 是可表示完整 bias 范围的非负 32 位常量；固定长度 array 还会检查上界。mixed profile 额外允许吸收 f16 load 后紧邻 transport chain 的 f32 `OpFConvert`，按需 scalar load 后恢复同一 conversion 及其 `FPFastMathMode`。
 
-#### 6.5.7 两层 fusion 的内存与浮点语义
+#### 6.5.6 两层 fusion 的内存与浮点语义
 
 可移动 direct load 只传播 `Aligned`、`Nontemporal`、`NonPrivatePointer`、`AliasScopeINTEL` 和 `NoAliasINTEL`。`Aligned` 必须是非零 2 的幂，并按 `ArrayStride × element index` 对应的实际 byte offset 收紧；alias scope operand 必须 module-visible。
 
 load 与第二层之间采用保守的纯操作 allowlist。`Volatile`、MakePointerAvailable/Visible、barrier、atomic、call、cooperative/image/module write、带 memory operand 的 Function store、共享 source 或未知副作用都会使相关 operand 回退 aggregate 路径。普通、无 memory operand 的 Function store/load 只在封闭 transport chain 内允许。
 
-项目对该 fusion 使用允许重结合的 MLP contract。第一层、ReLU、层间 quantize、bias conversion 和第二层原有的显式 `FPFastMathMode`（包括 `None`）分别传播到对应生成算术；最终 replacement `OpCompositeConstruct` 不保留浮点 decoration。mixed bridge 带 `FPRoundingMode` 或模块声明 16-bit `RoundingModeRTE/RTZ` 时不融合；模块存在 `FPFastMathDefault` 而 bridge 没有显式 override 时也保守回退，避免 f16/f32 默认值错配。`NoContraction` 无法由该重写等价表达，因此 validator/lower preflight 会拒绝，单独运行 fusion pass 时也不会匹配。
+项目对该 fusion 使用允许重结合的 MLP contract。第一层、ReLU、层间 quantize、bias conversion 和第二层原有的显式 `FPFastMathMode`（包括 `None`）分别传播到对应生成算术；最终 replacement `OpCompositeConstruct` 不保留浮点 decoration。mixed bridge 带 `FPRoundingMode` 或模块声明 16-bit `RoundingModeRTE/RTZ` 时不融合；模块存在 `FPFastMathDefault` 而 bridge 没有显式 override 时也保守回退，避免 f16/f32 默认值错配。`NoContraction` 无法由该重写等价表达，因此 fusion pass 不会匹配，后续主 pass 使用严格逐 K lowering。
 
 实现与测试：
 

@@ -406,8 +406,7 @@ Runner 需要新增 elementwise reference case，不能继续假设所有 load/s
 - control barrier / memory barrier；
 - shared load 被两个 direct matmul 使用；
 - shared source 同时存在 composite extract 用户；
-- bias load 在中间 vector store 前后复用；
-- fused store 与后续 bias load 的 RAW/WAR/WAW。
+- bias load 在中间 vector store 前后复用。
 
 建议用例：
 
@@ -504,7 +503,7 @@ P2 项从 9.3 开始。
 - direct/grouped `NoContraction` matrix matmul 与 vector matmul/matmuladd；
 - packed/default mode、force-scalar、mixed f16 operand 到 f32 accumulator；
 - 小 shape 逐 K 展开和大 shape structured loop；
-- strict path 对 direct、store fusion 和两层 MLP fusion 的阻断；
+- strict path 对 direct 和两层 MLP fusion 的阻断；
 - 显式 `FPFastMathMode None`、`FPFastMathDefault` 与 relaxed/strict 隔离；
 - RTE/RTZ、denorm preserve/flush、NaN/Inf、signed zero；
 - `ContractionOff` 的独立及共享函数调用树，以及多 entry point 的不同 float-control。
