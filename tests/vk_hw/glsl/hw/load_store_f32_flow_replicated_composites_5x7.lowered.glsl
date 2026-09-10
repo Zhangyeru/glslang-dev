@@ -7,9 +7,6 @@ struct HomogeneousPair
     vec4 second;
 };
 
-layout(constant_id = 0) const float SPEC_ONE = 1.0;
-const vec4 SPEC_ONE_VECTOR = vec4(SPEC_ONE, SPEC_ONE, SPEC_ONE, SPEC_ONE);
-
 layout(set = 0, binding = 0, std430) buffer InputA
 {
     float data[];
@@ -38,7 +35,7 @@ void main()
     vec4 runtimeArray[2] = vec4[](runtimeVector, runtimeVector);
     HomogeneousPair runtimePair = HomogeneousPair(runtimeVector, runtimeVector);
     float zero = (runtimeMatrix[3].z + runtimeArray[1].z) + runtimePair.second.w;
-    float one = 1.0 * SPEC_ONE_VECTOR.y;
+    float one = 1.0 * 1.0;
     float _72[35] = float[](zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero, zero);
     float matrixZero[35] = _72;
     float _75[35] = float[](one, one, one, one, one, one, one, one, one, one, one, one, one, one, one, one, one, one, one, one, one, one, one, one, one, one, one, one, one, one, one, one, one, one, one);

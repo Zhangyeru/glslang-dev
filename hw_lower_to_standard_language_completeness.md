@@ -166,7 +166,7 @@ Matmul 当前支持：
 
 - SPIR-V Tools CTest：32/32 通过
 - 顶层 CTest：8/8 通过
-- Vulkan function：107/107 通过，无 skip
+- Vulkan function：116/116 通过，无 skip
 - Vulkan perf：84/84 满足 `lowered_ns / baseline_ns <= 3.0`
 - Extension-free 成功时无 HW opcode/type/nested reference，也无 replicated-composites opcode、capability 或
   extension residue
@@ -235,23 +235,41 @@ Validator 原有冲突规则保持不变，包括同一结果不能同时使用 
 point 不能同时使用 `FPFastMathDefault` 与 `ContractionOff`，以及 `FPFastMathDefault` 调用树中不能包含
 `NoContraction`。
 
-### 4.4 Specialization constant 和动态控制不完整
+### 4.4 Specialization constant 预处理闭包与动态控制（部分完成）
 
-当前会拒绝：
+`HwLowerToStandardPass` 本身仍不使用 specialization constant 的默认值静默决定类型尺寸或
+控制参数：未解析的 rows/cols/length、matrix layout 和 reduce axis/op 直接传给 raw lower 时
+仍会被拒绝。驱动或 `vk_hw` 在 lower 之前使用明确的 specialization normalization contract：
 
-- Spec-constant rows/cols/length
-- Spec-constant matrix layout
-- Spec-constant reduce axis/op
-- 部分动态 layout/control
+```text
+[有外部 specialization value 时] --set-spec-const-default-value
+  → --freeze-spec-const
+  → --fold-spec-const-op-composite
+  → --hw-lower-to-standard-extension-free[=scalar]
+  → --fold-spec-const-op-composite
+```
 
-如果扩展 grammar 允许，应实现：
+该流程已形成以下闭包：
 
-- Spec-sized array
-- Spec constant 循环边界
-- 动态 RowMajor/ColumnMajor dispatch
-- 动态 reduce axis/op dispatch
+- 没有传入任何 specialization value 时省略 set pass，所有 SpecId 使用模块默认值；
+- 只传入部分 SpecId 时覆盖这些值，其余 SpecId 仍使用模块默认值；
+- 模块不含 specialization constant 时，freeze 和 fold 是 no-op，因此所有 shader 可以共用同一流程；
+- 经过 normalization 后，spec-constant matrix rows/cols、vector length、matrix layout 以及
+  reduce axis/op 都成为 raw lower 已支持的普通常量；shape 由 `OpSpecConstantOp` 表达式派生时也先被折叠；
+- lower 后再执行一次 fold，清理 lower 重建的 spec composite；最终 artifact 必须无
+  `OpSpecConstant*` 和 HW residue，并通过 `spirv-val`。
 
-如果扩展要求普通常量，则应由 validator 将输入判定为非法，而不是让 lower 维护更窄的隐式规则。
+`vk_hw` 用 3 个 shader 类的 default/partial/full 各 3 个 variant，共 9 个 Vulkan function case
+覆盖上述语义。每个 frozen module 只对应一组最终 specialization 状态；生产驱动的缓存键
+必须包含显式覆盖和采用默认值后的完整结果。`vk_hw` sidecar 的外部覆盖当前限定为直接 integer
+specialization constant；构建脚本会在执行 set pass 前校验 SpecId 存在、类型为整数且值在对应位宽范围内，
+避免 SPIRV-Tools 对无效映射静默沿用默认值。
+
+剩余的 validator-legal lowering 缺口只有 runtime SSA matrix layout：HW matrix load/store 的 layout
+只被 validator 要求为 integer scalar，但 lower 尚未生成 RowMajor/ColumnMajor 动态 dispatch。Runtime
+reduce axis/op 和 runtime cooperative type 尺寸当前均被 validator 的 constant-instruction 规则排除，
+不是当前“任意合法 shader”的 lower 缺口；如果未来 validator 扩大合法集，lower 必须同步
+增加动态 dispatch。
 
 ### 4.5 Pointer 与 memory 语言闭包（已完成）
 
@@ -438,14 +456,13 @@ Validator 接受集合是 lower 必须覆盖的集合。
 - 覆盖 packed、scalar、small-unrolled 和 structured-loop 路径
 - 为 matrix result、额外 transcendental、geometric/reduction 和 mixed operand 保留 negative validation coverage
 
-### 阶段 4：严格浮点与动态参数
+### 阶段 4：严格浮点与动态参数（部分完成）
 
-- `NoContraction`
-- Fast-math 和 rounding
-- Denorm、NaN/Inf、signed zero
-- Specialization constant
-- Dynamic layout/reduce control
-- 多 entry point float-control
+- `NoContraction`、fast-math、rounding、denorm、NaN/Inf 和 signed zero 已完成
+- 多 entry point float-control 已完成
+- Specialization constant 已通过驱动侧 freeze/fold normalization 完成
+- Runtime matrix layout dispatch 尚未完成
+- Runtime reduce control 当前为 validator-invalid；如果 validator 扩大合法集，再同步实现
 
 ### 阶段 5：Memory 与 aggregate 完备性
 
@@ -475,7 +492,7 @@ Validator 接受集合是 lower 必须覆盖的集合。
 - Opcode × component type
 - Opcode × shape
 - Packed/scalar
-- Constant/spec constant
+- Constant/spec constant（spec input 先执行 normalization）
 - Storage class
 - Decoration
 - CFG/aggregate context
@@ -485,7 +502,7 @@ Validator 接受集合是 lower 必须覆盖的集合。
 - 原 HW shader 与 lowered shader Vulkan 输出对比
 - Scalar 与 packed/direct 输出对比
 - Fusion 开关前后输出对比
-- 多组 specialization value 对比
+- default/partial/full specialization value 对比（当前 9 个 Vulkan variant）
 
 ### 7.3 Fuzzing
 
@@ -511,7 +528,8 @@ Validator 接受集合是 lower 必须覆盖的集合。
 3. Lowered module 通过 `spirv-val`。
 4. Scalar lowering 与原 HW shader 的运行结果一致。
 5. 禁用 direct、fusion、packed 后仍能成功 lower。
-6. Spec constant、复杂 CFG、nested aggregate 和所有合法 storage class 均有覆盖。
+6. Spec constant 的 default/partial/full 预处理、复杂 CFG、nested aggregate 和所有合法
+   storage class 均有覆盖。
 7. Failure 只允许来自：
    - 原始 SPIR-V 非法
    - 明确不在 vec/mat 范围内的 HW opcode

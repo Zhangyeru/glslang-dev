@@ -66,6 +66,45 @@ class CaseParsingTest(unittest.TestCase):
                 self.assertEqual(load["accum_dtype"], dtype)
                 self.assertEqual(reduce["a_dtype"], dtype)
 
+    def test_specialized_reduce_variants_keep_resolved_metadata(self):
+        cases = {
+            "reduce_row_add_f32_flow_specdefault_5x7.lowered.spv":
+                ("row", "add", "5", "7"),
+            "reduce_column_add_f32_flow_specpartial_5x7.lowered.spv":
+                ("column", "add", "5", "7"),
+            "reduce_column_max_f32_flow_specfull_6x4.lowered.spv":
+                ("column", "max", "6", "4"),
+        }
+        for name, expected in cases.items():
+            with self.subTest(name=name):
+                case = parse_case(pathlib.Path(name))
+                self.assertEqual(
+                    (case["axis"], case["reduce_op"], case["m"], case["n"]),
+                    expected,
+                )
+
+    def test_specialized_load_store_variants_keep_resolved_shape(self):
+        cases = {
+            "load_store_f32_flow_specdefault_5x7.lowered.spv": ("5", "7"),
+            "load_store_f32_flow_specpartial_7x7.lowered.spv": ("7", "7"),
+            "load_store_f32_flow_specfull_8x6.lowered.spv": ("8", "6"),
+        }
+        for name, expected in cases.items():
+            with self.subTest(name=name):
+                case = parse_case(pathlib.Path(name))
+                self.assertEqual((case["m"], case["n"]), expected)
+
+    def test_specialized_vecmatmul_variants_keep_resolved_shape(self):
+        cases = {
+            "vecmatmul_f32_flow_specdefault_5x3.lowered.spv": ("5", "3"),
+            "vecmatmul_f32_flow_specpartial_7x3.lowered.spv": ("7", "3"),
+            "vecmatmul_f32_flow_specfull_8x4.lowered.spv": ("8", "4"),
+        }
+        for name, expected in cases.items():
+            with self.subTest(name=name):
+                case = parse_case(pathlib.Path(name))
+                self.assertEqual((case["k"], case["n"]), expected)
+
     def test_64_bit_dtypes_are_rejected(self):
         for dtype in ("f64", "i64", "u64"):
             with self.subTest(dtype=dtype):

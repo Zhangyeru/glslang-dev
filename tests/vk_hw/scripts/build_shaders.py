@@ -5,7 +5,9 @@
 # you may not use this file except in compliance with the License.
 
 import argparse
+import dataclasses
 import difflib
+import json
 import pathlib
 import re
 import shutil
@@ -17,6 +19,10 @@ SPIRV_INSTRUCTION_RE = re.compile(
     r"^\s*(?:%[^\s=]+\s*=\s*)?"
     r"(?P<opcode>Op[A-Za-z0-9_]+)(?:\s+(?P<operands>.*))?$"
 )
+SPIRV_RESULT_INSTRUCTION_RE = re.compile(
+    r"^\s*(?P<result>%[^\s=]+)\s*=\s*"
+    r"(?P<opcode>Op[A-Za-z0-9_]+)(?:\s+(?P<operands>.*))?$"
+)
 HW_CAPABILITY_RE = re.compile(r"[A-Za-z0-9_]*(?:HW|AZD)")
 HW_EXTENSION_RE = re.compile(r"SPV_(?:HW|AZD)_[A-Za-z0-9_]+")
 HW_SOURCE_EXTENSION_RE = re.compile(r"GL_(?:HW|AZD)_[A-Za-z0-9_]+")
@@ -26,6 +32,13 @@ REPLICATED_COMPOSITE_OPCODES = frozenset({
     "OpCompositeConstructReplicateEXT",
 })
 QUOTED_OPERAND_RE = re.compile(r'"([^"\\]*(?:\\.[^"\\]*)*)"')
+ARTIFACT_STEM_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*")
+
+
+@dataclasses.dataclass(frozen=True)
+class SpecializationCase:
+    artifact_stem: str
+    values: tuple = ()
 
 
 def _strip_spirv_comment(line):
@@ -98,6 +111,101 @@ def has_hw_residue(asm_text, include_replicated_composites=True):
     return False
 
 
+def has_spec_constant_residue(asm_text):
+    """Return whether assembly still contains a specialization constant."""
+    for raw_line in asm_text.splitlines():
+        line = _strip_spirv_comment(raw_line).rstrip()
+        instruction = SPIRV_INSTRUCTION_RE.fullmatch(line)
+        if instruction and instruction.group("opcode").startswith(
+                "OpSpecConstant"):
+            return True
+    return False
+
+
+def specialization_integer_types(asm_text):
+    """Return direct integer specialization constants keyed by SpecId.
+
+    The vk_hw sidecar intentionally accepts integer controls only.  Parse the
+    glslang-produced module before invoking spirv-opt so an unknown SpecId or
+    an out-of-range value cannot be silently ignored by
+    --set-spec-const-default-value.
+    """
+    integer_types = {}
+    spec_constant_types = {}
+    spec_id_targets = {}
+
+    for raw_line in asm_text.splitlines():
+        line = _strip_spirv_comment(raw_line).rstrip()
+        instruction = SPIRV_INSTRUCTION_RE.fullmatch(line)
+        if instruction and instruction.group("opcode") == "OpDecorate":
+            operands = (instruction.group("operands") or "").split()
+            if len(operands) == 3 and operands[1] == "SpecId":
+                target, _, spec_id_text = operands
+                try:
+                    spec_id = int(spec_id_text, 0)
+                except ValueError:
+                    continue
+                if spec_id in spec_id_targets:
+                    spec_id_targets[spec_id] = None
+                else:
+                    spec_id_targets[spec_id] = target
+
+        result_instruction = SPIRV_RESULT_INSTRUCTION_RE.fullmatch(line)
+        if not result_instruction:
+            continue
+        result = result_instruction.group("result")
+        opcode = result_instruction.group("opcode")
+        operands = (result_instruction.group("operands") or "").split()
+        if opcode == "OpTypeInt" and len(operands) == 2:
+            try:
+                width = int(operands[0], 0)
+                signedness = int(operands[1], 0)
+            except ValueError:
+                continue
+            if width > 0 and signedness in (0, 1):
+                integer_types[result] = (width, bool(signedness))
+        elif opcode == "OpSpecConstant" and operands:
+            spec_constant_types[result] = operands[0]
+
+    result = {}
+    for spec_id, target in spec_id_targets.items():
+        type_id = spec_constant_types.get(target)
+        integer_type = integer_types.get(type_id)
+        if target is not None and integer_type is not None:
+            result[spec_id] = integer_type
+    return result
+
+
+def validate_specialization_cases(cases, asm_text, source):
+    """Validate every requested override against the raw source module."""
+    integer_types = specialization_integer_types(asm_text)
+    for case in cases:
+        for spec_id, value in case.values:
+            integer_type = integer_types.get(spec_id)
+            if integer_type is None:
+                declared = ", ".join(str(item) for item in sorted(integer_types))
+                if not declared:
+                    declared = "none"
+                raise ValueError(
+                    f"specialization variant {case.artifact_stem} requests "
+                    f"undeclared or non-integer SpecId {spec_id} in {source}; "
+                    f"declared integer SpecIds: {declared}")
+
+            width, is_signed = integer_type
+            if is_signed:
+                minimum = -(1 << (width - 1))
+                maximum = (1 << (width - 1)) - 1
+            else:
+                minimum = 0
+                maximum = (1 << width) - 1
+            if value < minimum or value > maximum:
+                spelling = f"i{width}" if is_signed else f"u{width}"
+                raise ValueError(
+                    f"specialization value {value} for SpecId {spec_id} in "
+                    f"variant {case.artifact_stem} is outside {spelling} "
+                    f"range [{minimum}, {maximum}]")
+
+
 def run(cmd):
     print("+", " ".join(str(c) for c in cmd))
     subprocess.run(cmd, check=True)
@@ -148,18 +256,116 @@ def artifact_stem_for_shader(shader):
     return shader.stem if shader.suffix == ".comp" else shader.name
 
 
+def specialization_metadata_for_shader(shader):
+    return shader.with_suffix(".spec.json")
+
+
+def validate_specialization_metadata_ownership(shader_dir, shaders):
+    """Reject orphan or stage-ambiguous specialization sidecars."""
+    owners = {}
+    for shader in shaders:
+        owners.setdefault(specialization_metadata_for_shader(shader), []).append(
+            shader)
+    for metadata in sorted(shader_dir.glob("*.spec.json")):
+        metadata_owners = owners.get(metadata, [])
+        if not metadata_owners:
+            raise ValueError(
+                f"orphan specialization metadata has no .comp/.frag shader: "
+                f"{metadata}")
+        if len(metadata_owners) > 1:
+            formatted = ", ".join(str(shader) for shader in metadata_owners)
+            raise ValueError(
+                f"specialization metadata {metadata} is ambiguous between: "
+                f"{formatted}")
+
+
+def load_specialization_cases(shader):
+    metadata = specialization_metadata_for_shader(shader)
+    if not metadata.is_file():
+        return (SpecializationCase(artifact_stem_for_shader(shader)),)
+
+    try:
+        document = json.loads(metadata.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(f"invalid specialization metadata {metadata}: {error}")
+    if not isinstance(document, dict) or set(document) != {"variants"}:
+        raise ValueError(
+            f"specialization metadata {metadata} must contain only variants")
+    variants = document["variants"]
+    if not isinstance(variants, list) or not variants:
+        raise ValueError(
+            f"specialization metadata {metadata} variants must be non-empty")
+
+    cases = []
+    seen_stems = set()
+    for index, variant in enumerate(variants):
+        if (not isinstance(variant, dict) or
+                set(variant) != {"artifact_stem", "values"}):
+            raise ValueError(
+                f"specialization variant {index} in {metadata} must contain "
+                "artifact_stem and values")
+        artifact_stem = variant["artifact_stem"]
+        if (not isinstance(artifact_stem, str) or
+                not ARTIFACT_STEM_RE.fullmatch(artifact_stem)):
+            raise ValueError(
+                f"invalid specialization artifact stem in {metadata}: "
+                f"{artifact_stem!r}")
+        if artifact_stem in seen_stems:
+            raise ValueError(
+                f"duplicate specialization artifact stem in {metadata}: "
+                f"{artifact_stem}")
+        seen_stems.add(artifact_stem)
+
+        values = variant["values"]
+        if not isinstance(values, dict):
+            raise ValueError(
+                f"specialization values for {artifact_stem} must be an object")
+        parsed_values = []
+        for spec_id_text, value in values.items():
+            try:
+                spec_id = int(spec_id_text)
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"invalid specialization SpecId in {metadata}: "
+                    f"{spec_id_text!r}")
+            if (spec_id < 0 or spec_id > 0xffffffff or
+                    str(spec_id) != spec_id_text):
+                raise ValueError(
+                    f"invalid specialization SpecId in {metadata}: "
+                    f"{spec_id_text!r}")
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise ValueError(
+                    f"specialization value for SpecId {spec_id} in {metadata} "
+                    "must be an integer")
+            parsed_values.append((spec_id, value))
+        cases.append(SpecializationCase(
+            artifact_stem, tuple(sorted(parsed_values))))
+    return tuple(cases)
+
+
+def specialization_optimizer_args(case):
+    args = []
+    if case.values:
+        values = " ".join(
+            f"{spec_id}:{value}" for spec_id, value in case.values)
+        args.extend(["--set-spec-const-default-value", values])
+    args.extend([
+        "--freeze-spec-const",
+        "--fold-spec-const-op-composite",
+    ])
+    return args
+
+
 def output_dir_for_shader(out_dir, shader):
     """Keep non-compute SPIR-V out of the compute runner's flat directory."""
     return out_dir if shader.suffix == ".comp" else out_dir / "graphics"
 
 
-def compile_hw_shader(glslang, spirv_opt, spirv_val, spirv_dis, shader, out_dir, target_env):
-    stem = artifact_stem_for_shader(shader)
+def compile_hw_shader(glslang, spirv_opt, spirv_val, spirv_dis, shader,
+                      out_dir, target_env, specialization_cases=None):
+    source_stem = artifact_stem_for_shader(shader)
     out_dir.mkdir(parents=True, exist_ok=True)
-    hw_spv = out_dir / f"{stem}.hw.spv"
-    lowered_spv = out_dir / f"{stem}.lowered.spv"
-    lowered_asm = out_dir / f"{stem}.lowered.spvasm"
-    lowering_pass = lowering_pass_for_stem(shader.stem)
+    hw_spv = out_dir / f"{source_stem}.hw.spv"
 
     glslang_command = [glslang]
     if re.search(r"_flow_[a-z]", shader.stem):
@@ -169,13 +375,36 @@ def compile_hw_shader(glslang, spirv_opt, spirv_val, spirv_dis, shader, out_dir,
         glslang_command.extend(["--target-env", target_env])
     glslang_command.extend(["-V", str(shader), "-o", str(hw_spv)])
     run(glslang_command)
-    run([spirv_opt, lowering_pass, str(hw_spv), "-o", str(lowered_spv)])
-    run([*validator_cmd(spirv_val, target_env, shader), str(lowered_spv)])
-    run([spirv_dis, str(lowered_spv), "-o", str(lowered_asm)])
+    cases = specialization_cases or load_specialization_cases(shader)
+    if any(case.values for case in cases):
+        hw_asm = out_dir / f"{source_stem}.hw.spvasm"
+        run([spirv_dis, str(hw_spv), "-o", str(hw_asm)])
+        validate_specialization_cases(
+            cases, hw_asm.read_text(encoding="utf-8"), shader)
+    lowering_pass = lowering_pass_for_stem(shader.stem)
+    for case in cases:
+        lowered_spv = out_dir / f"{case.artifact_stem}.lowered.spv"
+        lowered_asm = out_dir / f"{case.artifact_stem}.lowered.spvasm"
+        run([
+            spirv_opt,
+            *specialization_optimizer_args(case),
+            lowering_pass,
+            "--fold-spec-const-op-composite",
+            str(hw_spv),
+            "-o",
+            str(lowered_spv),
+        ])
+        run([*validator_cmd(spirv_val, target_env, shader), str(lowered_spv)])
+        run([spirv_dis, str(lowered_spv), "-o", str(lowered_asm)])
 
-    asm_text = lowered_asm.read_text(encoding="utf-8")
-    if has_hw_residue(asm_text):
-        raise RuntimeError(f"FAIL: HW op remains after lowering: {lowered_asm}")
+        asm_text = lowered_asm.read_text(encoding="utf-8")
+        if has_spec_constant_residue(asm_text):
+            raise RuntimeError(
+                f"FAIL: specialization constant remains after freezing: "
+                f"{lowered_asm}")
+        if has_hw_residue(asm_text):
+            raise RuntimeError(
+                f"FAIL: HW op remains after lowering: {lowered_asm}")
 
 
 def compile_unsupported_shader(glslang, spirv_opt, spirv_val, spirv_dis,
@@ -435,15 +664,32 @@ def main():
                            if unsupported_dir else [])
     if not hw_shaders:
         raise RuntimeError(f"no HW shaders found in {shader_dir}")
+    validate_specialization_metadata_ownership(shader_dir, hw_shaders)
     if not baseline_shaders:
         raise RuntimeError(f"no baseline shaders found in {baseline_dir}")
     if unsupported_dir is not None and not unsupported_shaders:
         raise RuntimeError(f"no unsupported HW shaders found in {unsupported_dir}")
 
+    specialization_cases = {}
+    artifact_owners = {}
+    variant_count = 0
+    for shader in hw_shaders:
+        cases = load_specialization_cases(shader)
+        specialization_cases[shader] = cases
+        variant_count += len(cases)
+        for case in cases:
+            owner = artifact_owners.get(case.artifact_stem)
+            if owner is not None:
+                raise RuntimeError(
+                    f"duplicate HW artifact stem {case.artifact_stem}: "
+                    f"{owner} and {shader}")
+            artifact_owners[case.artifact_stem] = shader
+
     for shader in hw_shaders:
         compile_hw_shader(
             glslang, spirv_opt, spirv_val, spirv_dis, shader,
-            output_dir_for_shader(out_dir, shader), args.target_env)
+            output_dir_for_shader(out_dir, shader), args.target_env,
+            specialization_cases[shader])
     for shader in baseline_shaders:
         compile_baseline_shader(glslang, spirv_val, spirv_dis, shader, out_dir, args.target_env)
     for shader in unsupported_shaders:
@@ -451,9 +697,9 @@ def main():
             glslang, spirv_opt, spirv_val, spirv_dis, shader, out_dir,
             args.target_env)
 
-    print(f"built {len(hw_shaders)} HW shaders and {len(baseline_shaders)} "
-          f"baselines; checked {len(unsupported_shaders)} unsupported HW "
-          f"shader(s) in {out_dir}")
+    print(f"built {len(hw_shaders)} HW shader sources into {variant_count} "
+          f"lowered variants and {len(baseline_shaders)} baselines; checked "
+          f"{len(unsupported_shaders)} unsupported HW shader(s) in {out_dir}")
 
     if spirv_cross:
         ok, fail, skipped = decompile_spv_to_glsl(spirv_cross, out_dir, glsl_out_dir)

@@ -56,7 +56,9 @@
 
 ### 4.1 Lower 与 fusion shape 速查
 
-lower pass 没有固定的 shape 白名单。只要 shape 是普通常量、维度为正并且不超过配置的 hard limit，奇数维度和 tail 都属于支持范围：
+lower pass 没有固定的 shape 白名单。只要进入 raw lower 的 shape 已是普通常量、维度为正并且
+不超过配置的 hard limit，奇数维度和 tail 都属于支持范围。Shader source 可使用
+specialization-constant shape，但必须先按 4.2 节执行 freeze/fold normalization：
 
 | 对象或操作 | 支持的逻辑 shape | 默认 hard limit |
 |---|---|---:|
@@ -88,7 +90,8 @@ Hidden[N] * Matrix1[N×P] (+ Bias1[P]) -> Output[P]
 - `Matrix0` 必须严格为 `[K×N]`，`Matrix1` 必须严格为 `[N×P]`，可选 bias 分别严格为 `[N]` 和 `[P]`；
 - component type 必须满足以下一种 profile：全部 cooperative vector、matrix 和 bias 为 f16；或者两层输入与
   matrix 为 f16、bias/累加/ReLU/输出为 f32，并在层间保留一个显式 f32→f16 cooperative-vector conversion；
-- K/N/P 必须来自普通 32-bit `OpConstant`，不接受 specialization-constant shape；
+- fusion 看到的 K/N/P 必须是普通 32-bit `OpConstant`；source 中的 specialization-constant shape
+  经 freeze/fold 后可以满足该条件，未解析的 spec constant 不直接进入 fusion/raw lower；
 - `K*N + N*P = N*(K+P) <= max_unrolled_matmul_macs`，默认上限为 `4,096`，等于上限仍可融合；
 - 不要求 K、N 或 P 是 2、4、16 的倍数。K 按标量逐元素遍历；N 按 16 分片，N/P 的奇数尾部使用零补 lane；
 - force-scalar 模式不运行 fusion，matrix-matrix 链也不属于该 pass 的匹配范围。
@@ -97,15 +100,34 @@ Hidden[N] * Matrix1[N×P] (+ Bias1[P]) -> Output[P]
 
 ### 4.2 常量与 specialization constant
 
-当前策略是明确拒绝 specialization-constant shape：
+Standalone `HwLowerToStandardPass` 的输入 contract 仍要求 matrix rows/cols、vector length、matrix
+load/store layout 和 reduce axis/combine 是普通常量。Raw pass 不自行选择 `OpSpecConstant`
+默认值，因此会明确拒绝未解析的 specialization-dependent 类型尺寸和控制参数。
 
-- matrix rows/cols 必须是普通 `OpConstant`
-- vector length 必须是普通 `OpConstant`
-- matrix load/store layout 必须是普通常量
-- reduce axis/combine 必须是普通常量
-- 不会使用 `OpSpecConstant` 默认值静默固化尺寸
+驱动和 `vk_hw` 通过下列统一 pipeline 接受 source 中的 specialization constant：
 
-但 cooperative 数据本身支持：
+```text
+[有外部 value 时] --set-spec-const-default-value
+  → --freeze-spec-const
+  → --fold-spec-const-op-composite
+  → --hw-lower-to-standard-extension-free[=scalar]
+  → --fold-spec-const-op-composite
+```
+
+set pass 只在映射非空时加入，SpecId 按数值排序。空映射表示所有 SpecId 使用模块默认值；
+部分映射仅覆盖指定 SpecId，其余仍使用默认值；不含 specialization constant 的模块中
+freeze/fold 是 no-op。这使 spec-constant rows/cols/length、matrix layout 和 reduce axis/op 在
+raw lower 之前成为普通常量。Lower 后再 fold 可清理重建的 spec composite，最终 artifact 不允许
+残留任何 `OpSpecConstant*`。
+
+`vk_hw` 的同名 `.spec.json` 用 `SpecializationCase(artifact_stem, values)` 定义构建期 variant。
+当前用 3 个 shader 类的 default/partial/full 各 3 个 variant，共 9 个 Vulkan function case，覆盖
+matrix shape/layout、vector/matrix shape 和 reduce shape/axis/op。每个 frozen module 仅对应一组最终
+specialization 状态，生产驱动的缓存键必须包含该完整状态。Sidecar 的 override 当前只接受直接 integer
+specialization constant；构建时严格校验 SpecId、整数类型和位宽范围，并拒绝 orphan/跨 stage 歧义的 sidecar。
+Packed/scalar 模式始终由 source shader 名决定，variant 的输出名不能改变 lowering 模式。
+
+Raw lower 对 cooperative 数据本身仍支持：
 
 - `OpSpecConstantComposite`
 - `OpConstantComposite`
@@ -114,7 +136,8 @@ Hidden[N] * Matrix1[N×P] (+ Bias1[P]) -> Output[P]
 - `OpConstantNull`
 - `OpUndef`
 
-即“spec constant 数据”支持，“spec constant 类型尺寸/控制参数”不支持。
+这是 standalone pass 的能力；在上述统一 driver/`vk_hw` pipeline 中，这些 spec data 也会先被
+freeze，并在 post-lower fold 后变为普通常量 composite。
 
 Composite constituent 规则与 validator 保持一致：
 
@@ -646,8 +669,10 @@ unroll-macs=N
 当前不支持：
 
 - cooperative component `f64`、`i64/u64`、`bool`
-- specialization-constant shape、layout、reduce control
-- dynamic cooperative matrix/vector 类型尺寸
+- 未经 freeze/fold normalization 的 specialization-dependent shape、layout 和 reduce control 不是
+  raw lower 的直接输入；按 4.2 节预处理后已支持
+- runtime SSA matrix layout dispatch；validator 允许 integer scalar layout，但 lower 尚只支持
+  已解析的 RowMajor/ColumnMajor 常量
 - float/integer 跨域 matmul
 - accumulator narrowing
 - 与 result 类型不同的 C/Bias
@@ -664,6 +689,8 @@ unroll-macs=N
 - TensorMap、CpAsync、Barrier、Shuffle 和 Relreg 的等价 lowering
 
 需要特别区分：64 位 cooperative component 不支持，但 64 位 vector offset、packed dynamic index 和 PhysicalStorageBuffer 地址支持。
+Runtime cooperative type 尺寸和 runtime reduce axis/op 当前被 validator 的 constant-instruction 规则拒绝，
+因此不是当前 validator-legal lowering 缺口。
 
 ## 15. 当前验证状态
 

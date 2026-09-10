@@ -4,6 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 
+import json
 import pathlib
 import tempfile
 import unittest
@@ -17,8 +18,15 @@ from build_shaders import decompile_spv_to_glsl
 from build_shaders import ensure_golden_comparison_ready
 from build_shaders import find_hw_shaders
 from build_shaders import has_hw_residue
+from build_shaders import has_spec_constant_residue
+from build_shaders import load_specialization_cases
 from build_shaders import lowering_pass_for_stem
 from build_shaders import output_dir_for_shader
+from build_shaders import specialization_optimizer_args
+from build_shaders import specialization_integer_types
+from build_shaders import SpecializationCase
+from build_shaders import validate_specialization_cases
+from build_shaders import validate_specialization_metadata_ownership
 from run_function_tests import case_work
 from run_function_tests import parse_case
 from run_function_tests import run_case
@@ -212,6 +220,231 @@ class ExtensionFreeLoweringModeTest(unittest.TestCase):
         )
 
 
+class SpecializationCaseTest(unittest.TestCase):
+    def test_rejects_orphan_and_stage_ambiguous_metadata(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            orphan = root / "orphan.spec.json"
+            orphan.write_text('{"variants": []}', encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "orphan"):
+                validate_specialization_metadata_ownership(root, ())
+
+            orphan.unlink()
+            compute = root / "shared.comp"
+            fragment = root / "shared.frag"
+            compute.touch()
+            fragment.touch()
+            compute.with_suffix(".spec.json").write_text(
+                '{"variants": []}', encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "ambiguous"):
+                validate_specialization_metadata_ownership(
+                    root, (compute, fragment))
+
+    def test_shader_without_metadata_uses_one_default_case(self):
+        shader = pathlib.Path("load_store_f32_5x7.comp")
+        self.assertEqual(
+            load_specialization_cases(shader),
+            (SpecializationCase("load_store_f32_5x7"),),
+        )
+        self.assertEqual(specialization_optimizer_args(
+            SpecializationCase("load_store_f32_5x7")), [
+                "--freeze-spec-const",
+                "--fold-spec-const-op-composite",
+            ])
+
+    def test_metadata_loads_default_partial_and_full_cases(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            shader = root / "load_store_f32_flow_spec_controls.comp"
+            shader.touch()
+            shader.with_suffix(".spec.json").write_text(json.dumps({
+                "variants": [
+                    {
+                        "artifact_stem":
+                            "load_store_f32_flow_specdefault_5x7",
+                        "values": {},
+                    },
+                    {
+                        "artifact_stem":
+                            "load_store_f32_flow_specpartial_7x7",
+                        "values": {"2": 1, "0": 7},
+                    },
+                    {
+                        "artifact_stem":
+                            "load_store_f32_flow_specfull_8x6",
+                        "values": {"0": 8, "1": 6, "2": 1},
+                    },
+                ],
+            }), encoding="utf-8")
+
+            cases = load_specialization_cases(shader)
+
+        self.assertEqual(cases, (
+            SpecializationCase(
+                "load_store_f32_flow_specdefault_5x7"),
+            SpecializationCase(
+                "load_store_f32_flow_specpartial_7x7", ((0, 7), (2, 1))),
+            SpecializationCase(
+                "load_store_f32_flow_specfull_8x6",
+                ((0, 8), (1, 6), (2, 1))),
+        ))
+        self.assertEqual(specialization_optimizer_args(cases[1]), [
+            "--set-spec-const-default-value",
+            "0:7 2:1",
+            "--freeze-spec-const",
+            "--fold-spec-const-op-composite",
+        ])
+
+    def test_metadata_rejects_invalid_variants(self):
+        invalid_variants = [
+            [],
+            [{"artifact_stem": "../escape", "values": {}}],
+            [{"artifact_stem": "valid", "values": {"-1": 2}}],
+            [{"artifact_stem": "valid", "values": {"01": 2}}],
+            [{"artifact_stem": "valid", "values": {"4294967296": 2}}],
+            [{"artifact_stem": "valid", "values": {"0": 1.5}}],
+            [
+                {"artifact_stem": "duplicate", "values": {}},
+                {"artifact_stem": "duplicate", "values": {"0": 1}},
+            ],
+        ]
+        for variants in invalid_variants:
+            with self.subTest(variants=variants), tempfile.TemporaryDirectory() as temp:
+                shader = pathlib.Path(temp) / "case.comp"
+                shader.touch()
+                shader.with_suffix(".spec.json").write_text(
+                    json.dumps({"variants": variants}), encoding="utf-8")
+                with self.assertRaises(ValueError):
+                    load_specialization_cases(shader)
+
+    def test_compile_builds_all_specialization_variants_from_one_spirv(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            shader = root / "vecmatmul_f32_flow_spec_shape.comp"
+            shader.touch()
+            cases = (
+                SpecializationCase(
+                    "vecmatmul_f32_flow_specdefault_5x3"),
+                SpecializationCase(
+                    "vecmatmul_f32_flow_specpartial_7x3", ((0, 7),)),
+            )
+            for case in cases:
+                (root / f"{case.artifact_stem}.lowered.spvasm").write_text(
+                    "OpCapability Shader\n", encoding="utf-8")
+            (root / f"{shader.stem}.hw.spvasm").write_text(
+                "OpDecorate %inner SpecId 0\n"
+                "%int = OpTypeInt 32 1\n"
+                "%inner = OpSpecConstant %int 5\n",
+                encoding="utf-8",
+            )
+
+            with mock.patch("build_shaders.run") as run:
+                compile_hw_shader(
+                    "glslang", "spirv-opt", "spirv-val", "spirv-dis",
+                    shader, root, "vulkan1.3", cases)
+
+        commands = [call.args[0] for call in run.call_args_list]
+        self.assertEqual(len(commands), 8)
+        self.assertEqual(commands[1][0], "spirv-dis")
+        self.assertTrue(str(commands[1][-1]).endswith(".hw.spvasm"))
+        self.assertEqual(commands[2][1:5], [
+            "--freeze-spec-const",
+            "--fold-spec-const-op-composite",
+            "--hw-lower-to-standard-extension-free",
+            "--fold-spec-const-op-composite",
+        ])
+        self.assertEqual(commands[5][1:7], [
+            "--set-spec-const-default-value",
+            "0:7",
+            "--freeze-spec-const",
+            "--fold-spec-const-op-composite",
+            "--hw-lower-to-standard-extension-free",
+            "--fold-spec-const-op-composite",
+        ])
+        self.assertTrue(str(commands[2][-1]).endswith(
+            "vecmatmul_f32_flow_specdefault_5x3.lowered.spv"))
+        self.assertTrue(str(commands[5][-1]).endswith(
+            "vecmatmul_f32_flow_specpartial_7x3.lowered.spv"))
+
+    def test_variant_name_cannot_change_source_lowering_mode(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            shader = root / "load_store_f32_scalar_spec_controls.comp"
+            shader.touch()
+            case = SpecializationCase("load_store_f32_specdefault_5x7")
+            (root / f"{case.artifact_stem}.lowered.spvasm").write_text(
+                "OpCapability Shader\n", encoding="utf-8")
+
+            with mock.patch("build_shaders.run") as run:
+                compile_hw_shader(
+                    "glslang", "spirv-opt", "spirv-val", "spirv-dis",
+                    shader, root, "vulkan1.3", (case,))
+
+        lower_command = run.call_args_list[1].args[0]
+        self.assertIn(
+            "--hw-lower-to-standard-extension-free=scalar", lower_command)
+
+    def test_parses_and_validates_integer_spec_constant_overrides(self):
+        asm = (
+            "OpDecorate %signed SpecId 0\n"
+            "OpDecorate %unsigned SpecId 1\n"
+            "%int = OpTypeInt 32 1\n"
+            "%ushort = OpTypeInt 16 0\n"
+            "%signed = OpSpecConstant %int 5\n"
+            "%unsigned = OpSpecConstant %ushort 7\n"
+        )
+        self.assertEqual(
+            specialization_integer_types(asm),
+            {0: (32, True), 1: (16, False)},
+        )
+        validate_specialization_cases((
+            SpecializationCase("minimum", ((0, -2147483648), (1, 0))),
+            SpecializationCase("maximum", ((0, 2147483647), (1, 65535))),
+        ), asm, "shader.comp")
+
+    def test_rejects_unknown_non_integer_and_out_of_range_overrides(self):
+        asm = (
+            "OpDecorate %signed SpecId 0\n"
+            "OpDecorate %floating SpecId 1\n"
+            "%int = OpTypeInt 32 1\n"
+            "%float = OpTypeFloat 32\n"
+            "%signed = OpSpecConstant %int 5\n"
+            "%floating = OpSpecConstant %float 1\n"
+        )
+        invalid_cases = (
+            (SpecializationCase("unknown", ((99, 1),)), "SpecId 99"),
+            (SpecializationCase("floating", ((1, 1),)), "non-integer SpecId 1"),
+            (SpecializationCase("overflow", ((0, 2147483648),)), "outside i32"),
+        )
+        for case, message in invalid_cases:
+            with self.subTest(case=case), self.assertRaisesRegex(
+                    ValueError, message):
+                validate_specialization_cases((case,), asm, "shader.comp")
+
+    def test_compile_rejects_remaining_spec_constant_residue(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            shader = root / "load_store_f32_5x7.comp"
+            shader.touch()
+            (root / "load_store_f32_5x7.lowered.spvasm").write_text(
+                "%value = OpSpecConstant %int 5\n", encoding="utf-8")
+            with mock.patch("build_shaders.run"):
+                with self.assertRaisesRegex(
+                        RuntimeError, "specialization constant remains"):
+                    compile_hw_shader(
+                        "glslang", "spirv-opt", "spirv-val", "spirv-dis",
+                        shader, root, "vulkan1.3")
+
+    def test_spec_constant_residue_detection_is_opcode_aware(self):
+        self.assertTrue(has_spec_constant_residue(
+            "%value = OpSpecConstant %uint 4\n"))
+        self.assertTrue(has_spec_constant_residue(
+            "%value = OpSpecConstantOp %uint IAdd %a %b\n"))
+        self.assertFalse(has_spec_constant_residue(
+            'OpName %value "OpSpecConstant"\n'
+            "OpConstant %uint 4 ; OpSpecConstant\n"))
+
+
 class ShaderStageDiscoveryTest(unittest.TestCase):
     def test_discovers_compute_and_fragment_shaders_only(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -255,8 +488,12 @@ class ShaderStageDiscoveryTest(unittest.TestCase):
             "graphics/neural.frag.hw.spv"))
         self.assertTrue(str(commands[1][-1]).endswith(
             "graphics/neural.frag.lowered.spv"))
-        self.assertEqual(
-            commands[1][1], "--hw-lower-to-standard-extension-free")
+        self.assertEqual(commands[1][1:5], [
+            "--freeze-spec-const",
+            "--fold-spec-const-op-composite",
+            "--hw-lower-to-standard-extension-free",
+            "--fold-spec-const-op-composite",
+        ])
 
     def test_recursive_decompile_finds_graphics_lowered_shader(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -402,8 +639,12 @@ class EndToEndLoweringContractTest(unittest.TestCase):
                     shader, out_dir, "vulkan1.3")
 
         commands = [call.args[0] for call in run.call_args_list]
-        self.assertEqual(commands[1][1],
-                         "--hw-lower-to-standard-extension-free=scalar")
+        self.assertEqual(commands[1][1:5], [
+            "--freeze-spec-const",
+            "--fold-spec-const-op-composite",
+            "--hw-lower-to-standard-extension-free=scalar",
+            "--fold-spec-const-op-composite",
+        ])
         self.assertEqual(commands[2][0:3],
                          ["spirv-val", "--target-env", "vulkan1.3"])
         self.assertTrue(str(commands[2][-1]).endswith(".lowered.spv"))

@@ -1,0 +1,23 @@
+{
+  "variants": [
+    {
+      "artifact_stem": "load_store_f32_flow_specdefault_5x7",
+      "values": {}
+    },
+    {
+      "artifact_stem": "load_store_f32_flow_specpartial_7x7",
+      "values": {
+        "0": 7,
+        "2": 1
+      }
+    },
+    {
+      "artifact_stem": "load_store_f32_flow_specfull_8x6",
+      "values": {
+        "0": 8,
+        "1": 6,
+        "2": 1
+      }
+    }
+  ]
+}

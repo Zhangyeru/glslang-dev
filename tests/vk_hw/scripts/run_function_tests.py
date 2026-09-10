@@ -42,11 +42,12 @@ def parse_case(path):
     flow_prefix = rf"(?:{flow_tag}_)?"
 
     m = re.match(
-        rf"reduce_(row|column)_(add|min|max)_({DTYPE_RE})(?:_(scalar))?_(\d+)x(\d+)$",
+        rf"reduce_(row|column)_(add|min|max)_({DTYPE_RE})"
+        rf"(?:_(scalar))?(?:_({flow_tag}))?_(\d+)x(\d+)$",
         stem,
     )
     if m:
-        axis, reduce_op, dtype, scalar, rows, cols = m.groups()
+        axis, reduce_op, dtype, scalar, _flow, rows, cols = m.groups()
         result = typed_meta(
             "reduce",
             dtype,

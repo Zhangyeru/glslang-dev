@@ -14,10 +14,10 @@
 
 审计快照：
 
-- 日期：2026-09-02
+- 日期：2026-09-10
 - glslang 分支：`lower-0605`
 - SPIRV-Tools 分支：`lower-0605`
-- 当前 Vulkan function：106 个 compute case
+- 当前 Vulkan function：116 个 compute case
 - 当前 graphics build/golden：2 个 fragment case
 
 ## 2. Lower pass 实际执行流程
@@ -99,19 +99,19 @@ Matmul 根据 MAC 数量和类型组合选择 direct、packed helper、scalar fa
 
 ## 3. 当前 vk_hw 测试组成
 
-当前 105 个 compute Vulkan function case 分布如下：
+当前 116 个 compute Vulkan function case 分布如下：
 
 | 家族 | 用例数 |
 |---|---:|
-| load/store | 19 |
+| load/store | 22 |
 | matmul | 30 |
 | extra-store | 2 |
-| vecmatmul | 11 |
+| vecmatmul | 14 |
 | vecmatmuladd | 11 |
 | MLP | 14 |
-| multiops | 7 |
-| reduce | 12 |
-| 合计 | 106 |
+| multiops | 8 |
+| reduce | 15 |
+| 合计 | 116 |
 
 另有：
 
@@ -139,15 +139,17 @@ Matmul 根据 MAC 数量和类型组合选择 direct、packed helper、scalar fa
 - 同一 buffer 的 loop-carried RAW；
 - extension-free 后无 HW residue；
 - extension-free 后无 replicated-composites opcode、capability 或 extension residue；
+- specialization constant 在 lower 前统一 freeze/fold，已覆盖 shape、layout、reduce control 的
+  default/partial/full 映射且 lower 后无 `OpSpecConstant*` residue；
 - Vulkan 数值 reference 和 perf ratio 检查。
 
 ### 3.2 已确认的零覆盖或弱覆盖项
 
-对当前 shader source 和生成的原始 HW SPIR-V 扫描后确认：
+对当前 shader source、specialization variant 和生成的 HW SPIR-V 扫描后确认：
 
 | 能力 | 当前 vk_hw 覆盖 |
 |---|---:|
-| ColumnMajor cooperative matrix memory | 0 |
+| ColumnMajor cooperative matrix memory | 2 个 specialization variant |
 | PhysicalStorageBuffer / buffer_reference | 0 |
 | cooperative load/store 上的 MemoryAccess operand | 0 |
 | Compute cooperative `OpVectorExtractDynamic` | 0 |
@@ -512,14 +514,25 @@ Vulkan 侧由 `multiops_f32_flow_precise_contract_17x17x15.comp` 覆盖 GLSL `pr
 调用点进入 matrix/vector matmuladd 后的 strict lowering及数值结果。`ContractionOff` 仅允许 Kernel execution
 model，因此使用合法 OpenCL memory model 的 SPIR-V optimizer tests覆盖，不加入 Vulkan GLCompute shader。
 
-### 9.4 Specialization 与动态控制
+### 9.4 Specialization 预处理与动态控制
 
-- specialization-constant rows/columns/length；
-- specialization-constant layout；
-- specialization-constant reduce axis/op；
-- dynamic RowMajor/ColumnMajor dispatch；
-- dynamic reduce axis/op dispatch；
-- 多组 specialization value differential。
+Specialization 部分已完成。`vk_hw` 对所有 shader 在 HW lower 前统一执行
+`--freeze-spec-const` 和 `--fold-spec-const-op-composite`，有外部值时先执行
+`--set-spec-const-default-value`，lower 后再 fold 一次。已增加：
+
+- `load_store_f32_flow_spec_controls.comp`：matrix rows/columns/layout；
+- `vecmatmul_f32_flow_spec_shape.comp`：vector length 和 matrix rows/columns，维度通过
+  `OpSpecConstantOp` 的 `BASE + 1` 表达式派生；
+- `reduce_f32_flow_spec_controls.comp`：matrix rows/columns、reduce axis/op；
+- 每个 shader 都有 default、partial 和 full variant，共 9 个 Vulkan differential case；
+- default 不执行 set pass，partial 保留未指定 SpecId 的模块默认值，full 覆盖全部相关
+  SpecId；
+- 每个 lowered variant 都检查无 `OpSpecConstant*` 和 HW residue，并通过 `spirv-val`。
+
+Raw HW lower 对未冻结 spec shape/layout/reduce control 的 negative tests 仍保留，用于锁定 pass 的
+输入前置条件。当前剩余的 validator-legal 缺口只有 runtime SSA RowMajor/ColumnMajor
+dispatch。Runtime reduce axis/op 以及 runtime cooperative type 尺寸会被 validator 的 constant-instruction
+规则拒绝；只有当 validator 未来扩大合法集时，才需要增加对应动态 dispatch 测试。
 
 ### 9.5 类型边界和 hard limit
 
@@ -548,6 +561,22 @@ direct/fusion recovery；本阶段不修改 vk_hw shader/golden，后续仍需�
 
 ### 10.1 Sidecar metadata
 
+Specialization variant sidecar 已实现为与 shader 同名的 `.spec.json`：
+
+```json
+{
+  "variants": [
+    {"artifact_stem": "load_store_f32_flow_specdefault_5x7", "values": {}},
+    {"artifact_stem": "load_store_f32_flow_specpartial_7x7", "values": {"0": 7, "2": 1}}
+  ]
+}
+```
+
+`artifact_stem` 是全局唯一的输出名，`values` 是构建期 SpecId 到 integer value 的映射；
+空映射使用全部默认值。构建脚本会拒绝不存在或非整数的 SpecId、超出声明位宽的值、orphan sidecar
+以及 `.comp`/`.frag` 同 stem 导致的歧义；variant 名不参与 packed/scalar 模式选择。该 sidecar 只负责
+specialization artifact 展开，不等同于下述尚未实现的 runtime/reference 通用 metadata。
+
 当前 runner 通过文件名推导：
 
 - case kind；
@@ -555,8 +584,8 @@ direct/fusion recovery；本阶段不修改 vk_hw shader/golden，后续仍需�
 - shape；
 - UBO/constant/value argument 等少量 variant。
 
-随着 layout、offset、alias、special value 和 entry point 增加，继续扩展 filename regex 会变得脆弱。建议为复杂
-case 增加同名 JSON sidecar：
+随着 layout、offset、alias、special value 和 entry point 增加，继续扩展 filename regex 会变得脆弱。建议另外为
+复杂 runtime/reference case 增加通用 JSON sidecar：
 
 ```json
 {
@@ -628,7 +657,7 @@ opcode
 × component type
 × shape
 × packed/scalar
-× constant/spec constant
+× constant/spec constant（spec case 先执行 normalization）
 × storage class
 × memory decoration
 × CFG/aggregate context
@@ -689,7 +718,7 @@ AND no HW residue
 7. 增加 descriptor alias 与 direct/fusion safety 测试；
 8. 增加 buffer_reference/BDA；
 9. 增加 graphics runtime；
-10. 随 lowering 功能开发补齐 core opcode、strict FP、specialization 和 hard-limit case；
+10. 随 lowering 功能开发补齐 core opcode、runtime matrix layout 和 hard-limit case；
 11. 建立 capability matrix、differential 和 fuzz 长期测试。
 
 ## 13. 验收标准

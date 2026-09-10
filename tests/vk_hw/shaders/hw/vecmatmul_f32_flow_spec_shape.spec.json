@@ -1,0 +1,21 @@
+{
+  "variants": [
+    {
+      "artifact_stem": "vecmatmul_f32_flow_specdefault_5x3",
+      "values": {}
+    },
+    {
+      "artifact_stem": "vecmatmul_f32_flow_specpartial_7x3",
+      "values": {
+        "0": 6
+      }
+    },
+    {
+      "artifact_stem": "vecmatmul_f32_flow_specfull_8x4",
+      "values": {
+        "0": 7,
+        "1": 3
+      }
+    }
+  ]
+}
