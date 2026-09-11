@@ -389,6 +389,8 @@ INSTANTIATE_TEST_SUITE_P(
         "spv.coopmatHW_builtin.comp",
         "spv.coopmatHW_builtin.vert",
         "spv.coopmatHW_builtin.frag",
+        "spv.coopmatHW_loadstore.comp",
+        "spv.coopmatHW_loadstoreError.comp",
         "spv.coopmatHW_bitcast.comp",
         "spv.coopmatHW_bitcast.vert",
         "spv.coopmatHW_bitcast.frag",

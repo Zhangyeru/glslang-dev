@@ -13,14 +13,14 @@ layout(set = 0, binding = 0) buffer Buf { float16_t data[]; } buf;
 // After pass: A -> MatrixUseAHW, B -> MatrixUseBHW, D -> MatrixAccumulatorHW
 void main()
 {
-    const ivec2 shape16 = ivec2(16, 16);
-    const ivec2 zeroOffset = ivec2(0, 0);
+    const uint offset = 0;
+    const uint stride = 16;
 
     coopmatHW<float16_t, 16, 16> A;
     coopmatHW<float16_t, 16, 16> B;
     coopmatHW<float16_t, 16, 16> D;
 
-    coopMatLoadHW(A, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(B, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(A, buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(B, buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
     coopMatMulHW(D, A, B);
 }

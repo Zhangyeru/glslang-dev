@@ -43,16 +43,16 @@ void acceptFloat(coopmatHW<float, 16, 16> X)
 
 void main()
 {
-    const ivec2 shape = ivec2(16, 16);
-    const ivec2 zeroOffset = ivec2(0, 0);
+    const uint offset = 0;
+    const uint stride = 16;
 
     coopmatHW<float16_t, 16, 16> A, B, C, X;
     coopmatHW<float16_t, 16, 16> R, S, T, D0;
 
-    coopMatLoadHW(A, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(B, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(C, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(X, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(A, buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(B, buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(C, buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(X, buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
 
     R = makeAccumulator(A, B, C);
     useBothOperands(R, C);

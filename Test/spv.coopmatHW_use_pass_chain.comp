@@ -13,18 +13,18 @@ layout(set = 0, binding = 0) buffer Buf { float16_t data[]; } buf;
 // OperandAB, so the pass must insert a legal conversion at the store boundary.
 void main()
 {
-    const ivec2 shape16 = ivec2(16, 16);
-    const ivec2 zeroOffset = ivec2(0, 0);
+    const uint offset = 0;
+    const uint stride = 16;
 
     coopmatHW<float16_t, 16, 16> A, B, C;
     coopmatHW<float16_t, 16, 16> E, F;
     coopmatHW<float16_t, 16, 16> D0, D0_for_mul, D1;
 
-    coopMatLoadHW(A, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(B, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(C, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(E, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(F, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(A, buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(B, buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(C, buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(E, buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(F, buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
 
     // D0 = A * B + C
     // A → left(useA), B → right(useB), C → acc, D0(result) → acc

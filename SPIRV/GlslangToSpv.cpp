@@ -940,8 +940,8 @@ spv::Id createCooperativeMatrixHWLoad(spv::Builder& builder, spv::Id typeId, con
 {
     std::vector<spv::IdImmediate> idImmOps;
     idImmOps.push_back(spv::IdImmediate(true, operands[1])); // buf
-    idImmOps.push_back(spv::IdImmediate(true, operands[2])); // srcMatrixShape
-    idImmOps.push_back(spv::IdImmediate(true, operands[3])); // srcMatrixOffset
+    idImmOps.push_back(spv::IdImmediate(true, operands[2])); // offset
+    idImmOps.push_back(spv::IdImmediate(true, operands[3])); // stride
     idImmOps.push_back(spv::IdImmediate(true, operands[4])); // matrixLayout
     idImmOps.insert(idImmOps.end(), memoryAccessOperands.begin(), memoryAccessOperands.end());
     return builder.createOp(spv::OpCooperativeMatrixLoadHW, typeId, idImmOps);
@@ -953,8 +953,8 @@ void createCooperativeMatrixHWStore(spv::Builder& builder, const std::vector<spv
     std::vector<spv::IdImmediate> idImmOps;
     idImmOps.push_back(spv::IdImmediate(true, operands[1])); // buf
     idImmOps.push_back(spv::IdImmediate(true, operands[0])); // object
-    idImmOps.push_back(spv::IdImmediate(true, operands[2])); // dstMatrixShape
-    idImmOps.push_back(spv::IdImmediate(true, operands[3])); // dstMatrixOffset
+    idImmOps.push_back(spv::IdImmediate(true, operands[2])); // offset
+    idImmOps.push_back(spv::IdImmediate(true, operands[3])); // stride
     idImmOps.push_back(spv::IdImmediate(true, operands[4])); // matrixLayout
     idImmOps.insert(idImmOps.end(), memoryAccessOperands.begin(), memoryAccessOperands.end());
     builder.createNoResultOp(spv::OpCooperativeMatrixStoreHW, idImmOps);

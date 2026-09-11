@@ -1,0 +1,14 @@
+spv.coopmatHW_loadstoreError.comp
+ERROR: 0:23: 'int64_t' : coopmatHW invalid basic type 
+ERROR: 0:25: 'coopMatLoadHW' : no matching overloaded function found 
+ERROR: 0:26: 'matrixLayout' : argument must be a compile-time constant 
+ERROR: 0:27: 'matrixLayout' : argument must be a compile-time constant 
+ERROR: 0:28: 'matrixLayout' : must be in the range [0, 1] 
+ERROR: 0:30: 'coopMatLoadHW' : matrix element type must be s8, s16, s32, fp16, or fp32 
+ERROR: 0:31: 'coopMatStoreHW' : matrix element type must be s8, s16, s32, fp16, or fp32 
+ERROR: 0:32: 'coopMatLoadHW' : matrix element type must be s8, s16, s32, fp16, or fp32 
+ERROR: 0:33: 'coopMatStoreHW' : matrix element type must be s8, s16, s32, fp16, or fp32 
+ERROR: 9 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

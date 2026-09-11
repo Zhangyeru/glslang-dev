@@ -4618,23 +4618,25 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
                 "float16_t", "float", "float64_t",
                 "int8_t", "int16_t", "int", "int64_t",
                 "uint8_t", "uint16_t", "uint", "uint64_t",
-                "vec2", "vec4",
-                "ivec2", "ivec4",
-                "uvec2", "uvec4",
-                "f16vec2", "f16vec4",
-                "i8vec2", "i8vec4",
-                "i16vec2", "i16vec4",
-                "u8vec2", "u8vec4",
-                "u16vec2", "u16vec4",
-                "dvec2", "dvec4",
-                "i64vec2", "i64vec4",
-                "u64vec2", "u64vec4",
+                "vec2", "vec3", "vec4",
+                "ivec2", "ivec3", "ivec4",
+                "uvec2", "uvec3", "uvec4",
+                "f16vec2", "f16vec3", "f16vec4",
+                "i8vec2", "i8vec3", "i8vec4",
+                "i16vec2", "i16vec3", "i16vec4",
+                "u8vec2", "u8vec3", "u8vec4",
+                "u16vec2", "u16vec3", "u16vec4",
+                "dvec2", "dvec3", "dvec4",
+                "i64vec2", "i64vec3", "i64vec4",
+                "u64vec2", "u64vec3", "u64vec4",
             };
 
             std::stringstream cooperativeMatrixADFuncs;
             for (auto t : allTypes) {
-                cooperativeMatrixADFuncs << "void coopMatLoadHW(out coopmatHW m, volatile coherent nontemporal " << t << "[] buf, ivec2 srcMatrixShape, ivec2 srcMatrixOffset, int matrixLayout);\n";
-                cooperativeMatrixADFuncs << "void coopMatStoreHW(coopmatHW m, volatile coherent nontemporal " << t << "[] buf, ivec2 dstMatrixShape, ivec2 dstMatrixOffset, int matrixLayout);\n";
+                cooperativeMatrixADFuncs << "void coopMatLoadHW(out coopmatHW m, volatile coherent nontemporal "
+                                         << t << "[] buf, uint offset, uint stride, int matrixLayout);\n";
+                cooperativeMatrixADFuncs << "void coopMatStoreHW(coopmatHW m, volatile coherent nontemporal "
+                                         << t << "[] buf, uint offset, uint stride, int matrixLayout);\n";
             }
             cooperativeMatrixADFuncs << "void coopMatMulHW(out coopmatHW result, coopmatHW A, coopmatHW B);\n";
             cooperativeMatrixADFuncs << "void coopMatMulAddHW(out coopmatHW result, coopmatHW A, coopmatHW B, coopmatHW C);\n";

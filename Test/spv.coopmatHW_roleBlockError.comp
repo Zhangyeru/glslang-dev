@@ -9,19 +9,19 @@ layout(set = 0, binding = 0) buffer Buf { float16_t data[]; } buf;
 
 void main()
 {
-    const ivec2 shape = ivec2(16, 16);
-    const ivec2 zeroOffset = ivec2(0, 0);
+    const uint offset = 0;
+    const uint stride = 16;
     bool cond = gl_LocalInvocationID.x == 0u;
 
     coopmatHW<float16_t, 16, 16> X, Y;
     coopmatHW<float16_t, 16, 16> A, B, C;
     coopmatHW<float16_t, 16, 16> D0, D1, D2, D3;
 
-    coopMatLoadHW(X, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(Y, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(A, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(B, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(C, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(X, buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(Y, buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(A, buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(B, buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(C, buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
 
     if (cond) {
         coopMatMulAddHW(D0, X, B, C);

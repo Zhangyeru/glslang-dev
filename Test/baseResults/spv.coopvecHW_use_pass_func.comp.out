@@ -2,7 +2,7 @@ spv.coopvecHW_use_pass_func.comp
 ; SPIR-V
 ; Version: 1.0
 ; Generator: Khronos Glslang Reference Front End; 11
-; Bound: 80
+; Bound: 77
 ; Schema: 0
                OpCapability Shader
                OpCapability Float16
@@ -73,10 +73,7 @@ spv.coopvecHW_use_pass_func.comp
         %int = OpTypeInt 32 1
       %int_0 = OpConstant %int 0
 %_ptr_StorageBuffer__runtimearr_half = OpTypePointer StorageBuffer %_runtimearr_half
-      %v2int = OpTypeVector %int 2
-     %int_16 = OpConstant %int 16
-         %58 = OpConstantComposite %v2int %int_16 %int_16
-         %59 = OpConstantComposite %v2int %int_0 %int_0
+     %uint_0 = OpConstant %uint 0
      %v3uint = OpTypeVector %uint 3
      %uint_1 = OpConstant %uint 1
 %gl_WorkGroupSize = OpConstantComposite %v3uint %uint_1 %uint_1 %uint_1
@@ -92,22 +89,22 @@ spv.coopvecHW_use_pass_func.comp
     %param_2 = OpVariable %_ptr_Function_11 Function
     %param_3 = OpVariable %_ptr_Function_11 Function
          %55 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %buf %int_0
-         %60 = OpCooperativeMatrixLoadHW %9 %55 %58 %59 %int_0
-               OpStore %tempArg_2 %60
-         %62 = OpLoad %9 %tempArg_2
-               OpStore %M %62
-         %65 = OpLoad %9 %M
-               OpStore %param %65
-         %67 = OpLoad %11 %v0
-               OpStore %param_0 %67
-         %68 = OpFunctionCall %void %doVecMul_f161_16__16__use___coopvecHWf161_16__ %param %param_0
-         %71 = OpLoad %9 %M
-               OpStore %param_1 %71
-         %73 = OpLoad %11 %v0
-               OpStore %param_2 %73
-         %75 = OpLoad %11 %bias_0
-               OpStore %param_3 %75
-         %76 = OpFunctionCall %void %doVecMulAdd_f161_16__16__use___coopvecHWf161_16__coopvecHWf161_16__ %param_1 %param_2 %param_3
+         %57 = OpCooperativeMatrixLoadHW %9 %55 %uint_0 %uint_16 %int_0
+               OpStore %tempArg_2 %57
+         %59 = OpLoad %9 %tempArg_2
+               OpStore %M %59
+         %62 = OpLoad %9 %M
+               OpStore %param %62
+         %64 = OpLoad %11 %v0
+               OpStore %param_0 %64
+         %65 = OpFunctionCall %void %doVecMul_f161_16__16__use___coopvecHWf161_16__ %param %param_0
+         %68 = OpLoad %9 %M
+               OpStore %param_1 %68
+         %70 = OpLoad %11 %v0
+               OpStore %param_2 %70
+         %72 = OpLoad %11 %bias_0
+               OpStore %param_3 %72
+         %73 = OpFunctionCall %void %doVecMulAdd_f161_16__16__use___coopvecHWf161_16__coopvecHWf161_16__ %param_1 %param_2 %param_3
                OpReturn
                OpFunctionEnd
 %doVecMul_f161_16__16__use___coopvecHWf161_16__ = OpFunction %void None %13

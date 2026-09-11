@@ -2,7 +2,7 @@ spv.coopvecHW_use_pass_nomul.comp
 ; SPIR-V
 ; Version: 1.0
 ; Generator: Khronos Glslang Reference Front End; 11
-; Bound: 38
+; Bound: 35
 ; Schema: 0
                OpCapability Shader
                OpCapability Float16
@@ -55,10 +55,7 @@ spv.coopvecHW_use_pass_nomul.comp
         %int = OpTypeInt 32 1
       %int_0 = OpConstant %int 0
 %_ptr_StorageBuffer__runtimearr_half = OpTypePointer StorageBuffer %_runtimearr_half
-      %v2int = OpTypeVector %int 2
-     %int_16 = OpConstant %int 16
-         %22 = OpConstantComposite %v2int %int_16 %int_16
-         %23 = OpConstantComposite %v2int %int_0 %int_0
+     %uint_0 = OpConstant %uint 0
 %_runtimearr_half_0 = OpTypeRuntimeArray %half
      %OutBuf = OpTypeStruct %_runtimearr_half_0
 %_ptr_StorageBuffer_OutBuf = OpTypePointer StorageBuffer %OutBuf
@@ -73,12 +70,12 @@ spv.coopvecHW_use_pass_nomul.comp
     %tempArg = OpVariable %_ptr_Function_9 Function
 %passthrough = OpVariable %_ptr_Function_9 Function
          %19 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %inBuf %int_0
-         %24 = OpCooperativeMatrixLoadHW %9 %19 %22 %23 %int_0
-               OpStore %tempArg %24
-         %26 = OpLoad %9 %tempArg
-               OpStore %passthrough %26
-         %27 = OpLoad %9 %passthrough
-         %33 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half_0 %outBuf %int_0
-               OpCooperativeMatrixStoreHW %33 %27 %22 %23 %int_1
+         %21 = OpCooperativeMatrixLoadHW %9 %19 %uint_0 %uint_16 %int_0
+               OpStore %tempArg %21
+         %23 = OpLoad %9 %tempArg
+               OpStore %passthrough %23
+         %24 = OpLoad %9 %passthrough
+         %30 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half_0 %outBuf %int_0
+               OpCooperativeMatrixStoreHW %30 %24 %uint_0 %uint_16 %int_1
                OpReturn
                OpFunctionEnd

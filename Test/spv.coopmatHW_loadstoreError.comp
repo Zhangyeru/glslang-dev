@@ -1,0 +1,34 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer Buf {
+    float data[];
+} buf;
+
+layout(set = 0, binding = 1) buffer Params {
+    int matrixLayout;
+} params;
+
+layout(constant_id = 0) const int specLayout = 0;
+
+void main()
+{
+    coopmatHW<float16_t, 4, 4> validMatrix;
+    coopmatHW<uint8_t, 4, 4> u8Matrix;
+    coopmatHW<uint16_t, 4, 4> u16Matrix;
+    coopmatHW<uint, 4, 4> u32Matrix;
+    coopmatHW<int64_t, 4, 4> s64Matrix;
+
+    coopMatLoadHW(validMatrix, buf.data, ivec2(4), ivec2(0), 0);
+    coopMatLoadHW(validMatrix, buf.data, 0u, 16u, params.matrixLayout);
+    coopMatLoadHW(validMatrix, buf.data, 0u, 16u, specLayout);
+    coopMatStoreHW(validMatrix, buf.data, 0u, 16u, 2);
+
+    coopMatLoadHW(u8Matrix, buf.data, 0u, 16u, 0);
+    coopMatStoreHW(u16Matrix, buf.data, 0u, 16u, 1);
+    coopMatLoadHW(u32Matrix, buf.data, 0u, 16u, 0);
+    coopMatStoreHW(s64Matrix, buf.data, 0u, 16u, 1);
+}

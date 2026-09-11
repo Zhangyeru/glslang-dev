@@ -3594,6 +3594,26 @@ void TParseContext::builtInOpCheck(const TSourceLoc& loc, const TFunction& fnCan
                 break;
         }
         break;
+    case EOpCooperativeMatrixLoadHW:
+    case EOpCooperativeMatrixStoreHW:
+        {
+            const TBasicType componentType = (*argp)[0]->getAsTyped()->getBasicType();
+            if (componentType != EbtInt8 && componentType != EbtInt16 && componentType != EbtInt &&
+                componentType != EbtFloat16 && componentType != EbtFloat) {
+                error(loc, "matrix element type must be s8, s16, s32, fp16, or fp32",
+                      fnCandidate.getName().c_str(), "");
+            }
+
+            TIntermTyped* matrixLayout = (*argp)[4]->getAsTyped();
+            if (!matrixLayout->getQualifier().isFrontEndConstant()) {
+                error(loc, "argument must be a compile-time constant", "matrixLayout", "");
+            } else {
+                int layout = 0;
+                if (!getConstantIntValue(matrixLayout, layout) || layout < 0 || layout > 1)
+                    error(loc, "must be in the range [0, 1]", "matrixLayout", "");
+            }
+        }
+        break;
     case EOpCooperativeVectorMatMulNV:
     case EOpCooperativeVectorMatMulAddNV:
         {

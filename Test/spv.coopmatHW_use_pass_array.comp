@@ -13,8 +13,8 @@ struct MatBox {
 
 void main()
 {
-    const ivec2 shape = ivec2(16, 16);
-    const ivec2 zeroOffset = ivec2(0, 0);
+    const uint offset = 0;
+    const uint stride = 16;
 
     coopmatHW<float16_t, 16, 16> lhs[2];
     coopmatHW<float16_t, 16, 16> rhs[2];
@@ -23,13 +23,13 @@ void main()
     MatBox box;
     coopmatHW<float16_t, 16, 16> D0, D1, D2, D3;
 
-    coopMatLoadHW(lhs[0], buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(lhs[1], buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(rhs[0], buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(rhs[1], buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(acc[0], buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(acc[1], buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(box.value, buf.data, shape, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(lhs[0], buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(lhs[1], buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(rhs[0], buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(rhs[1], buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(acc[0], buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(acc[1], buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(box.value, buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
 
     coopMatMulAddHW(D0, lhs[0], rhs[0], acc[0]);
     coopMatMulAddHW(D1, rhs[1], lhs[1], acc[1]);

@@ -2,7 +2,7 @@ spv.coopmatHW_builtin.frag
 ; SPIR-V
 ; Version: 1.0
 ; Generator: Khronos Glslang Reference Front End; 11
-; Bound: 256
+; Bound: 218
 ; Schema: 0
                OpCapability Shader
                OpCapability Float16
@@ -57,20 +57,20 @@ spv.coopmatHW_builtin.frag
                OpName %iR "iR"
                OpName %li "li"
                OpName %tempArg_9 "tempArg"
-               OpName %BufU16 "BufU16"
-               OpMemberName %BufU16 0 "data"
-               OpName %bufU16 "bufU16"
-               OpName %uA "uA"
+               OpName %BufI16 "BufI16"
+               OpMemberName %BufI16 0 "data"
+               OpName %bufI16 "bufI16"
+               OpName %sA "sA"
                OpName %tempArg_10 "tempArg"
-               OpName %uB "uB"
+               OpName %sB "sB"
                OpName %tempArg_11 "tempArg"
-               OpName %uC "uC"
-               OpName %uOperand "uOperand"
+               OpName %sC "sC"
+               OpName %sOperand "sOperand"
                OpName %tempArg_12 "tempArg"
-               OpName %uMulR "uMulR"
+               OpName %sMulR "sMulR"
                OpName %tempArg_13 "tempArg"
-               OpName %uR "uR"
-               OpName %lu "lu"
+               OpName %sR "sR"
+               OpName %ls "ls"
                OpDecorate %outColor Location 0
                OpDecorate %_runtimearr_half ArrayStride 2
                OpDecorate %BufF16 Block
@@ -82,11 +82,11 @@ spv.coopmatHW_builtin.frag
                OpMemberDecorate %BufI8 0 Offset 0
                OpDecorate %bufI8 Binding 1
                OpDecorate %bufI8 DescriptorSet 0
-               OpDecorate %_runtimearr_ushort ArrayStride 2
-               OpDecorate %BufU16 Block
-               OpMemberDecorate %BufU16 0 Offset 0
-               OpDecorate %bufU16 Binding 2
-               OpDecorate %bufU16 DescriptorSet 0
+               OpDecorate %_runtimearr_v3short ArrayStride 8
+               OpDecorate %BufI16 Block
+               OpMemberDecorate %BufI16 0 Offset 0
+               OpDecorate %bufI16 Binding 2
+               OpDecorate %bufI16 DescriptorSet 0
        %void = OpTypeVoid
           %3 = OpTypeFunction %void
       %float = OpTypeFloat 32
@@ -108,286 +108,248 @@ spv.coopmatHW_builtin.frag
         %int = OpTypeInt 32 1
       %int_0 = OpConstant %int 0
 %_ptr_StorageBuffer__runtimearr_half = OpTypePointer StorageBuffer %_runtimearr_half
-      %v2int = OpTypeVector %int 2
-     %int_16 = OpConstant %int 16
-      %int_8 = OpConstant %int 8
-         %30 = OpConstantComposite %v2int %int_16 %int_8
+         %30 = OpTypeCooperativeMatrixHW %half %uint_8 %uint_8 MatrixUseBHW
+%_ptr_Function_30 = OpTypePointer Function %30
+    %uint_32 = OpConstant %uint 32
       %int_1 = OpConstant %int 1
-      %int_2 = OpConstant %int 2
-         %33 = OpConstantComposite %v2int %int_1 %int_2
-         %37 = OpTypeCooperativeMatrixHW %half %uint_8 %uint_8 MatrixUseBHW
-%_ptr_Function_37 = OpTypePointer Function %37
-         %41 = OpConstantComposite %v2int %int_8 %int_8
-      %int_3 = OpConstant %int 3
-      %int_4 = OpConstant %int 4
-         %44 = OpConstantComposite %v2int %int_3 %int_4
-         %48 = OpTypeCooperativeMatrixHW %half %uint_16 %uint_8 MatrixAccumulatorHW
-%_ptr_Function_48 = OpTypePointer Function %48
-      %int_5 = OpConstant %int 5
-      %int_6 = OpConstant %int 6
-         %54 = OpConstantComposite %v2int %int_5 %int_6
-         %58 = OpTypeCooperativeMatrixHW %float %uint_8 %uint_8 MatrixAccumulatorHW
-%_ptr_Function_58 = OpTypePointer Function %58
-         %63 = OpTypeCooperativeMatrixHW %half %uint_8 %uint_8 MatrixUseAHW
-         %65 = OpConstantNull %58
-      %int_7 = OpConstant %int 7
-         %82 = OpConstantComposite %v2int %int_7 %int_8
+         %39 = OpTypeCooperativeMatrixHW %half %uint_16 %uint_8 MatrixAccumulatorHW
+%_ptr_Function_39 = OpTypePointer Function %39
+    %uint_48 = OpConstant %uint 48
+         %47 = OpTypeCooperativeMatrixHW %float %uint_8 %uint_8 MatrixAccumulatorHW
+%_ptr_Function_47 = OpTypePointer Function %47
+         %52 = OpTypeCooperativeMatrixHW %half %uint_8 %uint_8 MatrixUseAHW
+         %54 = OpConstantNull %47
+    %uint_64 = OpConstant %uint 64
 %_ptr_Function_int = OpTypePointer Function %int
        %char = OpTypeInt 8 1
-         %91 = OpTypeCooperativeMatrixHW %char %uint_16 %uint_8 MatrixUseAHW
-%_ptr_Function_91 = OpTypePointer Function %91
+         %79 = OpTypeCooperativeMatrixHW %char %uint_16 %uint_8 MatrixUseAHW
+%_ptr_Function_79 = OpTypePointer Function %79
 %_runtimearr_char = OpTypeRuntimeArray %char
       %BufI8 = OpTypeStruct %_runtimearr_char
 %_ptr_StorageBuffer_BufI8 = OpTypePointer StorageBuffer %BufI8
       %bufI8 = OpVariable %_ptr_StorageBuffer_BufI8 StorageBuffer
 %_ptr_StorageBuffer__runtimearr_char = OpTypePointer StorageBuffer %_runtimearr_char
-      %int_9 = OpConstant %int 9
-     %int_10 = OpConstant %int 10
-        %102 = OpConstantComposite %v2int %int_9 %int_10
-        %106 = OpTypeCooperativeMatrixHW %char %uint_8 %uint_16 MatrixUseBHW
-%_ptr_Function_106 = OpTypePointer Function %106
-        %110 = OpConstantComposite %v2int %int_8 %int_16
-     %int_11 = OpConstant %int 11
-     %int_12 = OpConstant %int 12
-        %113 = OpConstantComposite %v2int %int_11 %int_12
-        %117 = OpTypeCooperativeMatrixHW %char %uint_16 %uint_16 MatrixAccumulatorHW
-%_ptr_Function_117 = OpTypePointer Function %117
-        %121 = OpConstantComposite %v2int %int_16 %int_16
-     %int_13 = OpConstant %int 13
-     %int_14 = OpConstant %int 14
-        %124 = OpConstantComposite %v2int %int_13 %int_14
-        %128 = OpTypeCooperativeMatrixHW %char %uint_16 %uint_16 MatrixUseAHW
-%_ptr_Function_128 = OpTypePointer Function %128
-        %133 = OpTypeCooperativeMatrixHW %int %uint_16 %uint_16 MatrixAccumulatorHW
-%_ptr_Function_133 = OpTypePointer Function %133
-        %138 = OpTypeCooperativeMatrixHW %char %uint_16 %uint_16 MatrixUseBHW
-        %140 = OpConstantNull %133
-     %int_15 = OpConstant %int 15
-        %157 = OpConstantComposite %v2int %int_15 %int_16
-     %ushort = OpTypeInt 16 0
+         %91 = OpTypeCooperativeMatrixHW %char %uint_8 %uint_16 MatrixUseBHW
+%_ptr_Function_91 = OpTypePointer Function %91
+         %98 = OpTypeCooperativeMatrixHW %char %uint_16 %uint_16 MatrixAccumulatorHW
+%_ptr_Function_98 = OpTypePointer Function %98
+        %105 = OpTypeCooperativeMatrixHW %char %uint_16 %uint_16 MatrixUseAHW
+%_ptr_Function_105 = OpTypePointer Function %105
+        %110 = OpTypeCooperativeMatrixHW %int %uint_16 %uint_16 MatrixAccumulatorHW
+%_ptr_Function_110 = OpTypePointer Function %110
+        %115 = OpTypeCooperativeMatrixHW %char %uint_16 %uint_16 MatrixUseBHW
+        %117 = OpConstantNull %110
+      %short = OpTypeInt 16 1
      %uint_4 = OpConstant %uint 4
-        %166 = OpTypeCooperativeMatrixHW %ushort %uint_4 %uint_16 MatrixUseAHW
-%_ptr_Function_166 = OpTypePointer Function %166
-%_runtimearr_ushort = OpTypeRuntimeArray %ushort
-     %BufU16 = OpTypeStruct %_runtimearr_ushort
-%_ptr_StorageBuffer_BufU16 = OpTypePointer StorageBuffer %BufU16
-     %bufU16 = OpVariable %_ptr_StorageBuffer_BufU16 StorageBuffer
-%_ptr_StorageBuffer__runtimearr_ushort = OpTypePointer StorageBuffer %_runtimearr_ushort
-        %175 = OpConstantComposite %v2int %int_4 %int_16
-     %int_17 = OpConstant %int 17
-     %int_18 = OpConstant %int 18
-        %178 = OpConstantComposite %v2int %int_17 %int_18
-        %182 = OpTypeCooperativeMatrixHW %ushort %uint_16 %uint_4 MatrixUseBHW
-%_ptr_Function_182 = OpTypePointer Function %182
-        %186 = OpConstantComposite %v2int %int_16 %int_4
-     %int_19 = OpConstant %int 19
-     %int_20 = OpConstant %int 20
-        %189 = OpConstantComposite %v2int %int_19 %int_20
-        %193 = OpTypeCooperativeMatrixHW %ushort %uint_4 %uint_4 MatrixAccumulatorHW
-%_ptr_Function_193 = OpTypePointer Function %193
-        %197 = OpConstantComposite %v2int %int_4 %int_4
-     %int_21 = OpConstant %int 21
-     %int_22 = OpConstant %int 22
-        %200 = OpConstantComposite %v2int %int_21 %int_22
-        %204 = OpTypeCooperativeMatrixHW %ushort %uint_4 %uint_4 MatrixUseAHW
-%_ptr_Function_204 = OpTypePointer Function %204
-        %209 = OpTypeCooperativeMatrixHW %uint %uint_4 %uint_4 MatrixAccumulatorHW
-%_ptr_Function_209 = OpTypePointer Function %209
-        %214 = OpTypeCooperativeMatrixHW %ushort %uint_4 %uint_4 MatrixUseBHW
-        %216 = OpConstantNull %209
-     %int_23 = OpConstant %int 23
-     %int_24 = OpConstant %int 24
-        %234 = OpConstantComposite %v2int %int_23 %int_24
+        %141 = OpTypeCooperativeMatrixHW %short %uint_4 %uint_16 MatrixUseAHW
+%_ptr_Function_141 = OpTypePointer Function %141
+    %v3short = OpTypeVector %short 3
+%_runtimearr_v3short = OpTypeRuntimeArray %v3short
+     %BufI16 = OpTypeStruct %_runtimearr_v3short
+%_ptr_StorageBuffer_BufI16 = OpTypePointer StorageBuffer %BufI16
+     %bufI16 = OpVariable %_ptr_StorageBuffer_BufI16 StorageBuffer
+%_ptr_StorageBuffer__runtimearr_v3short = OpTypePointer StorageBuffer %_runtimearr_v3short
+        %154 = OpTypeCooperativeMatrixHW %short %uint_16 %uint_4 MatrixUseBHW
+%_ptr_Function_154 = OpTypePointer Function %154
+        %161 = OpTypeCooperativeMatrixHW %short %uint_4 %uint_4 MatrixAccumulatorHW
+%_ptr_Function_161 = OpTypePointer Function %161
+        %168 = OpTypeCooperativeMatrixHW %short %uint_4 %uint_4 MatrixUseAHW
+%_ptr_Function_168 = OpTypePointer Function %168
+        %173 = OpTypeCooperativeMatrixHW %int %uint_4 %uint_4 MatrixAccumulatorHW
+%_ptr_Function_173 = OpTypePointer Function %173
+        %178 = OpTypeCooperativeMatrixHW %short %uint_4 %uint_4 MatrixUseBHW
+        %180 = OpConstantNull %173
+      %int_2 = OpConstant %int 2
        %bool = OpTypeBool
        %main = OpFunction %void None %3
           %5 = OpLabel
     %tempArg = OpVariable %_ptr_Function_16 Function
          %fA = OpVariable %_ptr_Function_16 Function
-  %tempArg_0 = OpVariable %_ptr_Function_37 Function
-         %fB = OpVariable %_ptr_Function_37 Function
-  %tempArg_1 = OpVariable %_ptr_Function_48 Function
-         %fC = OpVariable %_ptr_Function_48 Function
-  %tempArg_2 = OpVariable %_ptr_Function_58 Function
-      %fMulR = OpVariable %_ptr_Function_58 Function
-  %tempArg_3 = OpVariable %_ptr_Function_48 Function
+  %tempArg_0 = OpVariable %_ptr_Function_30 Function
+         %fB = OpVariable %_ptr_Function_30 Function
+  %tempArg_1 = OpVariable %_ptr_Function_39 Function
+         %fC = OpVariable %_ptr_Function_39 Function
+  %tempArg_2 = OpVariable %_ptr_Function_47 Function
+      %fMulR = OpVariable %_ptr_Function_47 Function
+  %tempArg_3 = OpVariable %_ptr_Function_39 Function
          %fR = OpVariable %_ptr_Function_16 Function
          %lf = OpVariable %_ptr_Function_int Function
-  %tempArg_4 = OpVariable %_ptr_Function_91 Function
-         %iA = OpVariable %_ptr_Function_91 Function
-  %tempArg_5 = OpVariable %_ptr_Function_106 Function
-         %iB = OpVariable %_ptr_Function_106 Function
-  %tempArg_6 = OpVariable %_ptr_Function_117 Function
-         %iC = OpVariable %_ptr_Function_117 Function
-   %iOperand = OpVariable %_ptr_Function_128 Function
-  %tempArg_7 = OpVariable %_ptr_Function_133 Function
-      %iMulR = OpVariable %_ptr_Function_133 Function
-  %tempArg_8 = OpVariable %_ptr_Function_117 Function
-         %iR = OpVariable %_ptr_Function_128 Function
+  %tempArg_4 = OpVariable %_ptr_Function_79 Function
+         %iA = OpVariable %_ptr_Function_79 Function
+  %tempArg_5 = OpVariable %_ptr_Function_91 Function
+         %iB = OpVariable %_ptr_Function_91 Function
+  %tempArg_6 = OpVariable %_ptr_Function_98 Function
+         %iC = OpVariable %_ptr_Function_98 Function
+   %iOperand = OpVariable %_ptr_Function_105 Function
+  %tempArg_7 = OpVariable %_ptr_Function_110 Function
+      %iMulR = OpVariable %_ptr_Function_110 Function
+  %tempArg_8 = OpVariable %_ptr_Function_98 Function
+         %iR = OpVariable %_ptr_Function_105 Function
          %li = OpVariable %_ptr_Function_int Function
-  %tempArg_9 = OpVariable %_ptr_Function_166 Function
-         %uA = OpVariable %_ptr_Function_166 Function
- %tempArg_10 = OpVariable %_ptr_Function_182 Function
-         %uB = OpVariable %_ptr_Function_182 Function
- %tempArg_11 = OpVariable %_ptr_Function_193 Function
-         %uC = OpVariable %_ptr_Function_193 Function
-   %uOperand = OpVariable %_ptr_Function_204 Function
- %tempArg_12 = OpVariable %_ptr_Function_209 Function
-      %uMulR = OpVariable %_ptr_Function_209 Function
- %tempArg_13 = OpVariable %_ptr_Function_193 Function
-         %uR = OpVariable %_ptr_Function_204 Function
-         %lu = OpVariable %_ptr_Function_int Function
+  %tempArg_9 = OpVariable %_ptr_Function_141 Function
+         %sA = OpVariable %_ptr_Function_141 Function
+ %tempArg_10 = OpVariable %_ptr_Function_154 Function
+         %sB = OpVariable %_ptr_Function_154 Function
+ %tempArg_11 = OpVariable %_ptr_Function_161 Function
+         %sC = OpVariable %_ptr_Function_161 Function
+   %sOperand = OpVariable %_ptr_Function_168 Function
+ %tempArg_12 = OpVariable %_ptr_Function_173 Function
+      %sMulR = OpVariable %_ptr_Function_173 Function
+ %tempArg_13 = OpVariable %_ptr_Function_161 Function
+         %sR = OpVariable %_ptr_Function_168 Function
+         %ls = OpVariable %_ptr_Function_int Function
                OpStore %outColor %11
          %26 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %bufF16 %int_0
-         %34 = OpCooperativeMatrixLoadHW %16 %26 %30 %33 %int_0
-               OpStore %tempArg %34
-         %36 = OpLoad %16 %tempArg
-               OpStore %fA %36
-         %40 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %bufF16 %int_0
-         %45 = OpCooperativeMatrixLoadHW %37 %40 %41 %44 %int_1
-               OpStore %tempArg_0 %45
-         %47 = OpLoad %37 %tempArg_0
-               OpStore %fB %47
-         %51 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %bufF16 %int_0
-         %55 = OpCooperativeMatrixLoadHW %48 %51 %30 %54 %int_0
-               OpStore %tempArg_1 %55
-         %57 = OpLoad %48 %tempArg_1
-               OpStore %fC %57
-         %61 = OpLoad %37 %fB
-         %62 = OpLoad %37 %fB
-         %64 = OpBitcast %63 %61
-         %66 = OpCooperativeMatrixMulAddHW %58 %64 %62 %65
-               OpStore %tempArg_2 %66
-         %68 = OpLoad %58 %tempArg_2
-               OpStore %fMulR %68
-         %70 = OpLoad %16 %fA
-         %71 = OpLoad %37 %fB
-         %72 = OpLoad %48 %fC
-         %73 = OpCooperativeMatrixMulAddHW %48 %70 %71 %72
-               OpStore %tempArg_3 %73
-         %74 = OpLoad %48 %tempArg_3
-               OpStore %fC %74
-         %76 = OpLoad %48 %fC
-         %77 = OpCooperativeMatrixReduceHW %48 %76 %int_0 %int_0
-         %78 = OpBitcast %16 %77
-               OpStore %fR %78
-         %79 = OpLoad %16 %fR
-         %80 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %bufF16 %int_0
-               OpCooperativeMatrixStoreHW %80 %79 %30 %82 %int_1
-         %85 = OpCooperativeMatrixLengthHW %uint %16
-         %86 = OpBitcast %int %85
-         %87 = OpCooperativeMatrixLengthHW %uint %58
-         %88 = OpBitcast %int %87
-         %89 = OpIAdd %int %86 %88
-               OpStore %lf %89
-         %99 = OpAccessChain %_ptr_StorageBuffer__runtimearr_char %bufI8 %int_0
-        %103 = OpCooperativeMatrixLoadHW %91 %99 %30 %102 %int_0
-               OpStore %tempArg_4 %103
-        %105 = OpLoad %91 %tempArg_4
-               OpStore %iA %105
-        %109 = OpAccessChain %_ptr_StorageBuffer__runtimearr_char %bufI8 %int_0
-        %114 = OpCooperativeMatrixLoadHW %106 %109 %110 %113 %int_1
-               OpStore %tempArg_5 %114
-        %116 = OpLoad %106 %tempArg_5
-               OpStore %iB %116
-        %120 = OpAccessChain %_ptr_StorageBuffer__runtimearr_char %bufI8 %int_0
-        %125 = OpCooperativeMatrixLoadHW %117 %120 %121 %124 %int_0
-               OpStore %tempArg_6 %125
-        %127 = OpLoad %117 %tempArg_6
-               OpStore %iC %127
-        %131 = OpLoad %117 %iC
-        %132 = OpBitcast %128 %131
-               OpStore %iOperand %132
-        %136 = OpLoad %128 %iOperand
-        %137 = OpLoad %128 %iOperand
-        %139 = OpBitcast %138 %137
-        %141 = OpCooperativeMatrixMulAddHW %133 %136 %139 %140
-               OpStore %tempArg_7 %141
-        %143 = OpLoad %133 %tempArg_7
-               OpStore %iMulR %143
-        %145 = OpLoad %91 %iA
-        %146 = OpLoad %106 %iB
-        %147 = OpLoad %117 %iC
-        %148 = OpCooperativeMatrixMulAddHW %117 %145 %146 %147
-               OpStore %tempArg_8 %148
-        %149 = OpLoad %117 %tempArg_8
-               OpStore %iC %149
-        %151 = OpLoad %117 %iC
-        %152 = OpCooperativeMatrixReduceHW %117 %151 %int_1 %int_1
-        %153 = OpBitcast %128 %152
-               OpStore %iR %153
-        %154 = OpLoad %128 %iR
-        %155 = OpAccessChain %_ptr_StorageBuffer__runtimearr_char %bufI8 %int_0
-               OpCooperativeMatrixStoreHW %155 %154 %121 %157 %int_1
-        %159 = OpCooperativeMatrixLengthHW %uint %128
-        %160 = OpBitcast %int %159
-        %161 = OpCooperativeMatrixLengthHW %uint %133
-        %162 = OpBitcast %int %161
-        %163 = OpIAdd %int %160 %162
-               OpStore %li %163
-        %174 = OpAccessChain %_ptr_StorageBuffer__runtimearr_ushort %bufU16 %int_0
-        %179 = OpCooperativeMatrixLoadHW %166 %174 %175 %178 %int_0
-               OpStore %tempArg_9 %179
-        %181 = OpLoad %166 %tempArg_9
-               OpStore %uA %181
-        %185 = OpAccessChain %_ptr_StorageBuffer__runtimearr_ushort %bufU16 %int_0
-        %190 = OpCooperativeMatrixLoadHW %182 %185 %186 %189 %int_1
-               OpStore %tempArg_10 %190
-        %192 = OpLoad %182 %tempArg_10
-               OpStore %uB %192
-        %196 = OpAccessChain %_ptr_StorageBuffer__runtimearr_ushort %bufU16 %int_0
-        %201 = OpCooperativeMatrixLoadHW %193 %196 %197 %200 %int_0
-               OpStore %tempArg_11 %201
-        %203 = OpLoad %193 %tempArg_11
-               OpStore %uC %203
-        %207 = OpLoad %193 %uC
-        %208 = OpBitcast %204 %207
-               OpStore %uOperand %208
-        %212 = OpLoad %204 %uOperand
-        %213 = OpLoad %204 %uOperand
-        %215 = OpBitcast %214 %213
-        %217 = OpCooperativeMatrixMulAddHW %209 %212 %215 %216
-               OpStore %tempArg_12 %217
-        %219 = OpLoad %209 %tempArg_12
-               OpStore %uMulR %219
-        %221 = OpLoad %166 %uA
-        %222 = OpLoad %182 %uB
-        %223 = OpLoad %193 %uC
-        %224 = OpCooperativeMatrixMulAddHW %193 %221 %222 %223
-               OpStore %tempArg_13 %224
-        %225 = OpLoad %193 %tempArg_13
-               OpStore %uC %225
-        %227 = OpLoad %193 %uC
-        %228 = OpCooperativeMatrixReduceHW %193 %227 %int_0 %int_2
-        %229 = OpBitcast %204 %228
-               OpStore %uR %229
-        %230 = OpLoad %204 %uR
-        %231 = OpAccessChain %_ptr_StorageBuffer__runtimearr_ushort %bufU16 %int_0
-               OpCooperativeMatrixStoreHW %231 %230 %197 %234 %int_1
-        %236 = OpCooperativeMatrixLengthHW %uint %204
-        %237 = OpBitcast %int %236
-        %238 = OpCooperativeMatrixLengthHW %uint %209
-        %239 = OpBitcast %int %238
-        %240 = OpIAdd %int %237 %239
-               OpStore %lu %240
-        %241 = OpLoad %int %lf
-        %242 = OpLoad %int %li
-        %243 = OpIAdd %int %241 %242
-        %244 = OpLoad %int %lu
-        %245 = OpIAdd %int %243 %244
-        %247 = OpIEqual %bool %245 %int_0
-               OpSelectionMerge %249 None
-               OpBranchConditional %247 %248 %249
-        %248 = OpLabel
-        %250 = OpLoad %16 %fR
-        %251 = OpBitcast %48 %250
-               OpStore %fC %251
-        %252 = OpLoad %128 %iR
-        %253 = OpBitcast %117 %252
-               OpStore %iC %253
-        %254 = OpLoad %204 %uR
-        %255 = OpBitcast %193 %254
-               OpStore %uC %255
-               OpBranch %249
-        %249 = OpLabel
+         %27 = OpCooperativeMatrixLoadHW %16 %26 %uint_16 %uint_16 %int_0
+               OpStore %tempArg %27
+         %29 = OpLoad %16 %tempArg
+               OpStore %fA %29
+         %33 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %bufF16 %int_0
+         %36 = OpCooperativeMatrixLoadHW %30 %33 %uint_32 %uint_16 %int_1
+               OpStore %tempArg_0 %36
+         %38 = OpLoad %30 %tempArg_0
+               OpStore %fB %38
+         %42 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %bufF16 %int_0
+         %44 = OpCooperativeMatrixLoadHW %39 %42 %uint_48 %uint_16 %int_0
+               OpStore %tempArg_1 %44
+         %46 = OpLoad %39 %tempArg_1
+               OpStore %fC %46
+         %50 = OpLoad %30 %fB
+         %51 = OpLoad %30 %fB
+         %53 = OpBitcast %52 %50
+         %55 = OpCooperativeMatrixMulAddHW %47 %53 %51 %54
+               OpStore %tempArg_2 %55
+         %57 = OpLoad %47 %tempArg_2
+               OpStore %fMulR %57
+         %59 = OpLoad %16 %fA
+         %60 = OpLoad %30 %fB
+         %61 = OpLoad %39 %fC
+         %62 = OpCooperativeMatrixMulAddHW %39 %59 %60 %61
+               OpStore %tempArg_3 %62
+         %63 = OpLoad %39 %tempArg_3
+               OpStore %fC %63
+         %65 = OpLoad %39 %fC
+         %66 = OpCooperativeMatrixReduceHW %39 %65 %int_0 %int_0
+         %67 = OpBitcast %16 %66
+               OpStore %fR %67
+         %68 = OpLoad %16 %fR
+         %69 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %bufF16 %int_0
+               OpCooperativeMatrixStoreHW %69 %68 %uint_64 %uint_16 %int_1
+         %73 = OpCooperativeMatrixLengthHW %uint %16
+         %74 = OpBitcast %int %73
+         %75 = OpCooperativeMatrixLengthHW %uint %47
+         %76 = OpBitcast %int %75
+         %77 = OpIAdd %int %74 %76
+               OpStore %lf %77
+         %87 = OpAccessChain %_ptr_StorageBuffer__runtimearr_char %bufI8 %int_0
+         %88 = OpCooperativeMatrixLoadHW %79 %87 %uint_16 %uint_32 %int_0
+               OpStore %tempArg_4 %88
+         %90 = OpLoad %79 %tempArg_4
+               OpStore %iA %90
+         %94 = OpAccessChain %_ptr_StorageBuffer__runtimearr_char %bufI8 %int_0
+         %95 = OpCooperativeMatrixLoadHW %91 %94 %uint_32 %uint_32 %int_1
+               OpStore %tempArg_5 %95
+         %97 = OpLoad %91 %tempArg_5
+               OpStore %iB %97
+        %101 = OpAccessChain %_ptr_StorageBuffer__runtimearr_char %bufI8 %int_0
+        %102 = OpCooperativeMatrixLoadHW %98 %101 %uint_48 %uint_32 %int_0
+               OpStore %tempArg_6 %102
+        %104 = OpLoad %98 %tempArg_6
+               OpStore %iC %104
+        %108 = OpLoad %98 %iC
+        %109 = OpBitcast %105 %108
+               OpStore %iOperand %109
+        %113 = OpLoad %105 %iOperand
+        %114 = OpLoad %105 %iOperand
+        %116 = OpBitcast %115 %114
+        %118 = OpCooperativeMatrixMulAddHW %110 %113 %116 %117
+               OpStore %tempArg_7 %118
+        %120 = OpLoad %110 %tempArg_7
+               OpStore %iMulR %120
+        %122 = OpLoad %79 %iA
+        %123 = OpLoad %91 %iB
+        %124 = OpLoad %98 %iC
+        %125 = OpCooperativeMatrixMulAddHW %98 %122 %123 %124
+               OpStore %tempArg_8 %125
+        %126 = OpLoad %98 %tempArg_8
+               OpStore %iC %126
+        %128 = OpLoad %98 %iC
+        %129 = OpCooperativeMatrixReduceHW %98 %128 %int_1 %int_1
+        %130 = OpBitcast %105 %129
+               OpStore %iR %130
+        %131 = OpLoad %105 %iR
+        %132 = OpAccessChain %_ptr_StorageBuffer__runtimearr_char %bufI8 %int_0
+               OpCooperativeMatrixStoreHW %132 %131 %uint_64 %uint_32 %int_1
+        %134 = OpCooperativeMatrixLengthHW %uint %105
+        %135 = OpBitcast %int %134
+        %136 = OpCooperativeMatrixLengthHW %uint %110
+        %137 = OpBitcast %int %136
+        %138 = OpIAdd %int %135 %137
+               OpStore %li %138
+        %150 = OpAccessChain %_ptr_StorageBuffer__runtimearr_v3short %bufI16 %int_0
+        %151 = OpCooperativeMatrixLoadHW %141 %150 %uint_16 %uint_16 %int_0
+               OpStore %tempArg_9 %151
+        %153 = OpLoad %141 %tempArg_9
+               OpStore %sA %153
+        %157 = OpAccessChain %_ptr_StorageBuffer__runtimearr_v3short %bufI16 %int_0
+        %158 = OpCooperativeMatrixLoadHW %154 %157 %uint_32 %uint_16 %int_1
+               OpStore %tempArg_10 %158
+        %160 = OpLoad %154 %tempArg_10
+               OpStore %sB %160
+        %164 = OpAccessChain %_ptr_StorageBuffer__runtimearr_v3short %bufI16 %int_0
+        %165 = OpCooperativeMatrixLoadHW %161 %164 %uint_48 %uint_16 %int_0
+               OpStore %tempArg_11 %165
+        %167 = OpLoad %161 %tempArg_11
+               OpStore %sC %167
+        %171 = OpLoad %161 %sC
+        %172 = OpBitcast %168 %171
+               OpStore %sOperand %172
+        %176 = OpLoad %168 %sOperand
+        %177 = OpLoad %168 %sOperand
+        %179 = OpBitcast %178 %177
+        %181 = OpCooperativeMatrixMulAddHW %173 %176 %179 %180
+               OpStore %tempArg_12 %181
+        %183 = OpLoad %173 %tempArg_12
+               OpStore %sMulR %183
+        %185 = OpLoad %141 %sA
+        %186 = OpLoad %154 %sB
+        %187 = OpLoad %161 %sC
+        %188 = OpCooperativeMatrixMulAddHW %161 %185 %186 %187
+               OpStore %tempArg_13 %188
+        %189 = OpLoad %161 %tempArg_13
+               OpStore %sC %189
+        %191 = OpLoad %161 %sC
+        %193 = OpCooperativeMatrixReduceHW %161 %191 %int_0 %int_2
+        %194 = OpBitcast %168 %193
+               OpStore %sR %194
+        %195 = OpLoad %168 %sR
+        %196 = OpAccessChain %_ptr_StorageBuffer__runtimearr_v3short %bufI16 %int_0
+               OpCooperativeMatrixStoreHW %196 %195 %uint_64 %uint_16 %int_1
+        %198 = OpCooperativeMatrixLengthHW %uint %168
+        %199 = OpBitcast %int %198
+        %200 = OpCooperativeMatrixLengthHW %uint %173
+        %201 = OpBitcast %int %200
+        %202 = OpIAdd %int %199 %201
+               OpStore %ls %202
+        %203 = OpLoad %int %lf
+        %204 = OpLoad %int %li
+        %205 = OpIAdd %int %203 %204
+        %206 = OpLoad %int %ls
+        %207 = OpIAdd %int %205 %206
+        %209 = OpIEqual %bool %207 %int_0
+               OpSelectionMerge %211 None
+               OpBranchConditional %209 %210 %211
+        %210 = OpLabel
+        %212 = OpLoad %16 %fR
+        %213 = OpBitcast %39 %212
+               OpStore %fC %213
+        %214 = OpLoad %105 %iR
+        %215 = OpBitcast %98 %214
+               OpStore %iC %215
+        %216 = OpLoad %168 %sR
+        %217 = OpBitcast %161 %216
+               OpStore %sC %217
+               OpBranch %211
+        %211 = OpLabel
                OpReturn
                OpFunctionEnd

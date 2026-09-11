@@ -1,0 +1,45 @@
+#version 450 core
+#extension GL_HW_neural_shader : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+#extension GL_EXT_buffer_reference : enable
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer ScalarBuf {
+    uint data[];
+} scalarBuf;
+
+layout(set = 0, binding = 1) buffer VectorBuf {
+    uvec3 data[];
+} vectorBuf;
+
+layout(buffer_reference) buffer GlobalBuf {
+    vec2 data[];
+};
+
+shared uint sharedData[256];
+
+void main()
+{
+    uint offset = 32u * gl_LocalInvocationID.x;
+    uint stride = 16u * (gl_LocalInvocationID.x + 1u);
+
+    coopmatHW<int8_t, 4, 4> s8;
+    coopmatHW<int16_t, 4, 4> s16;
+    coopmatHW<int, 4, 4> s32;
+    coopmatHW<float16_t, 4, 4> f16;
+    coopmatHW<float, 4, 4> f32;
+    GlobalBuf globalBuf;
+
+    coopMatLoadHW(s8, vectorBuf.data, offset, stride, 0);
+    coopMatLoadHW(s16, scalarBuf.data, offset, stride, gl_CooperativeMatrixLayoutColumnMajorHW);
+    coopMatLoadHW(s32, sharedData, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(f16, vectorBuf.data, offset, stride, 1);
+    coopMatLoadHW(f32, globalBuf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+
+    coopMatStoreHW(s8, vectorBuf.data, offset, stride, 1);
+    coopMatStoreHW(s16, scalarBuf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatStoreHW(s32, sharedData, offset, stride, gl_CooperativeMatrixLayoutColumnMajorHW);
+    coopMatStoreHW(f16, vectorBuf.data, offset, stride, 0);
+    coopMatStoreHW(f32, globalBuf.data, offset, stride, gl_CooperativeMatrixLayoutColumnMajorHW);
+}

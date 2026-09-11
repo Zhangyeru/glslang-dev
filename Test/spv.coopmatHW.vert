@@ -11,9 +11,9 @@ void main()
 {
     gl_Position = vec4(0.0);
 
-    const ivec2 srcMatrixShape = ivec2(32, 64);
-    const ivec2 srcMatrixOffset = ivec2(1, 2);
-    const ivec2 dstMatrixOffset = ivec2(3, 4);
+    const uint srcMatrixOffset = 16;
+    const uint dstMatrixOffset = 32;
+    const uint matrixStride = 32;
 
     coopmatHW<float16_t, 16, 8> A = coopmatHW<float16_t, 16, 8>(0.0);
     coopmatHW<float16_t, 8, 8> B = coopmatHW<float16_t, 8, 8>(1.0);
@@ -23,12 +23,12 @@ void main()
     coopmatHW<float16_t, 16, 8> R0;
     coopmatHW<float16_t, 16, 8> R1;
 
-    coopMatLoadHW(C, buf.data, srcMatrixShape, srcMatrixOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(C, buf.data, srcMatrixOffset, matrixStride, gl_CooperativeMatrixLayoutRowMajorHW);
     coopMatMulHW(M, S, B);
     coopMatMulAddHW(C, A, B, C);
     R0 = coopMatReduceHW(C, gl_CooperativeMatrixReduceRowHW, gl_CooperativeMatrixReduceAddHW);
     R1 = coopMatReduceHW(C, gl_CooperativeMatrixReduceColumnHW, gl_CooperativeMatrixReduceMaxHW);
-    coopMatStoreHW(C, buf.data, srcMatrixShape, dstMatrixOffset, gl_CooperativeMatrixLayoutColumnMajorHW);
+    coopMatStoreHW(C, buf.data, dstMatrixOffset, matrixStride, gl_CooperativeMatrixLayoutColumnMajorHW);
 
     int len = C.length() + M.length();
     coopmatHW<float16_t, 16, 8> D = coopmatHW<float16_t, 16, 8>(C);

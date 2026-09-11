@@ -12,23 +12,23 @@ layout(set = 0, binding = 0) buffer Buf { float16_t data[]; } buf;
 // left_count(2) >= right_count(2) → MatrixUseAHW
 void main()
 {
-    const ivec2 shape16 = ivec2(16, 16);
-    const ivec2 zeroOffset = ivec2(0, 0);
+    const uint offset = 0;
+    const uint stride = 16;
 
     coopmatHW<float16_t, 16, 16> X;
     coopmatHW<float16_t, 16, 16> B, B2, C0, C1, C2, C3;
     coopmatHW<float16_t, 16, 16> A0, A1;
     coopmatHW<float16_t, 16, 16> D0, D1, D2, D3;
 
-    coopMatLoadHW(X,  buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(B,  buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(B2, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(A0, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(A1, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(C0, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(C1, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(C2, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(C3, buf.data, shape16, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(X,  buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(B,  buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(B2, buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(A0, buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(A1, buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(C0, buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(C1, buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(C2, buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(C3, buf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
 
     // X as left: left_count += 2
     coopMatMulAddHW(D0, X,  B,  C0);

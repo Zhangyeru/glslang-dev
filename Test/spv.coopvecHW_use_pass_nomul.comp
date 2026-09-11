@@ -12,11 +12,11 @@ layout(set = 0, binding = 1) buffer OutBuf { float16_t data[]; } outBuf;
 // The use pass should default to MatrixUseAHW.
 void main()
 {
-    const ivec2 shape = ivec2(16, 16);
-    const ivec2 offset = ivec2(0, 0);
+    const uint offset = 0;
+    const uint stride = 16;
 
     coopmatHW<float16_t, 16, 16> passthrough;
 
-    coopMatLoadHW(passthrough, inBuf.data, shape, offset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatStoreHW(passthrough, outBuf.data, shape, offset, gl_CooperativeMatrixLayoutColumnMajorHW);
+    coopMatLoadHW(passthrough, inBuf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatStoreHW(passthrough, outBuf.data, offset, stride, gl_CooperativeMatrixLayoutColumnMajorHW);
 }

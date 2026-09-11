@@ -3346,8 +3346,8 @@ void Parameterize()
         InstructionDesc[OpCooperativeMatrixLoadNV].operands.push(OperandLiteralNumber, "", true);
         InstructionDesc[OpCooperativeMatrixLoadNV].operands.push(OperandId, "", true);
         InstructionDesc[OpCooperativeMatrixLoadHW].operands.push(OperandId, "'Pointer'");
-        InstructionDesc[OpCooperativeMatrixLoadHW].operands.push(OperandId, "'Matrix Shape'");
-        InstructionDesc[OpCooperativeMatrixLoadHW].operands.push(OperandId, "'Matrix Offset'");
+        InstructionDesc[OpCooperativeMatrixLoadHW].operands.push(OperandId, "'Offset'");
+        InstructionDesc[OpCooperativeMatrixLoadHW].operands.push(OperandId, "'Stride'");
         InstructionDesc[OpCooperativeMatrixLoadHW].operands.push(OperandId, "'Matrix Layout'");
         InstructionDesc[OpCooperativeMatrixLoadHW].setResultAndType(true, true);
 
@@ -3360,8 +3360,8 @@ void Parameterize()
         InstructionDesc[OpCooperativeMatrixStoreNV].operands.push(OperandId, "", true);
         InstructionDesc[OpCooperativeMatrixStoreHW].operands.push(OperandId, "'Pointer'");
         InstructionDesc[OpCooperativeMatrixStoreHW].operands.push(OperandId, "'Object'");
-        InstructionDesc[OpCooperativeMatrixStoreHW].operands.push(OperandId, "'Matrix Shape'");
-        InstructionDesc[OpCooperativeMatrixStoreHW].operands.push(OperandId, "'Matrix Offset'");
+        InstructionDesc[OpCooperativeMatrixStoreHW].operands.push(OperandId, "'Offset'");
+        InstructionDesc[OpCooperativeMatrixStoreHW].operands.push(OperandId, "'Stride'");
         InstructionDesc[OpCooperativeMatrixStoreHW].operands.push(OperandId, "'Matrix Layout'");
         InstructionDesc[OpCooperativeMatrixStoreHW].setResultAndType(false, false);
 

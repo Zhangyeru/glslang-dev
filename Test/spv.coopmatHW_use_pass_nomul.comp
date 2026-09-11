@@ -12,11 +12,11 @@ layout(set = 0, binding = 1) buffer OutBuf { float16_t data[]; } outBuf;
 // No matmul use. The opt pass should default this matrix type to MatrixUseAHW.
 void main()
 {
-    const ivec2 shape = ivec2(16, 16);
-    const ivec2 offset = ivec2(0, 0);
+    const uint offset = 0;
+    const uint stride = 16;
 
     coopmatHW<float16_t, 16, 16> value;
 
-    coopMatLoadHW(value, inBuf.data, shape, offset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatStoreHW(value, outBuf.data, shape, offset, gl_CooperativeMatrixLayoutColumnMajorHW);
+    coopMatLoadHW(value, inBuf.data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatStoreHW(value, outBuf.data, offset, stride, gl_CooperativeMatrixLayoutColumnMajorHW);
 }

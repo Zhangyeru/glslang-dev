@@ -14,19 +14,17 @@ layout(set = 0, binding = 3) buffer BufD { float16_t d_data[]; } bufD;
 // A(16x8) -> MatrixUseAHW, B(8x16) -> MatrixUseBHW, C(16x16)/D -> MatrixAccumulatorHW
 void main()
 {
-    const ivec2 shapeA = ivec2(16, 8);
-    const ivec2 shapeB = ivec2(8, 16);
-    const ivec2 shapeC = ivec2(16, 16);
-    const ivec2 zeroOffset = ivec2(0, 0);
+    const uint offset = 0;
+    const uint stride = 16;
 
     coopmatHW<float16_t, 16, 8>  A;
     coopmatHW<float16_t, 8, 16>  B;
     coopmatHW<float16_t, 16, 16> C;
     coopmatHW<float16_t, 16, 16> D;
 
-    coopMatLoadHW(A, bufA.a_data, shapeA, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(B, bufB.b_data, shapeB, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
-    coopMatLoadHW(C, bufC.c_data, shapeC, zeroOffset, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(A, bufA.a_data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(B, bufB.b_data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
+    coopMatLoadHW(C, bufC.c_data, offset, stride, gl_CooperativeMatrixLayoutRowMajorHW);
     coopMatMulAddHW(D, A, B, C);
-    coopMatStoreHW(D, bufD.d_data, shapeC, zeroOffset, gl_CooperativeMatrixLayoutColumnMajorHW);
+    coopMatStoreHW(D, bufD.d_data, offset, stride, gl_CooperativeMatrixLayoutColumnMajorHW);
 }
