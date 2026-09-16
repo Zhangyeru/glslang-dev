@@ -1,0 +1,16 @@
+#version 450 core
+#extension GL_HW_neural_shader : require
+layout(local_size_x = 1) in;
+layout(constant_id = 0) const int SPEC_LAYOUT = 0;
+layout(set = 0, binding = 0) buffer Data { float data[]; } buf;
+void main()
+{
+    coopmatHW<float, 2, 2> m;
+    int dynamicLayout = int(gl_GlobalInvocationID.x);
+    coopMatLoadHW(m, buf.data, ivec2(2), ivec2(0), dynamicLayout);
+    coopMatStoreHW(m, buf.data, ivec2(2), ivec2(0), dynamicLayout);
+    coopMatLoadHW(m, buf.data, ivec2(2), ivec2(0), SPEC_LAYOUT);
+    coopMatStoreHW(m, buf.data, ivec2(2), ivec2(0), SPEC_LAYOUT + 0);
+    coopMatLoadHW(m, buf.data, ivec2(2), ivec2(0), -1);
+    coopMatStoreHW(m, buf.data, ivec2(2), ivec2(0), 2);
+}

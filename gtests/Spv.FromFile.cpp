@@ -500,6 +500,7 @@ INSTANTIATE_TEST_SUITE_P(
         "spv.coopmatHW_matmulNarrowError.comp",
         "spv.coopmatHW_64bitTypesError.comp",
         "spv.coopmatHW_reduce_Error.comp",
+        "spv.coopmatHW_layoutError.comp",
         "spv.coopmatHW_lower_tile.comp",
         "spv.coopHW_no_contraction.comp",
         "spv.coopmat_Error.comp",

@@ -139,7 +139,7 @@ Matmul 根据 MAC 数量和类型组合选择 direct、packed helper、scalar fa
 - 同一 buffer 的 loop-carried RAW；
 - extension-free 后无 HW residue；
 - extension-free 后无 replicated-composites opcode、capability 或 extension residue；
-- specialization constant 在 lower 前统一 freeze/fold，已覆盖 shape、layout、reduce control 的
+- specialization constant 在 lower 前统一 freeze/fold，已覆盖 shape、reduce control 的
   default/partial/full 映射且 lower 后无 `OpSpecConstant*` residue；
 - Vulkan 数值 reference 和 perf ratio 检查。
 
@@ -149,10 +149,10 @@ Matmul 根据 MAC 数量和类型组合选择 direct、packed helper、scalar fa
 
 | 能力 | 当前 vk_hw 覆盖 |
 |---|---:|
-| ColumnMajor cooperative matrix memory | 2 个 specialization variant |
+| ColumnMajor cooperative matrix memory | 固定 layout=1 的 `load_store_f32_flow_columnmajor_5x7` |
 | PhysicalStorageBuffer / buffer_reference | 0 |
 | cooperative load/store 上的 MemoryAccess operand | 0 |
-| Compute cooperative `OpVectorExtractDynamic` | 0 |
+| Compute cooperative `OpVectorExtractDynamic` | 两个大常量 packed/scalar flow shader |
 | Compute cooperative `OpVectorInsertDynamic` | 0 |
 | cooperative GLSL.std.450 | 只有 FMax |
 | UBO cooperative source | 1 个 f32 vecmatmul |
@@ -520,7 +520,7 @@ Specialization 部分已完成。`vk_hw` 对所有 shader 在 HW lower 前统一
 `--freeze-spec-const` 和 `--fold-spec-const-op-composite`，有外部值时先执行
 `--set-spec-const-default-value`，lower 后再 fold 一次。已增加：
 
-- `load_store_f32_flow_spec_controls.comp`：matrix rows/columns/layout；
+- `load_store_f32_flow_spec_controls.comp`：matrix rows/columns（layout 固定为普通常量 0）；
 - `vecmatmul_f32_flow_spec_shape.comp`：vector length 和 matrix rows/columns，维度通过
   `OpSpecConstantOp` 的 `BASE + 1` 表达式派生；
 - `reduce_f32_flow_spec_controls.comp`：matrix rows/columns、reduce axis/op；
@@ -529,10 +529,9 @@ Specialization 部分已完成。`vk_hw` 对所有 shader 在 HW lower 前统一
   SpecId；
 - 每个 lowered variant 都检查无 `OpSpecConstant*` 和 HW residue，并通过 `spirv-val`。
 
-Raw HW lower 对未冻结 spec shape/layout/reduce control 的 negative tests 仍保留，用于锁定 pass 的
-输入前置条件。当前剩余的 validator-legal 缺口只有 runtime SSA RowMajor/ColumnMajor
-dispatch。Runtime reduce axis/op 以及 runtime cooperative type 尺寸会被 validator 的 constant-instruction
-规则拒绝；只有当 validator 未来扩大合法集时，才需要增加对应动态 dispatch 测试。
+Raw HW lower 对未冻结 spec shape/reduce control 的负例继续保留。Matrix layout 只允许普通常量
+0/1，runtime、spec constant 及其表达式由前端与 validator 拒绝，不再计划动态 layout dispatch。
+原 load/store spec fixture 删除 layout SpecId，保留三个 shape variant；ColumnMajor 使用独立固定常量用例。
 
 ### 9.5 类型边界和 hard limit
 
@@ -549,13 +548,12 @@ dispatch。Runtime reduce axis/op 以及 runtime cooperative type 尺寸会被 v
 component 对应一个 leaf lane。SPIRV-Tools focused tests 覆盖转换方向、signedness、nested pointer、loop 和
 direct/fusion recovery；本阶段不修改 vk_hw shader/golden，后续仍需补充这些访问的 Vulkan 数值运行覆盖。
 
-以下 hard limit 仍为需要与 lowering 功能开发同步处理的合法输入缺口：
-
-- 超过 `max_elements` 但可由 loop 表达的合法 shape；
-- 超过 `max_matmul_macs` 但可由 rolled helper 表达的合法 matmul。
-
-这些测试应与实现放在同一个 change 中。若当前先加入，应作为明确的 known-gap/expected-failure test，修复后立即
-转换为普通成功测试，避免 expected failure 长期固化。
+两个 P0 的尺寸/常量实现与测试已同步更新：默认 element/MAC 限额为 0（不启用），显式正值仍拒绝
+超限输入；uint32 索引表示检查保持。`HwLargeConstantTest` 覆盖超过旧限额的循环 lowering、65,532/65,533
+constituent 边界、packed/scalar、函数及 Private/Output 初始化、Phi、多个 entry point 和嵌套 aggregate。
+`load_store_f32_flow_bigconstantpacked_5x7` 与 `load_store_f32_flow_bigconstantscalar_5x7` 检查真实大常量的
+动态首尾元素，并通过原有 load/store reference 验证输出。它们是 function flow，不加入现有 perf measured 集。
+非 Vulkan 非零共享/只读全局初始化不在这次循环物化范围；该边界不能记为已覆盖。
 
 ## 10. Runner 与测试框架改造建议
 
@@ -718,7 +716,7 @@ AND no HW residue
 7. 增加 descriptor alias 与 direct/fusion safety 测试；
 8. 增加 buffer_reference/BDA；
 9. 增加 graphics runtime；
-10. 随 lowering 功能开发补齐 core opcode、runtime matrix layout 和 hard-limit case；
+10. 随 lowering 功能开发补齐 core opcode、layout 常量负例与尺寸/大常量边界 case；
 11. 建立 capability matrix、differential 和 fuzz 长期测试。
 
 ## 13. 验收标准

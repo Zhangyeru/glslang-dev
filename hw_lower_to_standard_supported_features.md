@@ -4,12 +4,9 @@
 
 当前 `hw-lower-to-standard` 已能完整处理本文定义的 cooperative matrix/vector 子集，将其转换为标准 SPIR-V array、vec2 或 scalar 代码；但还不能等价 lower 整个 `SPV_HW_neural_shader`。
 
-本文档描述 2026-08-27 对 `lower-0605` 分支的审查与修复状态，基线提交为：
-
-- glslang：`74e7fd30`
-- SPIRV-Tools：`572e5ee9`
-
-本文所述 direct 路径、小型 scalar 逐元素快路径和 golden 更新均需跨两个仓库配对维护。实现没有修改 `source/val`。
+本版按 2026-09-15 `lower-0605` 工作区更新两个 P0：基于 glslang `e252d0e5` 与 SPIRV-Tools
+`5e242e48`，同步修改前端、validator、lower、测试和 golden。最终验证见
+[完备性文档](hw_lower_to_standard_language_completeness.md)。
 
 入口与 lowering 调度位于 [`hw_lower_to_standard_pass.cpp`](External/spirv-tools/source/opt/hw_lower_to_standard_pass.cpp)；类型、校验、aggregate、elementwise、memory、matmul 和 direct 路径分别拆分在同目录的 `hw_lower_to_standard_*.cpp` 中，共享内部 helper 位于 [`hw_lower_to_standard_pass_internal.h`](External/spirv-tools/source/opt/hw_lower_to_standard_pass_internal.h)。
 
@@ -22,9 +19,9 @@
 | 类型 | `OpTypeCooperativeMatrixHW` | lower 为 packed vec2 array 或 scalar array |
 | 类型 | `OpTypeCooperativeVectorHW` | lower 为 packed vec2 array 或 scalar array |
 | 内存 | `OpCooperativeMatrixLoadHW` | RowMajor/ColumnMajor，packed/scalar/循环路径 |
-| 内存 | `OpCooperativeMatrixStoreHW` | 同上，支持 matmul-store 融合 |
+| 内存 | `OpCooperativeMatrixStoreHW` | 同上；store 独立 lowering |
 | 内存 | `OpCooperativeVectorLoadHW` | packed/scalar/循环路径 |
-| 内存 | `OpCooperativeVectorStoreHW` | 同上，支持 vecmatmul-store 融合 |
+| 内存 | `OpCooperativeVectorStoreHW` | 同上；store 独立 lowering |
 | 计算 | `OpCooperativeMatrixMulAddHW` | `A×B+C`，浮点、整数、mixed precision |
 | 计算 | `OpCooperativeVectorMatrixMulHW` | `Vector×Matrix` |
 | 计算 | `OpCooperativeVectorMatrixMulAddHW` | `Vector×Matrix+Bias` |
@@ -57,14 +54,16 @@
 ### 4.1 Lower 与 fusion shape 速查
 
 lower pass 没有固定的 shape 白名单。只要进入 raw lower 的 shape 已是普通常量、维度为正并且
-不超过配置的 hard limit，奇数维度和 tail 都属于支持范围。Shader source 可使用
+可由 uint32 element 索引表示且不超过显式配置的非零 hard limit，奇数维度和 tail 都属于支持范围。Shader source 可使用
 specialization-constant shape，但必须先按 4.2 节执行 freeze/fold normalization：
 
-| 对象或操作 | 支持的逻辑 shape | 默认 hard limit |
+默认 `max_elements=0`、`max_matmul_macs=0` 表示不启用人为限额；下表的 max 比较仅在设置非零值时生效。
+
+| 对象或操作 | 支持的逻辑 shape | 显式策略上限 |
 |---|---|---:|
-| Cooperative vector type | `V[L]` | `1 <= L <= max_elements`，默认 `1,048,576` |
+| Cooperative vector type | `V[L]` | `1 <= L <= max_elements`；默认 0，不启用 |
 | Cooperative matrix type | `M[R×C]` | `R >= 1`、`C >= 1`、`R*C <= max_elements` |
-| Matrix mul-add | `A[M×K] * B[K×N] + C[M×N] -> Result[M×N]` | `M*K`、`K*N`、`M*N <= max_elements`，并且 `M*K*N <= max_matmul_macs`；后者默认 `16,777,216` |
+| Matrix mul-add | `A[M×K] * B[K×N] + C[M×N] -> Result[M×N]` | `M*K`、`K*N`、`M*N <= max_elements`，并且 `M*K*N <= max_matmul_macs`；两者默认 0，不启用 |
 | Vector matmul | `Input[K] * Matrix[K×N] -> Result[N]` | `K`、`N <= max_elements`，`K*N <= max_elements` 且 `K*N <= max_matmul_macs` |
 | Vector matmul-add | `Input[K] * Matrix[K×N] + Bias[N] -> Result[N]` | 与 vector matmul 相同；`Bias` 必须为 `[N]` |
 | Reduce、conversion 和逐元素操作 | 输入输出保持相同的 vector length 或 matrix rows/cols | 每个 cooperative type 分别满足上述 element limit |
@@ -100,6 +99,10 @@ Hidden[N] * Matrix1[N×P] (+ Bias1[P]) -> Output[P]
 
 ### 4.2 常量与 specialization constant
 
+Matrix load/store 的 layout 只允许普通整数常量 0/1，前端和 validator 直接拒绝 runtime SSA、undef、
+specialization constant 及其表达式。整数 `OpConstantNull` 表示 0。Layout 不属于下述 specialization 支持。
+
+
 Standalone `HwLowerToStandardPass` 的输入 contract 仍要求 matrix rows/cols、vector length、matrix
 load/store layout 和 reduce axis/combine 是普通常量。Raw pass 不自行选择 `OpSpecConstant`
 默认值，因此会明确拒绝未解析的 specialization-dependent 类型尺寸和控制参数。
@@ -116,13 +119,13 @@ load/store layout 和 reduce axis/combine 是普通常量。Raw pass 不自行�
 
 set pass 只在映射非空时加入，SpecId 按数值排序。空映射表示所有 SpecId 使用模块默认值；
 部分映射仅覆盖指定 SpecId，其余仍使用默认值；不含 specialization constant 的模块中
-freeze/fold 是 no-op。这使 spec-constant rows/cols/length、matrix layout 和 reduce axis/op 在
+freeze/fold 是 no-op。这使 spec-constant rows/cols/length 和 reduce axis/op 在
 raw lower 之前成为普通常量。Lower 后再 fold 可清理重建的 spec composite，最终 artifact 不允许
 残留任何 `OpSpecConstant*`。
 
 `vk_hw` 的同名 `.spec.json` 用 `SpecializationCase(artifact_stem, values)` 定义构建期 variant。
 当前用 3 个 shader 类的 default/partial/full 各 3 个 variant，共 9 个 Vulkan function case，覆盖
-matrix shape/layout、vector/matrix shape 和 reduce shape/axis/op。每个 frozen module 仅对应一组最终
+matrix shape、vector/matrix shape 和 reduce shape/axis/op。每个 frozen module 仅对应一组最终
 specialization 状态，生产驱动的缓存键必须包含该完整状态。Sidecar 的 override 当前只接受直接 integer
 specialization constant；构建时严格校验 SpecId、整数类型和位宽范围，并拒绝 orphan/跨 stage 歧义的 sidecar。
 Packed/scalar 模式始终由 source shader 名决定，variant 的输出名不能改变 lowering 模式。
@@ -145,7 +148,10 @@ Composite constituent 规则与 validator 保持一致：
 - 普通 vector `OpConstantComposite` / `OpSpecConstantComposite`：必须提供恰好 `length` 个直接 component scalar constant/undef，不能嵌套普通 vector constant
 - 两个 `*ConstantCompositeReplicateEXT`：matrix/vector 都只接受一个直接 component scalar constituent
 - 普通 `OpConstantComposite` 不能引用 spec constant；`OpSpecConstantComposite` 可以引用普通或 spec constant
-- lower 后单条 composite instruction 最多 65,532 个 constituent：scalar layout 按 element 数计，packed layout 按 vec2 piece 数计；超过限制会在修改模块前失败
+- lower 后单条 composite instruction 最多 65,532 个 constituent：scalar 按 element 数计，packed 按 vec2 piece 数计；
+  超限常量由紧凑依赖描述和循环 helper 物化，普通尺寸保持静态常量，不改变外部布局。
+- Function、Private 和合法 Output 初始化受支持；非 Vulkan 非零共享/只读全局 initializer 不在本次范围。
+- 大广播直接填充本地存储，动态 vector extract 避免整数组复制；循环物化仍有存储和初始化成本。
 
 ## 5. Matrix Reduce
 
@@ -599,12 +605,12 @@ vector offset 支持 1–64 位 signed/unsigned integer。这里的 64 位仅用
 
 | 参数 | 默认值 |
 |---|---:|
-| `max_elements` | 1,048,576 |
-| `max_matmul_macs` | 16,777,216 |
+| `max_elements` | 0（不启用策略限额） |
+| `max_matmul_macs` | 0（不启用策略限额） |
 | `max_unrolled_elements` | 4,096 |
 | `max_unrolled_matmul_macs` | 4,096 |
 
-超过 hard limit 时失败；对受 unroll threshold 控制的 generic 路径，超过阈值时改为结构化循环：
+仅超过显式设置的非零 hard limit 时按策略拒绝；对受 unroll threshold 控制的 generic 路径，超过阈值时改为结构化循环：
 
 - 大 load/store：逐元素 memory loop
 - 大 matmul：output × K 双层循环
@@ -614,6 +620,9 @@ vector offset 支持 1–64 位 signed/unsigned integer。这里的 64 位仅用
 matrix/vector direct 在 MAC 数小于等于有效 unroll 阈值时生成无 `OpLoopMerge` 的完全展开 helper，超过时生成 rolled helper；阈值边界包含在 unrolled 一侧。有效阈值默认为 `max_unrolled_matmul_macs`，f32 result 对 matrix 再限制为 2048、对 vector 再限制为 256。该阈值不会关闭 direct，只有总体 `max_elements` 或 `max_matmul_macs` hard limit 会阻止 direct 路径。
 
 unroll threshold 内部还会截断到 65,532，避免生成无法序列化的超长 composite instruction。
+
+CLI `max-elements=0,max-macs=0` 与 C++ 零值含义相同。Unroll 值必须为正，并且不能超过非零 hard limit。
+uint32 element 索引表示、uint64 MAC 计数、指令长度和 ID 分配检查仍保留。
 
 公共配置定义位于 [`HwLowerToStandardOptions`](External/spirv-tools/include/spirv-tools/optimizer.hpp)。
 
@@ -669,20 +678,18 @@ unroll-macs=N
 当前不支持：
 
 - cooperative component `f64`、`i64/u64`、`bool`
-- 未经 freeze/fold normalization 的 specialization-dependent shape、layout 和 reduce control 不是
+- 未经 freeze/fold normalization 的 specialization-dependent shape 和 reduce control 不是
   raw lower 的直接输入；按 4.2 节预处理后已支持
-- runtime SSA matrix layout dispatch；validator 允许 integer scalar layout，但 lower 尚只支持
-  已解析的 RowMajor/ColumnMajor 常量
+- runtime SSA 与 specialization matrix layout：validator 拒绝；只有普通 RowMajor/ColumnMajor 常量合法
 - float/integer 跨域 matmul
 - accumulator narrowing
 - 与 result 类型不同的 C/Bias
 - integer saturation
-- `NoContraction` cooperative matrix matmul 无法 lower；HW vector-matmul 在 validator 和 lower preflight 阶段即被拒绝
 - mixed-width cooperative `OpUDiv`
 - packed integer vec2
 - `vec2[] + scalar tail` 混合内部表示
 - RowMajor/ColumnMajor 之外的 matrix layout
-- pointee 为 struct、ordinary vector 或不同 component array 的 HW memory access
+- 不符合既有 numeric leaf / nested array pointer 模型的 HW memory access
 - 缺少显式 `Aligned` 的 PhysicalStorageBuffer HW access
 - 自动越界检查、clamp 或零填充
 - cooperative matrix result 上的 GLSL.std.450 `OpExtInst`
@@ -694,7 +701,7 @@ Runtime cooperative type 尺寸和 runtime reduce axis/op 当前被 validator �
 
 ## 15. 当前验证状态
 
-本次审计现场运行结果：
+以下为历史审计记录；两个 P0 修改后的验证以完备性文档所链接的 `hw_p0_final_*` 日志为准：
 
 - `cmake --build build -j8`：通过
 - SPIRV-Tools CTest：32/32 通过

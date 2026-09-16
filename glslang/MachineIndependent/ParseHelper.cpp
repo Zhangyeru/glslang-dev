@@ -3702,6 +3702,17 @@ void TParseContext::builtInOpCheck(const TSourceLoc& loc, const TFunction& fnCan
         if (!(*argp)[6]->getAsTyped()->getType().getQualifier().isConstant())
             error(loc, "argument must be compile-time constant", "matrixInterpretation", "");
         break;
+    case EOpCooperativeMatrixLoadHW:
+    case EOpCooperativeMatrixStoreHW: {
+        TIntermTyped* layout = (*argp)[4]->getAsTyped();
+        int value = 0;
+        if (layout->getQualifier().isSpecConstant() || !getConstantIntValue(layout, value))
+            error(loc, "must be an ordinary compile-time constant (specialization constants are not allowed)",
+                  "matrixLayout", "");
+        else if (value < 0 || value > 1)
+            error(loc, "must be 0 (RowMajor) or 1 (ColumnMajor)", "matrixLayout", "");
+        break;
+    }
     case EOpCooperativeMatrixReduceHW:
         if (!(*argp)[1]->getAsTyped()->getType().getQualifier().isConstant())
             error(loc, "argument must be compile-time constant", "reduceMask", "");

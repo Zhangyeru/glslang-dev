@@ -1,0 +1,11 @@
+spv.coopmatHW_layoutError.comp
+ERROR: 0:10: 'matrixLayout' : must be an ordinary compile-time constant (specialization constants are not allowed) 
+ERROR: 0:11: 'matrixLayout' : must be an ordinary compile-time constant (specialization constants are not allowed) 
+ERROR: 0:12: 'matrixLayout' : must be an ordinary compile-time constant (specialization constants are not allowed) 
+ERROR: 0:13: 'matrixLayout' : must be an ordinary compile-time constant (specialization constants are not allowed) 
+ERROR: 0:14: 'matrixLayout' : must be 0 (RowMajor) or 1 (ColumnMajor) 
+ERROR: 0:15: 'matrixLayout' : must be 0 (RowMajor) or 1 (ColumnMajor) 
+ERROR: 6 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link
