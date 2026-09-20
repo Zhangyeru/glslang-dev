@@ -2047,6 +2047,20 @@ enum Op {
     OpCooperativeMatrixMulAddNV = 5361,
     OpCooperativeMatrixLengthNV = 5362,
     OpTypeCooperativeMatrixHW = 6601,
+    OpLoadMatrixB8X1Burst1RowHW = 6700,
+    OpLoadMatrixB8X1Burst2RowHW = 6701,
+    OpLoadMatrixB8X2Burst1RowHW = 6702,
+    OpLoadMatrixB8X2Burst2RowHW = 6703,
+    OpLoadMatrixB8X1Burst1ColumnHW = 6704,
+    OpLoadMatrixB8X1Burst2ColumnHW = 6705,
+    OpLoadMatrixB8X2Burst1ColumnHW = 6706,
+    OpLoadMatrixB8X2Burst2ColumnHW = 6707,
+    OpLoadMatrixB16X1Burst1RowHW = 6708,
+    OpLoadMatrixB16X1Burst2RowHW = 6709,
+    OpLoadMatrixB16X2Burst1RowHW = 6710,
+    OpLoadMatrixB16X2Burst2RowHW = 6711,
+    OpLoadMatrixB16X1Burst2ColumnHW = 6712,
+    OpLoadMatrixB16X2Burst2ColumnHW = 6713,
     OpCooperativeMatrixLoadHW = 6603,
     OpCooperativeMatrixStoreHW = 6604,
     OpCooperativeMatrixMulAddHW = 6605,
@@ -2858,6 +2872,20 @@ inline void HasResultAndType(Op opcode, bool *hasResult, bool *hasResultType) {
     case OpTypeCooperativeMatrixNV: *hasResult = true; *hasResultType = false; break;
     case OpTypeCooperativeMatrixHW: *hasResult = true; *hasResultType = false; break;
     case OpCooperativeMatrixLoadNV: *hasResult = true; *hasResultType = true; break;
+    case OpLoadMatrixB8X1Burst1RowHW: *hasResult = true; *hasResultType = true; break;
+    case OpLoadMatrixB8X1Burst2RowHW: *hasResult = true; *hasResultType = true; break;
+    case OpLoadMatrixB8X2Burst1RowHW: *hasResult = true; *hasResultType = true; break;
+    case OpLoadMatrixB8X2Burst2RowHW: *hasResult = true; *hasResultType = true; break;
+    case OpLoadMatrixB8X1Burst1ColumnHW: *hasResult = true; *hasResultType = true; break;
+    case OpLoadMatrixB8X1Burst2ColumnHW: *hasResult = true; *hasResultType = true; break;
+    case OpLoadMatrixB8X2Burst1ColumnHW: *hasResult = true; *hasResultType = true; break;
+    case OpLoadMatrixB8X2Burst2ColumnHW: *hasResult = true; *hasResultType = true; break;
+    case OpLoadMatrixB16X1Burst1RowHW: *hasResult = true; *hasResultType = true; break;
+    case OpLoadMatrixB16X1Burst2RowHW: *hasResult = true; *hasResultType = true; break;
+    case OpLoadMatrixB16X2Burst1RowHW: *hasResult = true; *hasResultType = true; break;
+    case OpLoadMatrixB16X2Burst2RowHW: *hasResult = true; *hasResultType = true; break;
+    case OpLoadMatrixB16X1Burst2ColumnHW: *hasResult = true; *hasResultType = true; break;
+    case OpLoadMatrixB16X2Burst2ColumnHW: *hasResult = true; *hasResultType = true; break;
     case OpCooperativeMatrixLoadHW: *hasResult = true; *hasResultType = true; break;
     case OpCooperativeMatrixStoreNV: *hasResult = false; *hasResultType = false; break;
     case OpCooperativeMatrixStoreHW: *hasResult = false; *hasResultType = false; break;
@@ -4799,6 +4827,20 @@ inline const char* OpToString(Op value) {
     case OpTypeCooperativeMatrixNV: return "OpTypeCooperativeMatrixNV";
     case OpTypeCooperativeMatrixHW: return "OpTypeCooperativeMatrixHW";
     case OpCooperativeMatrixLoadNV: return "OpCooperativeMatrixLoadNV";
+    case OpLoadMatrixB8X1Burst1RowHW: return "OpLoadMatrixB8X1Burst1RowHW";
+    case OpLoadMatrixB8X1Burst2RowHW: return "OpLoadMatrixB8X1Burst2RowHW";
+    case OpLoadMatrixB8X2Burst1RowHW: return "OpLoadMatrixB8X2Burst1RowHW";
+    case OpLoadMatrixB8X2Burst2RowHW: return "OpLoadMatrixB8X2Burst2RowHW";
+    case OpLoadMatrixB8X1Burst1ColumnHW: return "OpLoadMatrixB8X1Burst1ColumnHW";
+    case OpLoadMatrixB8X1Burst2ColumnHW: return "OpLoadMatrixB8X1Burst2ColumnHW";
+    case OpLoadMatrixB8X2Burst1ColumnHW: return "OpLoadMatrixB8X2Burst1ColumnHW";
+    case OpLoadMatrixB8X2Burst2ColumnHW: return "OpLoadMatrixB8X2Burst2ColumnHW";
+    case OpLoadMatrixB16X1Burst1RowHW: return "OpLoadMatrixB16X1Burst1RowHW";
+    case OpLoadMatrixB16X1Burst2RowHW: return "OpLoadMatrixB16X1Burst2RowHW";
+    case OpLoadMatrixB16X2Burst1RowHW: return "OpLoadMatrixB16X2Burst1RowHW";
+    case OpLoadMatrixB16X2Burst2RowHW: return "OpLoadMatrixB16X2Burst2RowHW";
+    case OpLoadMatrixB16X1Burst2ColumnHW: return "OpLoadMatrixB16X1Burst2ColumnHW";
+    case OpLoadMatrixB16X2Burst2ColumnHW: return "OpLoadMatrixB16X2Burst2ColumnHW";
     case OpCooperativeMatrixLoadHW: return "OpCooperativeMatrixLoadHW";
     case OpCooperativeMatrixStoreNV: return "OpCooperativeMatrixStoreNV";
     case OpCooperativeMatrixStoreHW: return "OpCooperativeMatrixStoreHW";

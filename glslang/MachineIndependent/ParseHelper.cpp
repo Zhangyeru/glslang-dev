@@ -39,6 +39,7 @@
 //
 
 #include "ParseHelper.h"
+#include "../Include/LoadMatrixHW.h"
 #include "Initialize.h"
 #include "Scan.h"
 
@@ -296,6 +297,33 @@ bool getConstantIntValue(TIntermNode* node, int& value)
 
     value = (*constArray)[0].getIConst();
     return true;
+}
+
+void checkLoadMatrixHWCall(TParseContext& parseContext, const TSourceLoc& loc, const TLoadMatrixHWVariant& variant,
+                           const TIntermSequence& arguments)
+{
+    const TType& matrix = arguments[0]->getAsTyped()->getType();
+    if (!matrix.isCoopMatHW() || matrix.getBasicType() != variant.componentType ||
+        getCoopMatHWRows(matrix) != variant.rows || getCoopMatHWColumns(matrix) != variant.columns)
+        parseContext.error(loc, "matrix component type and shape must match the ldmatrix variant", variant.name, "");
+
+    const TType& buffer = arguments[1]->getAsTyped()->getType();
+    if (!buffer.isArray() || buffer.isArrayOfArrays())
+        parseContext.error(loc, "buffer must be a one-dimensional array of numeric scalars or vectors", variant.name,
+                           "");
+    if (buffer.getQualifier().storage != EvqBuffer && buffer.getQualifier().storage != EvqShared)
+        parseContext.error(loc, "buffer must use buffer or shared storage", variant.name, "");
+    if (buffer.getQualifier().writeonly)
+        parseContext.error(loc, "cannot load from a writeonly buffer", variant.name, "");
+
+    TIntermTyped* offset = arguments[2]->getAsTyped();
+    if (offset->getBasicType() != EbtUint || !offset->getType().isScalar() || offset->getType().isArray())
+        parseContext.error(loc, "offset must be a uint scalar", variant.name, "");
+    int value = 0;
+    if (offset->getQualifier().isFrontEndConstant() && getConstantIntValue(offset, value) &&
+        static_cast<unsigned int>(value) % variant.offsetAlignment != 0)
+        parseContext.error(loc, "offset must be aligned to the burst size in bytes", variant.name,
+                           "requires %u-byte alignment", variant.offsetAlignment);
 }
 
 bool handleCoopVecHWMatMulBuiltin(TParseContext& parseContext, const TSourceLoc& loc,
@@ -1846,6 +1874,12 @@ TIntermTyped* TParseContext::handleFunctionCall(const TSourceLoc& loc, TFunction
                     // shared variable. It is acceptable to pass an element of an array or a single component of a vector to the
                     // memargument of an atomic memory function, as long as the underlying array or vector is a buffer or
                     // shared variable.
+                }
+
+                // Check the original types before implicit input conversions.
+                if (builtIn) {
+                    if (const auto* variant = getLoadMatrixHWVariant(fnCandidate->getBuiltInOp()))
+                        checkLoadMatrixHWCall(*this, loc, *variant, aggregate->getSequence());
                 }
 
                 // Convert 'in' arguments

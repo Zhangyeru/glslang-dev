@@ -1,0 +1,25 @@
+spv.ldmatrixHW_Error.comp
+ERROR: 0:22: 'ldmatrix_b8_x1_burst1_R' : matrix component type and shape must match the ldmatrix variant 
+ERROR: 0:23: 'ldmatrix_b8_x1_burst1_R' : matrix component type and shape must match the ldmatrix variant 
+ERROR: 0:24: 'ldmatrix_b8_x1_burst1_R' : matrix component type and shape must match the ldmatrix variant 
+ERROR: 0:25: 'ldmatrix_b8_x1_burst1_R' : matrix component type and shape must match the ldmatrix variant 
+ERROR: 0:26: 'ldmatrix_b8_x1_burst1_R' : offset must be a uint scalar 
+ERROR: 0:27: 'ldmatrix_b8_x1_burst1_R' : no matching overloaded function found 
+ERROR: 0:28: 'ldmatrix_b8_x1_burst1_R' : no matching overloaded function found 
+ERROR: 0:29: 'ldmatrix_b8_x1_burst1_R' : offset must be aligned to the burst size in bytes requires 16-byte alignment
+ERROR: 0:30: 'ldmatrix_b16_x1_burst2_R' : offset must be aligned to the burst size in bytes requires 32-byte alignment
+ERROR: 0:31: 'ldmatrix_b8_x1_burst1_R' : buffer must use buffer or shared storage 
+ERROR: 0:32: 'ldmatrix_b8_x1_burst1_R' : buffer must use buffer or shared storage 
+ERROR: 0:33: 'ldmatrix_b8_x1_burst1_R' : cannot load from a writeonly buffer 
+ERROR: 0:34: 'ldmatrix_b8_x1_burst1_R' : no matching overloaded function found 
+ERROR: 0:35: 'ldmatrix_b8_x1_burst1_R' : no matching overloaded function found 
+ERROR: 0:36: 'ldmatrix_b8_x1_burst1_R' : no matching overloaded function found 
+ERROR: 0:37: 'ldmatrix_b8_x1_burst1_R' : no matching overloaded function found 
+ERROR: 0:38: 'ldmatrix_b8_x1_burst1_R' : no matching overloaded function found 
+ERROR: 0:39: 'assign' :  l-value required (can't modify a const)
+ERROR: 0:39: 'out' : Non-L-value cannot be passed for 'out' or 'inout' parameters. 
+ERROR: 0:40: 'ldmatrix_b16_x1_burst1_C' : no matching overloaded function found 
+ERROR: 20 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

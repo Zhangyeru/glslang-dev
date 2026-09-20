@@ -1577,6 +1577,20 @@ const char* OpcodeString(int op)
     case OpTypeCooperativeMatrixNV:         return "OpTypeCooperativeMatrixNV";
     case OpTypeCooperativeMatrixHW:         return "OpTypeCooperativeMatrixHW";
     case OpCooperativeMatrixLoadNV:         return "OpCooperativeMatrixLoadNV";
+    case OpLoadMatrixB8X1Burst1RowHW: return "OpLoadMatrixB8X1Burst1RowHW";
+    case OpLoadMatrixB8X1Burst2RowHW: return "OpLoadMatrixB8X1Burst2RowHW";
+    case OpLoadMatrixB8X2Burst1RowHW: return "OpLoadMatrixB8X2Burst1RowHW";
+    case OpLoadMatrixB8X2Burst2RowHW: return "OpLoadMatrixB8X2Burst2RowHW";
+    case OpLoadMatrixB8X1Burst1ColumnHW: return "OpLoadMatrixB8X1Burst1ColumnHW";
+    case OpLoadMatrixB8X1Burst2ColumnHW: return "OpLoadMatrixB8X1Burst2ColumnHW";
+    case OpLoadMatrixB8X2Burst1ColumnHW: return "OpLoadMatrixB8X2Burst1ColumnHW";
+    case OpLoadMatrixB8X2Burst2ColumnHW: return "OpLoadMatrixB8X2Burst2ColumnHW";
+    case OpLoadMatrixB16X1Burst1RowHW: return "OpLoadMatrixB16X1Burst1RowHW";
+    case OpLoadMatrixB16X1Burst2RowHW: return "OpLoadMatrixB16X1Burst2RowHW";
+    case OpLoadMatrixB16X2Burst1RowHW: return "OpLoadMatrixB16X2Burst1RowHW";
+    case OpLoadMatrixB16X2Burst2RowHW: return "OpLoadMatrixB16X2Burst2RowHW";
+    case OpLoadMatrixB16X1Burst2ColumnHW: return "OpLoadMatrixB16X1Burst2ColumnHW";
+    case OpLoadMatrixB16X2Burst2ColumnHW: return "OpLoadMatrixB16X2Burst2ColumnHW";
     case OpCooperativeMatrixLoadHW:         return "OpCooperativeMatrixLoadHW";
     case OpCooperativeMatrixStoreNV:        return "OpCooperativeMatrixStoreNV";
     case OpCooperativeMatrixStoreHW:        return "OpCooperativeMatrixStoreHW";
@@ -3345,6 +3359,30 @@ void Parameterize()
         InstructionDesc[OpCooperativeMatrixLoadNV].operands.push(OperandMemoryAccess, "'Memory Access'");
         InstructionDesc[OpCooperativeMatrixLoadNV].operands.push(OperandLiteralNumber, "", true);
         InstructionDesc[OpCooperativeMatrixLoadNV].operands.push(OperandId, "", true);
+        for (Op opcode : {
+            OpLoadMatrixB8X1Burst1RowHW,
+            OpLoadMatrixB8X1Burst2RowHW,
+            OpLoadMatrixB8X2Burst1RowHW,
+            OpLoadMatrixB8X2Burst2RowHW,
+            OpLoadMatrixB8X1Burst1ColumnHW,
+            OpLoadMatrixB8X1Burst2ColumnHW,
+            OpLoadMatrixB8X2Burst1ColumnHW,
+            OpLoadMatrixB8X2Burst2ColumnHW,
+            OpLoadMatrixB16X1Burst1RowHW,
+            OpLoadMatrixB16X1Burst2RowHW,
+            OpLoadMatrixB16X2Burst1RowHW,
+            OpLoadMatrixB16X2Burst2RowHW,
+            OpLoadMatrixB16X1Burst2ColumnHW,
+            OpLoadMatrixB16X2Burst2ColumnHW,
+        }) {
+            InstructionDesc[opcode].operands.push(OperandId, "'Pointer'");
+            InstructionDesc[opcode].operands.push(OperandId, "'Offset'");
+            InstructionDesc[opcode].operands.push(OperandMemoryAccess, "'Memory Access'", true);
+            InstructionDesc[opcode].operands.push(OperandLiteralNumber, "", true);
+            InstructionDesc[opcode].operands.push(OperandId, "", true);
+            InstructionDesc[opcode].setResultAndType(true, true);
+        }
+
         InstructionDesc[OpCooperativeMatrixLoadHW].operands.push(OperandId, "'Pointer'");
         InstructionDesc[OpCooperativeMatrixLoadHW].operands.push(OperandId, "'Offset'");
         InstructionDesc[OpCooperativeMatrixLoadHW].operands.push(OperandId, "'Stride'");

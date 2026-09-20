@@ -56,9 +56,10 @@ namespace spv {
 }
 
 // Glslang includes
-#include "../glslang/MachineIndependent/localintermediate.h"
-#include "../glslang/MachineIndependent/SymbolTable.h"
 #include "../glslang/Include/Common.h"
+#include "../glslang/Include/LoadMatrixHW.h"
+#include "../glslang/MachineIndependent/SymbolTable.h"
+#include "../glslang/MachineIndependent/localintermediate.h"
 
 // Build-time generated includes
 #include "glslang/build_info.h"
@@ -4299,6 +4300,20 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
     case glslang::EOpCooperativeMatrixStore:
     case glslang::EOpCooperativeMatrixLoadNV:
     case glslang::EOpCooperativeMatrixStoreNV:
+    case glslang::EOpLoadMatrixB8X1Burst1RowHW:
+    case glslang::EOpLoadMatrixB8X1Burst2RowHW:
+    case glslang::EOpLoadMatrixB8X2Burst1RowHW:
+    case glslang::EOpLoadMatrixB8X2Burst2RowHW:
+    case glslang::EOpLoadMatrixB8X1Burst1ColumnHW:
+    case glslang::EOpLoadMatrixB8X1Burst2ColumnHW:
+    case glslang::EOpLoadMatrixB8X2Burst1ColumnHW:
+    case glslang::EOpLoadMatrixB8X2Burst2ColumnHW:
+    case glslang::EOpLoadMatrixB16X1Burst1RowHW:
+    case glslang::EOpLoadMatrixB16X1Burst2RowHW:
+    case glslang::EOpLoadMatrixB16X2Burst1RowHW:
+    case glslang::EOpLoadMatrixB16X2Burst2RowHW:
+    case glslang::EOpLoadMatrixB16X1Burst2ColumnHW:
+    case glslang::EOpLoadMatrixB16X2Burst2ColumnHW:
     case glslang::EOpCooperativeMatrixLoadHW:
     case glslang::EOpCooperativeMatrixStoreHW:
     case glslang::EOpCooperativeMatrixLoadTensorNV:
@@ -4639,6 +4654,20 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
             if (arg == 0 || arg == 1)
                 lvalue = true;
             break;
+        case glslang::EOpLoadMatrixB8X1Burst1RowHW:
+        case glslang::EOpLoadMatrixB8X1Burst2RowHW:
+        case glslang::EOpLoadMatrixB8X2Burst1RowHW:
+        case glslang::EOpLoadMatrixB8X2Burst2RowHW:
+        case glslang::EOpLoadMatrixB8X1Burst1ColumnHW:
+        case glslang::EOpLoadMatrixB8X1Burst2ColumnHW:
+        case glslang::EOpLoadMatrixB8X2Burst1ColumnHW:
+        case glslang::EOpLoadMatrixB8X2Burst2ColumnHW:
+        case glslang::EOpLoadMatrixB16X1Burst1RowHW:
+        case glslang::EOpLoadMatrixB16X1Burst2RowHW:
+        case glslang::EOpLoadMatrixB16X2Burst1RowHW:
+        case glslang::EOpLoadMatrixB16X2Burst2RowHW:
+        case glslang::EOpLoadMatrixB16X1Burst2ColumnHW:
+        case glslang::EOpLoadMatrixB16X2Burst2ColumnHW:
         case glslang::EOpCooperativeMatrixLoadHW:
         case glslang::EOpCooperativeVectorLoadHW:
             if (arg == 0 || arg == 1)
@@ -4734,7 +4763,8 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
                          node->getOp() == glslang::EOpCooperativeMatrixStoreTensorNV;
         bool isCoopVec = node->getOp() == glslang::EOpCooperativeVectorLoadNV ||
                          node->getOp() == glslang::EOpCooperativeVectorStoreNV;
-        bool isCoopMatHW = node->getOp() == glslang::EOpCooperativeMatrixLoadHW ||
+        bool isCoopMatHW = glslang::getLoadMatrixHWVariant(node->getOp()) != nullptr ||
+                           node->getOp() == glslang::EOpCooperativeMatrixLoadHW ||
                            node->getOp() == glslang::EOpCooperativeMatrixStoreHW;
         bool isCoopVecHW = node->getOp() == glslang::EOpCooperativeVectorLoadHW ||
                            node->getOp() == glslang::EOpCooperativeVectorStoreHW;
@@ -4943,6 +4973,62 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         // store the result to the pointer (out param 'm')
         builder.createStore(result, operands[0]);
         result = 0;
+    } else if (glslang::getLoadMatrixHWVariant(node->getOp())) {
+        spv::Op opcode = spv::OpNop;
+        switch (node->getOp()) {
+        case glslang::EOpLoadMatrixB8X1Burst1RowHW:
+            opcode = spv::OpLoadMatrixB8X1Burst1RowHW;
+            break;
+        case glslang::EOpLoadMatrixB8X1Burst2RowHW:
+            opcode = spv::OpLoadMatrixB8X1Burst2RowHW;
+            break;
+        case glslang::EOpLoadMatrixB8X2Burst1RowHW:
+            opcode = spv::OpLoadMatrixB8X2Burst1RowHW;
+            break;
+        case glslang::EOpLoadMatrixB8X2Burst2RowHW:
+            opcode = spv::OpLoadMatrixB8X2Burst2RowHW;
+            break;
+        case glslang::EOpLoadMatrixB8X1Burst1ColumnHW:
+            opcode = spv::OpLoadMatrixB8X1Burst1ColumnHW;
+            break;
+        case glslang::EOpLoadMatrixB8X1Burst2ColumnHW:
+            opcode = spv::OpLoadMatrixB8X1Burst2ColumnHW;
+            break;
+        case glslang::EOpLoadMatrixB8X2Burst1ColumnHW:
+            opcode = spv::OpLoadMatrixB8X2Burst1ColumnHW;
+            break;
+        case glslang::EOpLoadMatrixB8X2Burst2ColumnHW:
+            opcode = spv::OpLoadMatrixB8X2Burst2ColumnHW;
+            break;
+        case glslang::EOpLoadMatrixB16X1Burst1RowHW:
+            opcode = spv::OpLoadMatrixB16X1Burst1RowHW;
+            break;
+        case glslang::EOpLoadMatrixB16X1Burst2RowHW:
+            opcode = spv::OpLoadMatrixB16X1Burst2RowHW;
+            break;
+        case glslang::EOpLoadMatrixB16X2Burst1RowHW:
+            opcode = spv::OpLoadMatrixB16X2Burst1RowHW;
+            break;
+        case glslang::EOpLoadMatrixB16X2Burst2RowHW:
+            opcode = spv::OpLoadMatrixB16X2Burst2RowHW;
+            break;
+        case glslang::EOpLoadMatrixB16X1Burst2ColumnHW:
+            opcode = spv::OpLoadMatrixB16X1Burst2ColumnHW;
+            break;
+        case glslang::EOpLoadMatrixB16X2Burst2ColumnHW:
+            opcode = spv::OpLoadMatrixB16X2Burst2ColumnHW;
+            break;
+        default:
+            assert(false);
+            break;
+        }
+        const spv::Id typeId = builder.getContainedTypeId(builder.getTypeId(operands[0]));
+        std::vector<spv::IdImmediate> idImmOps;
+        idImmOps.push_back(spv::IdImmediate(true, operands[1])); // array pointer
+        idImmOps.push_back(spv::IdImmediate(true, operands[2])); // byte offset, possibly nonuniform
+        idImmOps.insert(idImmOps.end(), memoryAccessOperands.begin(), memoryAccessOperands.end());
+        const spv::Id result = builder.createOp(opcode, typeId, idImmOps);
+        builder.createStore(result, operands[0]);
     } else if (node->getOp() == glslang::EOpCooperativeMatrixLoadHW) {
         spv::Id typeId = builder.getContainedTypeId(builder.getTypeId(operands[0]));
         assert(builder.isCooperativeMatrixHWType(typeId));

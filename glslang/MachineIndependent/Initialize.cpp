@@ -54,6 +54,7 @@
 #include <array>
 #include <sstream>
 #include "Initialize.h"
+#include "../Include/LoadMatrixHW.h"
 #include "span.h"
 
 namespace glslang {
@@ -4633,6 +4634,10 @@ void TBuiltIns::initialize(int version, EProfile profile, const SpvVersion& spvV
 
             std::stringstream cooperativeMatrixADFuncs;
             for (auto t : allTypes) {
+                for (const auto& variant : LoadMatrixHWVariants)
+                    cooperativeMatrixADFuncs << "void " << variant.name
+                                             << "(out coopmatHW m, volatile coherent nontemporal "
+                                             << t << "[] buf, uint offset);\n";
                 cooperativeMatrixADFuncs << "void coopMatLoadHW(out coopmatHW m, volatile coherent nontemporal "
                                          << t << "[] buf, uint offset, uint stride, int matrixLayout);\n";
                 cooperativeMatrixADFuncs << "void coopMatStoreHW(coopmatHW m, volatile coherent nontemporal "
@@ -9540,6 +9545,8 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
         }
 
         {
+            for (const auto& variant : LoadMatrixHWVariants)
+                symbolTable.setFunctionExtensions(variant.name, 1, &E_GL_HW_neural_shader);
             symbolTable.setFunctionExtensions("coopMatLoadHW",   1, &E_GL_HW_neural_shader);
             symbolTable.setFunctionExtensions("coopMatStoreHW",  1, &E_GL_HW_neural_shader);
             symbolTable.setFunctionExtensions("coopMatMulHW",    1, &E_GL_HW_neural_shader);
@@ -10816,6 +10823,8 @@ void TBuiltIns::identifyBuiltIns(int version, EProfile profile, const SpvVersion
         symbolTable.relateToOperator("coopMatLoadNV",              EOpCooperativeMatrixLoadNV);
         symbolTable.relateToOperator("coopMatStoreNV",             EOpCooperativeMatrixStoreNV);
         symbolTable.relateToOperator("coopMatMulAddNV",            EOpCooperativeMatrixMulAddNV);
+        for (const auto& variant : LoadMatrixHWVariants)
+            symbolTable.relateToOperator(variant.name, variant.op);
         symbolTable.relateToOperator("coopMatLoadHW",              EOpCooperativeMatrixLoadHW);
         symbolTable.relateToOperator("coopMatStoreHW",             EOpCooperativeMatrixStoreHW);
         symbolTable.relateToOperator("coopMatMulHW",               EOpCooperativeMatrixMulHW);

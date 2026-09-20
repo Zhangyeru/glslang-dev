@@ -1,0 +1,98 @@
+#version 450 core
+#extension GL_HW_neural_shader : require
+#extension GL_EXT_shader_explicit_arithmetic_types : require
+#extension GL_EXT_buffer_reference : require
+
+layout(local_size_x = 32) in;
+layout(set = 0, binding = 0, std430) coherent volatile buffer Input {
+    uvec3 data[];
+} inputBuffer;
+layout(buffer_reference, std430, buffer_reference_align = 16) buffer Global {
+    float data[];
+};
+layout(set = 0, binding = 1) buffer Address {
+    Global data;
+} address;
+shared uint sharedData[1024];
+layout(set = 0, binding = 2) buffer Output {
+    int data[];
+} outputBuffer;
+layout(constant_id = 0) const uint specOffset = 0u;
+
+void main()
+{
+    uint offset = gl_LocalInvocationID.x * 32u;
+    coopmatHW<int8_t, 16, 16> m0;
+    ldmatrix_b8_x1_burst1_R(m0, inputBuffer.data, offset);
+    ldmatrix_b8_x1_burst1_R(m0, sharedData, 16u);
+    ldmatrix_b8_x1_burst1_R(m0, address.data.data, specOffset);
+    coopMatStoreHW(m0, outputBuffer.data, 0u, 32u, 0);
+    coopmatHW<int8_t, 16, 32> m1;
+    ldmatrix_b8_x1_burst2_R(m1, inputBuffer.data, offset);
+    ldmatrix_b8_x1_burst2_R(m1, sharedData, 32u);
+    ldmatrix_b8_x1_burst2_R(m1, address.data.data, specOffset);
+    coopMatStoreHW(m1, outputBuffer.data, 0u, 32u, 0);
+    coopmatHW<int8_t, 32, 16> m2;
+    ldmatrix_b8_x2_burst1_R(m2, inputBuffer.data, offset);
+    ldmatrix_b8_x2_burst1_R(m2, sharedData, 16u);
+    ldmatrix_b8_x2_burst1_R(m2, address.data.data, specOffset);
+    coopMatStoreHW(m2, outputBuffer.data, 0u, 32u, 0);
+    coopmatHW<int8_t, 32, 32> m3;
+    ldmatrix_b8_x2_burst2_R(m3, inputBuffer.data, offset);
+    ldmatrix_b8_x2_burst2_R(m3, sharedData, 32u);
+    ldmatrix_b8_x2_burst2_R(m3, address.data.data, specOffset);
+    coopMatStoreHW(m3, outputBuffer.data, 0u, 32u, 0);
+    coopmatHW<int8_t, 16, 16> m4;
+    ldmatrix_b8_x1_burst1_C(m4, inputBuffer.data, offset);
+    ldmatrix_b8_x1_burst1_C(m4, sharedData, 16u);
+    ldmatrix_b8_x1_burst1_C(m4, address.data.data, specOffset);
+    coopMatStoreHW(m4, outputBuffer.data, 0u, 32u, 0);
+    coopmatHW<int8_t, 32, 16> m5;
+    ldmatrix_b8_x1_burst2_C(m5, inputBuffer.data, offset);
+    ldmatrix_b8_x1_burst2_C(m5, sharedData, 32u);
+    ldmatrix_b8_x1_burst2_C(m5, address.data.data, specOffset);
+    coopMatStoreHW(m5, outputBuffer.data, 0u, 32u, 0);
+    coopmatHW<int8_t, 16, 32> m6;
+    ldmatrix_b8_x2_burst1_C(m6, inputBuffer.data, offset);
+    ldmatrix_b8_x2_burst1_C(m6, sharedData, 16u);
+    ldmatrix_b8_x2_burst1_C(m6, address.data.data, specOffset);
+    coopMatStoreHW(m6, outputBuffer.data, 0u, 32u, 0);
+    coopmatHW<int8_t, 32, 32> m7;
+    ldmatrix_b8_x2_burst2_C(m7, inputBuffer.data, offset);
+    ldmatrix_b8_x2_burst2_C(m7, sharedData, 32u);
+    ldmatrix_b8_x2_burst2_C(m7, address.data.data, specOffset);
+    coopMatStoreHW(m7, outputBuffer.data, 0u, 32u, 0);
+    coopmatHW<int16_t, 16, 8> m8;
+    ldmatrix_b16_x1_burst1_R(m8, inputBuffer.data, offset);
+    ldmatrix_b16_x1_burst1_R(m8, sharedData, 16u);
+    ldmatrix_b16_x1_burst1_R(m8, address.data.data, specOffset);
+    coopMatStoreHW(m8, outputBuffer.data, 0u, 32u, 0);
+    coopmatHW<int16_t, 16, 16> m9;
+    ldmatrix_b16_x1_burst2_R(m9, inputBuffer.data, offset);
+    ldmatrix_b16_x1_burst2_R(m9, sharedData, 32u);
+    ldmatrix_b16_x1_burst2_R(m9, address.data.data, specOffset);
+    coopMatStoreHW(m9, outputBuffer.data, 0u, 32u, 0);
+    coopmatHW<int16_t, 32, 8> m10;
+    ldmatrix_b16_x2_burst1_R(m10, inputBuffer.data, offset);
+    ldmatrix_b16_x2_burst1_R(m10, sharedData, 16u);
+    ldmatrix_b16_x2_burst1_R(m10, address.data.data, specOffset);
+    coopMatStoreHW(m10, outputBuffer.data, 0u, 32u, 0);
+    coopmatHW<int16_t, 32, 16> m11;
+    ldmatrix_b16_x2_burst2_R(m11, inputBuffer.data, offset);
+    ldmatrix_b16_x2_burst2_R(m11, sharedData, 32u);
+    ldmatrix_b16_x2_burst2_R(m11, address.data.data, specOffset);
+    coopMatStoreHW(m11, outputBuffer.data, 0u, 32u, 0);
+    coopmatHW<int16_t, 16, 16> m12;
+    ldmatrix_b16_x1_burst2_C(m12, inputBuffer.data, offset);
+    ldmatrix_b16_x1_burst2_C(m12, sharedData, 32u);
+    ldmatrix_b16_x1_burst2_C(m12, address.data.data, specOffset);
+    coopMatStoreHW(m12, outputBuffer.data, 0u, 32u, 0);
+    coopmatHW<int16_t, 16, 32> m13;
+    ldmatrix_b16_x2_burst2_C(m13, inputBuffer.data, offset);
+    ldmatrix_b16_x2_burst2_C(m13, sharedData, 32u);
+    ldmatrix_b16_x2_burst2_C(m13, address.data.data, specOffset);
+    coopMatStoreHW(m13, outputBuffer.data, 0u, 32u, 0);
+    coopmatHW<int, 16, 16> product;
+    coopMatMulHW(product, m0, m0);
+    coopMatStoreHW(product, outputBuffer.data, offset, 16u, 0);
+}
