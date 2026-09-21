@@ -51,6 +51,7 @@ if(GLSLANG_TESTS)
             ${CMAKE_CURRENT_SOURCE_DIR}/Config.FromFile.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/HexFloat.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/Hlsl.FromFile.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/HwLower.FromFile.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/Link.FromFile.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/Link.FromFile.Vk.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/Pp.FromFile.cpp

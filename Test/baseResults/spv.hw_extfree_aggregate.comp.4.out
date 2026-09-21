@@ -1,0 +1,195 @@
+OpCapability Shader
+OpCapability CooperativeMatrixHW
+OpCapability CooperativeVectorHW
+OpExtension "SPV_HW_neural_shader"
+%1 = OpExtInstImport "GLSL.std.450"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %main "main" %B %A %gl_GlobalInvocationID %D
+OpExecutionMode %main LocalSize 1 1 1
+OpSource GLSL 460
+OpSourceExtension "GL_HW_neural_shader"
+OpName %main "main"
+OpName %Leaf "Leaf"
+OpMemberName %Leaf 0 "vectorValue"
+OpMemberName %Leaf 1 "matrixValue"
+OpName %Payload "Payload"
+OpMemberName %Payload 0 "leaves"
+OpName %update_struct_Payload_struct_Leaf_coopvecHWf1_4__f1_2__3__use__1_2_1_u1_ "update(struct-Payload-struct-Leaf-coopvecHWf1<4>-f1<2><3><use?>1[2]1;u1;"
+OpName %payload "payload"
+OpName %index "index"
+OpName %snapshot "snapshot"
+OpName %InputB "InputB"
+OpMemberName %InputB 0 "data"
+OpName %B "B"
+OpName %tempArg "tempArg"
+OpName %InputA "InputA"
+OpMemberName %InputA 0 "data"
+OpName %A "A"
+OpName %payload_0 "payload"
+OpName %tempArg_0 "tempArg"
+OpName %tempArg_1 "tempArg"
+OpName %tempArg_2 "tempArg"
+OpName %index_0 "index"
+OpName %gl_GlobalInvocationID "gl_GlobalInvocationID"
+OpName %snapshot_0 "snapshot"
+OpName %param "param"
+OpName %param_0 "param"
+OpName %Output "Output"
+OpMemberName %Output 0 "data"
+OpName %D "D"
+OpDecorate %_runtimearr_float ArrayStride 4
+OpDecorate %InputB Block
+OpMemberDecorate %InputB 0 Offset 0
+OpDecorate %B Binding 1
+OpDecorate %B DescriptorSet 0
+OpDecorate %_runtimearr_float_0 ArrayStride 4
+OpDecorate %InputA Block
+OpMemberDecorate %InputA 0 Offset 0
+OpDecorate %A Binding 0
+OpDecorate %A DescriptorSet 0
+OpDecorate %gl_GlobalInvocationID BuiltIn GlobalInvocationId
+OpDecorate %_runtimearr_float_1 ArrayStride 4
+OpDecorate %Output Block
+OpMemberDecorate %Output 0 Offset 0
+OpDecorate %D Binding 2
+OpDecorate %D DescriptorSet 0
+%void = OpTypeVoid
+%3 = OpTypeFunction %void
+%float = OpTypeFloat 32
+%uint = OpTypeInt 32 0
+%uint_4 = OpConstant %uint 4
+%9 = OpTypeCooperativeVectorHW %float %uint_4
+%uint_2 = OpConstant %uint 2
+%uint_3 = OpConstant %uint 3
+%12 = OpTypeCooperativeMatrixHW %float %uint_2 %uint_3 MatrixUseAHW
+%Leaf = OpTypeStruct %9 %12
+%_arr_Leaf_uint_2 = OpTypeArray %Leaf %uint_2
+%Payload = OpTypeStruct %_arr_Leaf_uint_2
+%_ptr_Function_Payload = OpTypePointer Function %Payload
+%_ptr_Function_uint = OpTypePointer Function %uint
+%18 = OpTypeFunction %Payload %_ptr_Function_Payload %_ptr_Function_uint
+%int = OpTypeInt 32 1
+%int_0 = OpConstant %int 0
+%int_1 = OpConstant %int 1
+%_runtimearr_float = OpTypeRuntimeArray %float
+%InputB = OpTypeStruct %_runtimearr_float
+%_ptr_StorageBuffer_InputB = OpTypePointer StorageBuffer %InputB
+%B = OpVariable %_ptr_StorageBuffer_InputB StorageBuffer
+%_ptr_StorageBuffer_float = OpTypePointer StorageBuffer %float
+%_ptr_Function_float = OpTypePointer Function %float
+%uint_1 = OpConstant %uint 1
+%_ptr_Function_12 = OpTypePointer Function %12
+%_ptr_Function_9 = OpTypePointer Function %9
+%_runtimearr_float_0 = OpTypeRuntimeArray %float
+%InputA = OpTypeStruct %_runtimearr_float_0
+%_ptr_StorageBuffer_InputA = OpTypePointer StorageBuffer %InputA
+%A = OpVariable %_ptr_StorageBuffer_InputA StorageBuffer
+%_ptr_StorageBuffer__runtimearr_float_0 = OpTypePointer StorageBuffer %_runtimearr_float_0
+%uint_0 = OpConstant %uint 0
+%_ptr_StorageBuffer__runtimearr_float = OpTypePointer StorageBuffer %_runtimearr_float
+%v2int = OpTypeVector %int 2
+%int_2 = OpConstant %int 2
+%int_3 = OpConstant %int 3
+%73 = OpConstantComposite %v2int %int_2 %int_3
+%74 = OpConstantComposite %v2int %int_0 %int_0
+%v3uint = OpTypeVector %uint 3
+%_ptr_Input_v3uint = OpTypePointer Input %v3uint
+%gl_GlobalInvocationID = OpVariable %_ptr_Input_v3uint Input
+%_ptr_Input_uint = OpTypePointer Input %uint
+%_runtimearr_float_1 = OpTypeRuntimeArray %float
+%Output = OpTypeStruct %_runtimearr_float_1
+%_ptr_StorageBuffer_Output = OpTypePointer StorageBuffer %Output
+%D = OpVariable %_ptr_StorageBuffer_Output StorageBuffer
+%_ptr_StorageBuffer__runtimearr_float_1 = OpTypePointer StorageBuffer %_runtimearr_float_1
+%uint_16 = OpConstant %uint 16
+%int_6 = OpConstant %int 6
+%117 = OpConstantComposite %v2int %int_6 %int_3
+%int_4 = OpConstant %int 4
+%119 = OpConstantComposite %v2int %int_4 %int_0
+%120 = OpConstantComposite %v3uint %uint_1 %uint_1 %uint_1
+%main = OpFunction %void None %3
+%5 = OpLabel
+%tempArg = OpVariable %_ptr_Function_9 Function
+%payload_0 = OpVariable %_ptr_Function_Payload Function
+%tempArg_0 = OpVariable %_ptr_Function_9 Function
+%tempArg_1 = OpVariable %_ptr_Function_12 Function
+%tempArg_2 = OpVariable %_ptr_Function_12 Function
+%index_0 = OpVariable %_ptr_Function_uint Function
+%snapshot_0 = OpVariable %_ptr_Function_Payload Function
+%param = OpVariable %_ptr_Function_Payload Function
+%param_0 = OpVariable %_ptr_Function_uint Function
+%56 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_0 %A %int_0
+%58 = OpCooperativeVectorLoadHW %9 %56 %uint_0
+OpStore %tempArg %58
+%60 = OpLoad %9 %tempArg
+%61 = OpAccessChain %_ptr_Function_9 %payload_0 %int_0 %int_0 %int_0
+OpStore %61 %60
+%64 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %B %int_0
+%65 = OpCooperativeVectorLoadHW %9 %64 %uint_0
+OpStore %tempArg_0 %65
+%66 = OpLoad %9 %tempArg_0
+%67 = OpAccessChain %_ptr_Function_9 %payload_0 %int_0 %int_1 %int_0
+OpStore %67 %66
+%69 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_0 %A %int_0
+%75 = OpCooperativeMatrixLoadHW %12 %69 %73 %74 %int_0
+OpStore %tempArg_1 %75
+%76 = OpLoad %12 %tempArg_1
+%77 = OpAccessChain %_ptr_Function_12 %payload_0 %int_0 %int_0 %int_1
+OpStore %77 %76
+%79 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %B %int_0
+%80 = OpCooperativeMatrixLoadHW %12 %79 %73 %74 %int_0
+OpStore %tempArg_2 %80
+%81 = OpLoad %12 %tempArg_2
+%82 = OpAccessChain %_ptr_Function_12 %payload_0 %int_0 %int_1 %int_1
+OpStore %82 %81
+%88 = OpAccessChain %_ptr_Input_uint %gl_GlobalInvocationID %uint_0
+%89 = OpLoad %uint %88
+%90 = OpBitwiseAnd %uint %89 %uint_1
+OpStore %index_0 %90
+%93 = OpLoad %Payload %payload_0
+OpStore %param %93
+%95 = OpLoad %uint %index_0
+OpStore %param_0 %95
+%96 = OpFunctionCall %Payload %update_struct_Payload_struct_Leaf_coopvecHWf1_4__f1_2__3__use__1_2_1_u1_ %param %param_0
+%97 = OpLoad %Payload %param
+OpStore %payload_0 %97
+OpStore %snapshot_0 %96
+%98 = OpLoad %uint %index_0
+%99 = OpAccessChain %_ptr_Function_9 %payload_0 %int_0 %98 %int_0
+%100 = OpLoad %9 %99
+%106 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_1 %D %int_0
+OpCooperativeVectorStoreHW %106 %uint_0 %100
+%107 = OpLoad %uint %index_0
+%108 = OpAccessChain %_ptr_Function_9 %snapshot_0 %int_0 %107 %int_0
+%109 = OpLoad %9 %108
+%110 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_1 %D %int_0
+OpCooperativeVectorStoreHW %110 %uint_16 %109
+%112 = OpLoad %uint %index_0
+%113 = OpAccessChain %_ptr_Function_12 %payload_0 %int_0 %112 %int_1
+%114 = OpLoad %12 %113
+%115 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_1 %D %int_0
+OpCooperativeMatrixStoreHW %115 %114 %117 %119 %int_0
+OpReturn
+OpFunctionEnd
+%update_struct_Payload_struct_Leaf_coopvecHWf1_4__f1_2__3__use__1_2_1_u1_ = OpFunction %Payload None %18
+%payload = OpFunctionParameter %_ptr_Function_Payload
+%index = OpFunctionParameter %_ptr_Function_uint
+%22 = OpLabel
+%snapshot = OpVariable %_ptr_Function_Payload Function
+%24 = OpLoad %Payload %payload
+OpStore %snapshot %24
+%27 = OpLoad %uint %index
+%34 = OpAccessChain %_ptr_StorageBuffer_float %B %int_0 %int_0
+%35 = OpLoad %float %34
+%37 = OpAccessChain %_ptr_Function_float %payload %int_0 %27 %int_0 %int_1
+OpStore %37 %35
+%38 = OpLoad %uint %index
+%40 = OpLoad %uint %index
+%41 = OpISub %uint %uint_1 %40
+%43 = OpAccessChain %_ptr_Function_12 %payload %int_0 %41 %int_1
+%44 = OpLoad %12 %43
+%45 = OpAccessChain %_ptr_Function_12 %payload %int_0 %38 %int_1
+OpStore %45 %44
+%46 = OpLoad %Payload %snapshot
+OpReturnValue %46
+OpFunctionEnd

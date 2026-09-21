@@ -1,0 +1,25 @@
+#version 460
+#extension GL_HW_neural_shader : require
+#ifndef WIDTH
+#define WIDTH 4
+#endif
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0) buffer InputA { float data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float data[]; } B;
+layout(set = 0, binding = 2) buffer Output { float data[]; } D;
+
+void main()
+{
+    coopvecHW<float, WIDTH> carried, delta;
+    coopVecLoadHW(carried, A.data, 0u);
+    coopVecLoadHW(delta, B.data, 0u);
+    uint count = 1u + (gl_GlobalInvocationID.x & 3u);
+    for (uint i = 0u; i < count; ++i) {
+        if ((i & 1u) != 0u) {
+            carried = carried - delta;
+            continue;
+        }
+        carried = carried + delta;
+    }
+    coopVecStoreHW(carried, D.data, 0u);
+}

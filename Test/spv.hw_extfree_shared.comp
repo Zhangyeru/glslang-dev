@@ -1,0 +1,26 @@
+#version 460
+#extension GL_HW_neural_shader : require
+#ifndef WIDTH
+#define WIDTH 4
+#endif
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0) buffer InputA { float data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float data[]; } B;
+layout(set = 0, binding = 2) buffer Output { float data[]; } D;
+
+#if WIDTH == 4
+#define ROWS 4
+#else
+#define ROWS 5
+#endif
+void main()
+{
+    coopvecHW<float, ROWS> inputValue;
+    coopmatHW<float, ROWS, WIDTH> matrixValue;
+    coopvecHW<float, WIDTH> result;
+    coopVecLoadHW(inputValue, A.data, 0u);
+    coopMatLoadHW(matrixValue, B.data, ivec2(ROWS, WIDTH), ivec2(0), 0);
+    coopVecMatMulHW(result, inputValue, matrixValue);
+    D.data[WIDTH] = inputValue[0];
+    coopVecStoreHW(result, D.data, 0u);
+}

@@ -1,0 +1,473 @@
+// Copyright (C) 2026 The Khronos Group Inc.
+// SPDX-License-Identifier: BSD-3-Clause
+
+#include "SPIRV/GLSL.std.450.h"
+#include "TestFixture.h"
+
+#include <functional>
+#include <unordered_map>
+#include <unordered_set>
+
+#if ENABLE_OPT
+#include "spirv-tools/optimizer.hpp"
+#endif
+
+namespace glslangtest {
+namespace {
+
+struct HwLowerCase {
+    const char* name;
+    unsigned width;
+};
+
+void PrintTo(const HwLowerCase& test, std::ostream* stream) { *stream << test.name << ", WIDTH=" << test.width; }
+
+using HwExtensionFreeTest = GlslangTest<::testing::TestWithParam<HwLowerCase>>;
+
+#if ENABLE_OPT
+// Inspect parsed IDs and types, not debug names or unrelated scalar operations.
+struct HwInstruction {
+    std::string op;
+    uint32_t type;
+    uint32_t id;
+    std::vector<uint32_t> words;
+};
+
+class HwModule {
+public:
+    explicit HwModule(const std::vector<uint32_t>& binary)
+    {
+        spv_context context = spvContextCreate(SPV_ENV_VULKAN_1_3);
+        const auto status = spvBinaryParse(
+            context, this, binary.data(), binary.size(), nullptr,
+            [](void* data, const spv_parsed_instruction_t* inst) -> spv_result_t {
+                auto& module = *static_cast<HwModule*>(data);
+                if (inst->result_id)
+                    module.definitions[inst->result_id] = module.instructions.size();
+                module.instructions.push_back({std::string("Op") + spvOpcodeString(inst->opcode),
+                                               inst->type_id,
+                                               inst->result_id,
+                                               {inst->words, inst->words + inst->num_words}});
+                return SPV_SUCCESS;
+            },
+            nullptr);
+        EXPECT_EQ(SPV_SUCCESS, status);
+        spvContextDestroy(context);
+    }
+
+    const HwInstruction* definition(uint32_t id) const
+    {
+        const auto found = definitions.find(id);
+        return found == definitions.end() ? nullptr : &instructions[found->second];
+    }
+
+    bool containsHw(uint32_t type) const
+    {
+        std::unordered_set<uint32_t> visited;
+        std::function<bool(uint32_t)> visit = [&](uint32_t id) {
+            const auto* inst = definition(id);
+            if (!inst || !visited.insert(id).second)
+                return false;
+            if (inst->op == "OpTypeCooperativeVectorHW" || inst->op == "OpTypeCooperativeMatrixHW")
+                return true;
+            if (inst->op == "OpTypePointer")
+                return visit(inst->words[3]);
+            if (inst->op == "OpTypeArray" || inst->op == "OpTypeRuntimeArray")
+                return visit(inst->words[2]);
+            if (inst->op == "OpTypeStruct" || inst->op == "OpTypeFunction") {
+                for (size_t i = 2; i < inst->words.size(); ++i) {
+                    if (visit(inst->words[i]))
+                        return true;
+                }
+            }
+            return false;
+        };
+        return visit(type);
+    }
+
+    bool typeIs(uint32_t type, const std::string& op) const
+    {
+        const auto* inst = definition(type);
+        return inst && inst->op == op;
+    }
+
+    size_t count(const std::string& op, const std::function<bool(const HwInstruction&)>& predicate = {}) const
+    {
+        return std::count_if(instructions.begin(), instructions.end(), [&](const HwInstruction& inst) {
+            return inst.op == op && (!predicate || predicate(inst));
+        });
+    }
+
+    size_t hwCount(const std::string& op) const
+    {
+        return count(op, [&](const HwInstruction& inst) {
+            if (containsHw(inst.type))
+                return true;
+            if (op == "OpStore" || op == "OpReturnValue") {
+                const auto* value = definition(inst.words[op == "OpStore" ? 2 : 1]);
+                return value && containsHw(value->type);
+            }
+            return false;
+        });
+    }
+
+    size_t mathCount(const std::string& op, const std::string& typeOp) const
+    {
+        return count(op, [&](const HwInstruction& inst) { return typeIs(inst.type, typeOp); });
+    }
+
+    bool decorated(uint32_t id, spv::Decoration decoration) const
+    {
+        return count("OpDecorate", [&](const HwInstruction& inst) {
+                   return inst.words[1] == id && inst.words[2] == uint32_t(decoration);
+               }) != 0;
+    }
+
+    // Whole-value reads must survive writes through a derived component pointer.
+    // Check instruction order and the same pointer ID, rather than just counting loads.
+    uint32_t componentWriteThenWholeLoadRoot(uint32_t requiredRoot = 0) const
+    {
+        std::unordered_set<uint32_t> writtenRoots;
+        for (const auto& inst : instructions) {
+            if (inst.op == "OpStore") {
+                const auto* pointer = definition(inst.words[1]);
+                const auto* value = definition(inst.words[2]);
+                if (pointer && pointer->op == "OpAccessChain" && value && typeIs(value->type, "OpTypeFloat"))
+                    writtenRoots.insert(pointer->words[3]);
+            }
+            if (inst.op == "OpLoad" && writtenRoots.count(inst.words[3]) &&
+                (requiredRoot == 0 || requiredRoot == inst.words[3]) &&
+                (containsHw(inst.type) || typeIs(inst.type, "OpTypeArray")))
+                return inst.words[3];
+        }
+        return 0;
+    }
+
+    std::vector<uint32_t> multiBlockTransportLoads() const
+    {
+        std::unordered_map<uint32_t, std::unordered_set<uint32_t>> pointerBlocks;
+        uint32_t block = 0;
+        for (const auto& inst : instructions) {
+            if (inst.op == "OpLabel")
+                block = inst.id;
+            const uint32_t pointer = inst.op == "OpLoad" ? inst.words[3] : inst.op == "OpStore" ? inst.words[1] : 0;
+            const auto* variable = definition(pointer);
+            if (variable && variable->op == "OpVariable" && containsHw(variable->type))
+                pointerBlocks[pointer].insert(block);
+        }
+        std::vector<uint32_t> loads;
+        for (const auto& inst : instructions) {
+            if (inst.op == "OpLoad" && containsHw(inst.type) && pointerBlocks[inst.words[3]].size() > 1)
+                loads.push_back(inst.id);
+        }
+        return loads;
+    }
+
+    void expectNoHw(const std::string& assembly) const
+    {
+        for (const auto& inst : instructions) {
+            EXPECT_FALSE(inst.op.size() >= 2 && inst.op.substr(inst.op.size() - 2) == "HW") << inst.op;
+            EXPECT_FALSE(containsHw(inst.type));
+            EXPECT_NE("OpCompositeConstructReplicateEXT", inst.op);
+            EXPECT_NE("OpConstantCompositeReplicateEXT", inst.op);
+            EXPECT_NE("OpSpecConstantCompositeReplicateEXT", inst.op);
+            if (inst.op == "OpSelectionMerge") {
+                EXPECT_EQ(0u, inst.words[2] & uint32_t(spv::SelectionControlRelregMask));
+            }
+        }
+        // Only inspect declaration operands; names and source strings are not residue.
+        std::istringstream lines(assembly);
+        std::string line;
+        while (std::getline(lines, line)) {
+            std::istringstream tokens(line);
+            std::string op, operand;
+            tokens >> op >> operand;
+            if (op != "OpCapability" && op != "OpExtension" && op != "OpSourceExtension")
+                continue;
+            EXPECT_EQ(std::string::npos, operand.find("HW")) << line;
+            EXPECT_EQ(std::string::npos, operand.find("AZD")) << line;
+            EXPECT_EQ(std::string::npos, operand.find("ReplicatedComposites")) << line;
+            EXPECT_EQ(std::string::npos, operand.find("replicated_composites")) << line;
+        }
+    }
+
+    std::vector<HwInstruction> instructions;
+    std::unordered_map<uint32_t, size_t> definitions;
+};
+
+void CheckInput(const HwModule& module, const std::string& name)
+{
+    EXPECT_GT(module.hwCount("OpLoad"), 0u);
+    EXPECT_GT(module.hwCount("OpStore"), 0u);
+    if (name == "alias") {
+        EXPECT_NE(0u, module.componentWriteThenWholeLoadRoot());
+    }
+    if (name == "branch" || name == "loop" || name == "integer" || name == "precise" || name == "volatile") {
+        EXPECT_GT(module.count("OpSelectionMerge"), 0u);
+    }
+    if (name == "branch" || name == "integer" || name == "precise") {
+        EXPECT_EQ(0u, module.hwCount("OpSelect")); // Matrix ternaries are memory-backed.
+    }
+    if (name == "loop") {
+        EXPECT_GT(module.count("OpLoopMerge"), 0u);
+        EXPECT_GT(module.hwCount("OpFAdd"), 0u);
+        EXPECT_GT(module.hwCount("OpFSub"), 0u);
+    }
+    if (name == "aggregate" || name == "integer" || name == "precise") {
+        EXPECT_GT(module.hwCount("OpFunctionParameter"), 0u);
+        EXPECT_GT(module.hwCount("OpFunctionCall"), 0u);
+        EXPECT_GT(module.hwCount("OpReturnValue"), 0u);
+    }
+    if (name == "aggregate") {
+        EXPECT_GE(module.count("OpTypeStruct", [&](const HwInstruction& inst) { return module.containsHw(inst.id); }),
+                  2u);
+        EXPECT_GT(module.hwCount("OpAccessChain"), 0u);
+    }
+    if (name == "select" || name == "copy") {
+        EXPECT_GT(module.hwCount("OpSelect"), 0u);
+    }
+    if (name == "copy") {
+        EXPECT_GT(module.hwCount("OpCopyObject"), 0u);
+        EXPECT_GT(module.count("OpCopyObject",
+                               [&](const HwInstruction& inst) {
+                                   return module.containsHw(inst.type) &&
+                                          module.decorated(inst.id, spv::DecorationNonUniform);
+                               }),
+                  0u);
+    }
+    if (name == "integer" || name == "precise") {
+        EXPECT_GT(module.count("OpCooperativeMatrixMulAddHW"), 0u);
+    }
+    if (name == "precise") {
+        EXPECT_GT(module.count("OpCooperativeMatrixMulAddHW",
+                               [&](const HwInstruction& inst) {
+                                   return module.decorated(inst.id, spv::DecorationNoContraction);
+                               }),
+                  0u);
+    }
+    if (name == "shared") {
+        EXPECT_GT(module.count("OpCooperativeVectorMatrixMulHW"), 0u);
+        EXPECT_GT(module.count("OpAccessChain",
+                               [&](const HwInstruction& inst) {
+                                   const auto* base = module.definition(inst.words[3]);
+                                   return base && module.containsHw(base->type) && !module.containsHw(inst.type);
+                               }),
+                  0u);
+    }
+    if (name == "volatile") {
+        for (const auto& inst : module.instructions) {
+            size_t mask = 0;
+            if (inst.op == "OpCooperativeVectorLoadHW")
+                mask = 5;
+            if (inst.op == "OpCooperativeVectorStoreHW")
+                mask = 4;
+            if (inst.op == "OpCooperativeMatrixLoadHW")
+                mask = 7;
+            if (inst.op == "OpCooperativeMatrixStoreHW")
+                mask = 6;
+            if (mask) {
+                ASSERT_GT(inst.words.size(), mask);
+                EXPECT_NE(0u, inst.words[mask] & uint32_t(spv::MemoryAccessVolatileMask));
+            }
+        }
+    }
+}
+
+void CheckOutput(const HwModule& module, const HwLowerCase& test, bool scalar, bool rolled, uint32_t aliasRoot)
+{
+    const std::string name = test.name;
+    if (scalar) {
+        EXPECT_EQ(0u, module.count("OpTypeArray", [&](const HwInstruction& inst) {
+            const auto* element = module.definition(inst.words[2]);
+            return element && element->op == "OpTypeVector" && module.typeIs(element->words[2], "OpTypeFloat");
+        }));
+    }
+    if (name == "alias") {
+        // Generated memory helpers also write/read arrays. Require the original
+        // source variable, so those helpers cannot hide incorrect forwarding.
+        ASSERT_NE(0u, aliasRoot);
+        EXPECT_EQ(aliasRoot, module.componentWriteThenWholeLoadRoot(aliasRoot));
+    }
+    if (name == "loop") {
+        EXPECT_GT(module.count("OpLoopMerge"), 0u);
+        const char* type = !scalar && test.width % 2 == 0 ? "OpTypeVector" : "OpTypeFloat";
+        EXPECT_GT(module.mathCount("OpFAdd", type), 0u);
+        EXPECT_GT(module.mathCount("OpFSub", type), 0u);
+    }
+    if (name == "select" || name == "copy") {
+        EXPECT_EQ(rolled ? 1u : test.width, module.count("OpSelect"));
+        EXPECT_EQ(0u, module.mathCount("OpSelect", "OpTypeArray"));
+        if (rolled && !scalar && test.width == 4) {
+            EXPECT_EQ(1u, module.mathCount("OpSelect", "OpTypeVector"));
+        }
+    }
+    if (name == "aggregate") {
+        EXPECT_GT(module.count("OpReturnValue"), 0u);
+        EXPECT_GT(module.count("OpFunctionParameter"), 0u);
+    }
+    if (name == "copy") {
+        EXPECT_GT(module.count("OpCopyObject",
+                               [&](const HwInstruction& inst) {
+                                   return module.typeIs(inst.type, "OpTypeArray") &&
+                                          module.decorated(inst.id, spv::DecorationNonUniform);
+                               }),
+                  0u);
+    }
+    if (name == "integer") {
+        // Address arithmetic is unsigned; require signed data arithmetic.
+        for (const char* op : {"OpIMul", "OpIAdd"}) {
+            EXPECT_GT(module.count(op,
+                                   [&](const HwInstruction& inst) {
+                                       const auto* type = module.definition(inst.type);
+                                       return type && type->op == "OpTypeInt" && type->words[3] == 1;
+                                   }),
+                      0u);
+            EXPECT_EQ(0u, module.mathCount(op, "OpTypeVector"));
+        }
+        EXPECT_EQ(0u, module.count("OpTypeVector", [&](const HwInstruction& inst) {
+            return module.typeIs(inst.words[2], "OpTypeFloat");
+        }));
+    }
+    if (name == "precise") {
+        EXPECT_GT(module.mathCount("OpFMul", "OpTypeFloat"), 0u);
+        EXPECT_GT(module.mathCount("OpFAdd", "OpTypeFloat"), 0u);
+        for (const auto& inst : module.instructions) {
+            if (inst.op == "OpFMul" || inst.op == "OpFAdd") {
+                EXPECT_TRUE(module.typeIs(inst.type, "OpTypeFloat"));
+                EXPECT_TRUE(module.decorated(inst.id, spv::DecorationNoContraction));
+            }
+            if (inst.op == "OpExtInst") {
+                EXPECT_NE(uint32_t(GLSLstd450Fma), inst.words[4]);
+            }
+        }
+    }
+    if (name == "shared") {
+        const char* type = !scalar && test.width == 4 ? "OpTypeVector" : "OpTypeFloat";
+        EXPECT_GT(module.count("OpExtInst",
+                               [&](const HwInstruction& inst) {
+                                   return inst.words[4] == GLSLstd450Fma && module.typeIs(inst.type, type);
+                               }),
+                  0u);
+        if (!scalar && test.width == 4) {
+            EXPECT_GT(module.mathCount("OpFunctionParameter", "OpTypeArray"), 0u);
+        } else {
+            EXPECT_EQ(0u, module.mathCount("OpExtInst", "OpTypeVector"));
+        }
+    }
+    if (name == "volatile") {
+        EXPECT_GE(module.count("OpLoad",
+                               [&](const HwInstruction& inst) {
+                                   return module.typeIs(inst.type, "OpTypeFloat") && inst.words.size() > 4 &&
+                                          (inst.words[4] & uint32_t(spv::MemoryAccessVolatileMask));
+                               }),
+                  12u);
+        EXPECT_GE(module.count("OpStore",
+                               [&](const HwInstruction& inst) {
+                                   const auto* value = module.definition(inst.words[2]);
+                                   return value && module.typeIs(value->type, "OpTypeFloat") && inst.words.size() > 3 &&
+                                          (inst.words[3] & uint32_t(spv::MemoryAccessVolatileMask));
+                               }),
+                  24u);
+        EXPECT_EQ(0u, module.count("OpFunctionCall")); // No captured packed-memory helper.
+    }
+    if (rolled) {
+        EXPECT_GT(module.count("OpLoopMerge"), 0u);
+    }
+}
+#endif
+
+TEST_P(HwExtensionFreeTest, ValidatedGlslPipeline)
+{
+#if !ENABLE_OPT
+    GTEST_SKIP() << "SPIRV-Tools is required for HW lowering";
+#else
+    const auto test = GetParam();
+    const std::string file = "spv.hw_extfree_" + std::string(test.name) + ".comp";
+    std::string source;
+    tryLoadFile(GlobalTestSettings.testRoot + "/" + file, "input", &source);
+    ASSERT_FALSE(source.empty());
+    source.insert(source.find('\n') + 1, "#define WIDTH " + std::to_string(test.width) + "\n");
+    const auto controls = DeriveOptions(Source::GLSL, Semantics::Vulkan, Target::Spv);
+    const auto compiled =
+        compileAndLink(file, source, "", controls, glslang::EShTargetVulkan_1_3, glslang::EShTargetSpv_1_6);
+    std::ostringstream compileMessages;
+    outputResultToStream(&compileMessages, compiled, controls);
+    ASSERT_FALSE(compiled.spirvBinary.empty()) << compileMessages.str();
+
+    std::ostringstream diagnostics;
+    const auto consumer = [&](spv_message_level_t, const char*, const spv_position_t&, const char* message) {
+        diagnostics << message << '\n';
+    };
+    spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_3);
+    tools.SetMessageConsumer(consumer);
+    ASSERT_TRUE(tools.Validate(compiled.spirvBinary)) << "Invalid frontend input:\n" << diagnostics.str();
+    std::string inputAssembly;
+    ASSERT_TRUE(tools.Disassemble(compiled.spirvBinary, &inputAssembly));
+    const HwModule inputModule(compiled.spirvBinary);
+    CheckInput(inputModule, test.name);
+    std::vector<uint32_t> transportLoads;
+    if (std::string(test.name) == "branch" || std::string(test.name) == "loop") {
+        transportLoads = inputModule.multiBlockTransportLoads();
+        ASSERT_FALSE(transportLoads.empty());
+    }
+    const uint32_t aliasRoot = inputModule.componentWriteThenWholeLoadRoot();
+    ASSERT_FALSE(::testing::Test::HasFailure()) << "Input does not exercise the intended pattern";
+
+    // Freeze the frontend-generated input separately from lowering assertions.
+    // These goldens must never be used as hand-written assembly inputs.
+    const std::string golden =
+        GlobalTestSettings.testRoot + "/baseResults/" + file + "." + std::to_string(test.width) + ".out";
+    std::string expectedInput;
+    tryLoadFile(golden, "expected input SPIR-V", &expectedInput);
+    checkEqAndUpdateIfRequested(expectedInput, inputAssembly, golden, diagnostics.str());
+
+    for (bool scalar : {false, true}) {
+        std::vector<std::string> options = {scalar ? "=scalar" : ""};
+        const std::string name = test.name;
+        const std::string prefix = scalar ? "=scalar," : "=";
+        if (name == "select")
+            options.push_back(prefix + "unroll-elements=2");
+        if (name == "integer")
+            options.push_back(prefix + "unroll-macs=8");
+        if (name == "precise")
+            options.push_back(prefix + "unroll-macs=4");
+        for (size_t variant = 0; variant < options.size(); ++variant) {
+            const std::string flag = "--hw-lower-to-standard-extension-free" + options[variant];
+            SCOPED_TRACE(flag);
+            diagnostics.str("");
+            spvtools::Optimizer optimizer(SPV_ENV_VULKAN_1_3);
+            optimizer.SetMessageConsumer(consumer);
+            ASSERT_TRUE(optimizer.RegisterPassFromFlag(flag));
+            std::vector<uint32_t> lowered;
+            ASSERT_TRUE(optimizer.Run(compiled.spirvBinary.data(), compiled.spirvBinary.size(), &lowered))
+                << diagnostics.str();
+            ASSERT_TRUE(tools.Validate(lowered)) << "Invalid lowered output:\n" << diagnostics.str();
+            std::string assembly;
+            ASSERT_TRUE(tools.Disassemble(lowered, &assembly));
+            HwModule module(lowered);
+            module.expectNoHw(assembly);
+            CheckOutput(module, test, scalar, variant != 0, aliasRoot);
+            for (uint32_t id : transportLoads) {
+                const auto* load = module.definition(id);
+                ASSERT_NE(nullptr, load) << "Cross-block transport load was incorrectly forwarded: " << id;
+                EXPECT_EQ("OpLoad", load->op);
+            }
+        }
+    }
+#endif
+}
+
+INSTANTIATE_TEST_SUITE_P(Glsl, HwExtensionFreeTest,
+                         ::testing::Values(HwLowerCase{"alias", 4}, HwLowerCase{"alias", 5}, HwLowerCase{"branch", 3},
+                                           HwLowerCase{"branch", 4}, HwLowerCase{"loop", 5}, HwLowerCase{"loop", 8},
+                                           HwLowerCase{"aggregate", 4}, HwLowerCase{"select", 4},
+                                           HwLowerCase{"select", 5}, HwLowerCase{"integer", 3},
+                                           HwLowerCase{"shared", 4}, HwLowerCase{"shared", 3},
+                                           HwLowerCase{"precise", 2}, HwLowerCase{"volatile", 4},
+                                           HwLowerCase{"copy", 4}),
+                         [](const ::testing::TestParamInfo<HwLowerCase>& info) {
+                             return std::string(info.param.name) + "_" + std::to_string(info.param.width);
+                         });
+
+} // namespace
+} // namespace glslangtest

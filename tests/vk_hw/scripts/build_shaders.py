@@ -375,6 +375,7 @@ def compile_hw_shader(glslang, spirv_opt, spirv_val, spirv_dis, shader,
         glslang_command.extend(["--target-env", target_env])
     glslang_command.extend(["-V", str(shader), "-o", str(hw_spv)])
     run(glslang_command)
+    run([*validator_cmd(spirv_val, target_env, shader), str(hw_spv)])
     cases = specialization_cases or load_specialization_cases(shader)
     if any(case.values for case in cases):
         hw_asm = out_dir / f"{source_stem}.hw.spvasm"
@@ -423,6 +424,7 @@ def compile_unsupported_shader(glslang, spirv_opt, spirv_val, spirv_dis,
     rejected_spv = out_dir / f"{stem}.unsupported.rejected.hw.spv"
 
     run([glslang, "-V", str(shader), "-o", str(hw_spv)])
+    run([*validator_cmd(spirv_val, target_env, shader), str(hw_spv)])
     run([spirv_opt, "--hw-lower-to-standard", str(hw_spv),
          "-o", str(partial_spv)])
     run([*validator_cmd(spirv_val, target_env, shader), str(partial_spv)])

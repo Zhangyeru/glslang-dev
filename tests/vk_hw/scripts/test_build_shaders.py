@@ -6,6 +6,7 @@
 
 import json
 import pathlib
+import subprocess
 import tempfile
 import unittest
 from unittest import mock
@@ -344,16 +345,16 @@ class SpecializationCaseTest(unittest.TestCase):
                     shader, root, "vulkan1.3", cases)
 
         commands = [call.args[0] for call in run.call_args_list]
-        self.assertEqual(len(commands), 8)
-        self.assertEqual(commands[1][0], "spirv-dis")
-        self.assertTrue(str(commands[1][-1]).endswith(".hw.spvasm"))
-        self.assertEqual(commands[2][1:5], [
+        self.assertEqual(len(commands), 9)
+        self.assertEqual(commands[2][0], "spirv-dis")
+        self.assertTrue(str(commands[2][-1]).endswith(".hw.spvasm"))
+        self.assertEqual(commands[3][1:5], [
             "--freeze-spec-const",
             "--fold-spec-const-op-composite",
             "--hw-lower-to-standard-extension-free",
             "--fold-spec-const-op-composite",
         ])
-        self.assertEqual(commands[5][1:7], [
+        self.assertEqual(commands[6][1:7], [
             "--set-spec-const-default-value",
             "0:7",
             "--freeze-spec-const",
@@ -361,9 +362,9 @@ class SpecializationCaseTest(unittest.TestCase):
             "--hw-lower-to-standard-extension-free",
             "--fold-spec-const-op-composite",
         ])
-        self.assertTrue(str(commands[2][-1]).endswith(
+        self.assertTrue(str(commands[3][-1]).endswith(
             "vecmatmul_f32_flow_specdefault_5x3.lowered.spv"))
-        self.assertTrue(str(commands[5][-1]).endswith(
+        self.assertTrue(str(commands[6][-1]).endswith(
             "vecmatmul_f32_flow_specpartial_7x3.lowered.spv"))
 
     def test_variant_name_cannot_change_source_lowering_mode(self):
@@ -380,7 +381,7 @@ class SpecializationCaseTest(unittest.TestCase):
                     "glslang", "spirv-opt", "spirv-val", "spirv-dis",
                     shader, root, "vulkan1.3", (case,))
 
-        lower_command = run.call_args_list[1].args[0]
+        lower_command = run.call_args_list[2].args[0]
         self.assertIn(
             "--hw-lower-to-standard-extension-free=scalar", lower_command)
 
@@ -486,9 +487,9 @@ class ShaderStageDiscoveryTest(unittest.TestCase):
         commands = [call.args[0] for call in run.call_args_list]
         self.assertTrue(str(commands[0][-1]).endswith(
             "graphics/neural.frag.hw.spv"))
-        self.assertTrue(str(commands[1][-1]).endswith(
+        self.assertTrue(str(commands[2][-1]).endswith(
             "graphics/neural.frag.lowered.spv"))
-        self.assertEqual(commands[1][1:5], [
+        self.assertEqual(commands[2][1:5], [
             "--freeze-spec-const",
             "--fold-spec-const-op-composite",
             "--hw-lower-to-standard-extension-free",
@@ -605,6 +606,24 @@ OpExtension "SPV_EXT_replicated_composites"
 
 
 class EndToEndLoweringContractTest(unittest.TestCase):
+    def test_invalid_frontend_output_never_reaches_lowering(self):
+        for compile_shader in (compile_hw_shader, compile_unsupported_shader):
+            with self.subTest(compile_shader=compile_shader.__name__), \
+                    tempfile.TemporaryDirectory() as temp:
+                root = pathlib.Path(temp)
+                shader = root / "load_store_f32_4x4.comp"
+                shader.touch()
+                with mock.patch("build_shaders.run") as run:
+                    run.side_effect = [None, subprocess.CalledProcessError(1, "spirv-val")]
+                    with self.assertRaises(subprocess.CalledProcessError):
+                        compile_shader(
+                            "glslang", "spirv-opt", "spirv-val", "spirv-dis",
+                            shader, root, "vulkan1.3")
+                commands = [call.args[0] for call in run.call_args_list]
+                self.assertEqual([command[0] for command in commands], ["glslang", "spirv-val"])
+                self.assertEqual(commands[1][1:3], ["--target-env", "vulkan1.3"])
+                self.assertTrue(str(commands[1][-1]).endswith(".hw.spv"))
+
     def test_production_flow_compile_requests_vulkan_target(self):
         with tempfile.TemporaryDirectory() as temp:
             out_dir = pathlib.Path(temp)
@@ -639,16 +658,19 @@ class EndToEndLoweringContractTest(unittest.TestCase):
                     shader, out_dir, "vulkan1.3")
 
         commands = [call.args[0] for call in run.call_args_list]
-        self.assertEqual(commands[1][1:5], [
+        self.assertEqual(commands[1][0:3],
+                         ["spirv-val", "--target-env", "vulkan1.3"])
+        self.assertTrue(str(commands[1][-1]).endswith(".hw.spv"))
+        self.assertEqual(commands[2][1:5], [
             "--freeze-spec-const",
             "--fold-spec-const-op-composite",
             "--hw-lower-to-standard-extension-free=scalar",
             "--fold-spec-const-op-composite",
         ])
-        self.assertEqual(commands[2][0:3],
+        self.assertEqual(commands[3][0:3],
                          ["spirv-val", "--target-env", "vulkan1.3"])
-        self.assertTrue(str(commands[2][-1]).endswith(".lowered.spv"))
-        self.assertEqual(commands[3][0], "spirv-dis")
+        self.assertTrue(str(commands[3][-1]).endswith(".lowered.spv"))
+        self.assertEqual(commands[4][0], "spirv-dis")
 
     def test_unsupported_residue_is_preserved_then_rejected_strictly(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -671,8 +693,8 @@ class EndToEndLoweringContractTest(unittest.TestCase):
                     shader, out_dir, "vulkan1.3")
 
         commands = [call.args[0] for call in run.call_args_list]
-        self.assertEqual(commands[1][1], "--hw-lower-to-standard")
-        self.assertEqual(commands[2][0:3],
+        self.assertEqual(commands[2][1], "--hw-lower-to-standard")
+        self.assertEqual(commands[3][0:3],
                          ["spirv-val", "--target-env", "vulkan1.3"])
         strict_command = strict_run.call_args.args[0]
         self.assertEqual(strict_command[1],

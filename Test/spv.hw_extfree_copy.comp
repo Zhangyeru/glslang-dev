@@ -1,0 +1,21 @@
+#version 460
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_HW_neural_shader : require
+#ifndef WIDTH
+#define WIDTH 4
+#endif
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0) buffer InputA { float data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float data[]; } B;
+layout(set = 0, binding = 2) buffer Output { float data[]; } D;
+
+void main()
+{
+    coopvecHW<float, 4> value, other;
+    coopVecLoadHW(value, A.data, 0u);
+    coopVecLoadHW(other, B.data, 0u);
+    coopvecHW<float, 4> copied = nonuniformEXT(value);
+    bool choose = gl_GlobalInvocationID.x == 0u;
+    coopvecHW<float, 4> selected = choose ? copied : other;
+    coopVecStoreHW(selected, D.data, 0u);
+}

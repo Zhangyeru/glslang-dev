@@ -1,0 +1,35 @@
+#version 460
+#extension GL_HW_neural_shader : require
+#ifndef WIDTH
+#define WIDTH 4
+#endif
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0) buffer InputA { float data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float data[]; } B;
+layout(set = 0, binding = 2) buffer Output { float data[]; } D;
+
+struct Leaf {
+    coopvecHW<float, 4> vectorValue;
+    coopmatHW<float, 2, 3> matrixValue;
+};
+struct Payload { Leaf leaves[2]; };
+Payload update(inout Payload payload, uint index)
+{
+    Payload snapshot = payload;
+    payload.leaves[index].vectorValue[1] = B.data[0];
+    payload.leaves[index].matrixValue = payload.leaves[1u - index].matrixValue;
+    return snapshot;
+}
+void main()
+{
+    Payload payload;
+    coopVecLoadHW(payload.leaves[0].vectorValue, A.data, 0u);
+    coopVecLoadHW(payload.leaves[1].vectorValue, B.data, 0u);
+    coopMatLoadHW(payload.leaves[0].matrixValue, A.data, ivec2(2, 3), ivec2(0), 0);
+    coopMatLoadHW(payload.leaves[1].matrixValue, B.data, ivec2(2, 3), ivec2(0), 0);
+    uint index = gl_GlobalInvocationID.x & 1u;
+    Payload snapshot = update(payload, index);
+    coopVecStoreHW(payload.leaves[index].vectorValue, D.data, 0u);
+    coopVecStoreHW(snapshot.leaves[index].vectorValue, D.data, 16u);
+    coopMatStoreHW(payload.leaves[index].matrixValue, D.data, ivec2(6, 3), ivec2(4, 0), 0);
+}

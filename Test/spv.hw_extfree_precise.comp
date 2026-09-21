@@ -1,0 +1,35 @@
+#version 460
+#extension GL_HW_neural_shader : require
+#ifndef WIDTH
+#define WIDTH 4
+#endif
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0) buffer InputA { float data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float data[]; } B;
+layout(set = 0, binding = 2) buffer Output { float data[]; } D;
+
+struct Result { precise coopmatHW<float, 2, 2> value; };
+struct Operands {
+    coopmatHW<float, 2, 3> a;
+    coopmatHW<float, 3, 2> b;
+};
+Result multiply(Operands operands)
+{
+    Result result;
+    coopMatMulHW(result.value, operands.a, operands.b);
+    return result;
+}
+void main()
+{
+    coopmatHW<float, 2, 3> left, other;
+    coopmatHW<float, 3, 2> right;
+    coopMatLoadHW(left, A.data, ivec2(2, 3), ivec2(0), 0);
+    coopMatLoadHW(other, B.data, ivec2(2, 3), ivec2(0), 0);
+    coopMatLoadHW(right, B.data, ivec2(3, 2), ivec2(0), 0);
+    coopmatHW<float, 2, 3> chosen = gl_GlobalInvocationID.x == 0u ? left : other;
+    Operands operands;
+    operands.a = chosen;
+    operands.b = right;
+    Result result = multiply(operands);
+    coopMatStoreHW(result.value, D.data, ivec2(2), ivec2(0), 0);
+}

@@ -1,0 +1,20 @@
+#version 460
+#extension GL_HW_neural_shader : require
+#ifndef WIDTH
+#define WIDTH 4
+#endif
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0) buffer InputA { float data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float data[]; } B;
+layout(set = 0, binding = 2) buffer Output { float data[]; } D;
+
+void main()
+{
+    coopmatHW<float, 2, WIDTH> left, right;
+    coopMatLoadHW(left, A.data, ivec2(2, WIDTH), ivec2(0), 0);
+    coopMatLoadHW(right, B.data, ivec2(2, WIDTH), ivec2(0), 0);
+    bool choose = gl_GlobalInvocationID.x == 0u;
+    coopmatHW<float, 2, WIDTH> selected = choose ? left : right;
+    selected = selected + right;
+    coopMatStoreHW(selected, D.data, ivec2(2, WIDTH), ivec2(0), 0);
+}
