@@ -1593,6 +1593,12 @@ const char* OpcodeString(int op)
     case OpLoadMatrixB16X2Burst2ColumnHW: return "OpLoadMatrixB16X2Burst2ColumnHW";
     case OpCooperativeMatrixLoadHW:         return "OpCooperativeMatrixLoadHW";
     case OpCooperativeMatrixStoreNV:        return "OpCooperativeMatrixStoreNV";
+    case OpStoreMatrixB8X1Burst1RowHW: return "OpStoreMatrixB8X1Burst1RowHW";
+    case OpStoreMatrixB8X2Burst1RowHW: return "OpStoreMatrixB8X2Burst1RowHW";
+    case OpStoreMatrixB8X1Burst1ColumnHW: return "OpStoreMatrixB8X1Burst1ColumnHW";
+    case OpStoreMatrixB8X2Burst1ColumnHW: return "OpStoreMatrixB8X2Burst1ColumnHW";
+    case OpStoreMatrixB16X1Burst1RowHW: return "OpStoreMatrixB16X1Burst1RowHW";
+    case OpStoreMatrixB16X2Burst1RowHW: return "OpStoreMatrixB16X2Burst1RowHW";
     case OpCooperativeMatrixStoreHW:        return "OpCooperativeMatrixStoreHW";
     case OpCooperativeMatrixMulAddNV:       return "OpCooperativeMatrixMulAddNV";
     case OpCooperativeMatrixMulAddHW:       return "OpCooperativeMatrixMulAddHW";
@@ -3396,6 +3402,23 @@ void Parameterize()
         InstructionDesc[OpCooperativeMatrixStoreNV].operands.push(OperandMemoryAccess, "'Memory Access'");
         InstructionDesc[OpCooperativeMatrixStoreNV].operands.push(OperandLiteralNumber, "", true);
         InstructionDesc[OpCooperativeMatrixStoreNV].operands.push(OperandId, "", true);
+        for (Op opcode : {
+            OpStoreMatrixB8X1Burst1RowHW,
+            OpStoreMatrixB8X2Burst1RowHW,
+            OpStoreMatrixB8X1Burst1ColumnHW,
+            OpStoreMatrixB8X2Burst1ColumnHW,
+            OpStoreMatrixB16X1Burst1RowHW,
+            OpStoreMatrixB16X2Burst1RowHW,
+        }) {
+            InstructionDesc[opcode].operands.push(OperandId, "'Pointer'");
+            InstructionDesc[opcode].operands.push(OperandId, "'Object'");
+            InstructionDesc[opcode].operands.push(OperandId, "'Offset'");
+            InstructionDesc[opcode].operands.push(OperandMemoryAccess, "'Memory Access'", true);
+            InstructionDesc[opcode].operands.push(OperandLiteralNumber, "", true);
+            InstructionDesc[opcode].operands.push(OperandId, "", true);
+            InstructionDesc[opcode].setResultAndType(false, false);
+        }
+
         InstructionDesc[OpCooperativeMatrixStoreHW].operands.push(OperandId, "'Pointer'");
         InstructionDesc[OpCooperativeMatrixStoreHW].operands.push(OperandId, "'Object'");
         InstructionDesc[OpCooperativeMatrixStoreHW].operands.push(OperandId, "'Offset'");

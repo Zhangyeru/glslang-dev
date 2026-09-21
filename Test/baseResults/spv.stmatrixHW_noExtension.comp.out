@@ -1,0 +1,6 @@
+spv.stmatrixHW_noExtension.comp
+ERROR: 0:10: 'stmatrix_b8_x1_burst1_R' : required extension not requested: GL_HW_neural_shader
+ERROR: 1 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

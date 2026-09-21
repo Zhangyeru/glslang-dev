@@ -977,6 +977,12 @@ bool TOutputTraverser::visitAggregate(TVisit /* visit */, TIntermAggregate* node
     case EOpLoadMatrixB16X1Burst2ColumnHW: out.debug << "ldmatrix_b16_x1_burst2_C"; break;
     case EOpLoadMatrixB16X2Burst2ColumnHW: out.debug << "ldmatrix_b16_x2_burst2_C"; break;
     case EOpCooperativeMatrixLoadHW:  out.debug << "Load cooperative matrix HW"; break;
+    case EOpStoreMatrixB8X1Burst1RowHW: out.debug << "stmatrix_b8_x1_burst1_R"; break;
+    case EOpStoreMatrixB8X2Burst1RowHW: out.debug << "stmatrix_b8_x2_burst1_R"; break;
+    case EOpStoreMatrixB8X1Burst1ColumnHW: out.debug << "stmatrix_b8_x1_burst1_C"; break;
+    case EOpStoreMatrixB8X2Burst1ColumnHW: out.debug << "stmatrix_b8_x2_burst1_C"; break;
+    case EOpStoreMatrixB16X1Burst1RowHW: out.debug << "stmatrix_b16_x1_burst1_R"; break;
+    case EOpStoreMatrixB16X2Burst1RowHW: out.debug << "stmatrix_b16_x2_burst1_R"; break;
     case EOpCooperativeMatrixStoreHW:  out.debug << "Store cooperative matrix HW"; break;
     case EOpCooperativeMatrixMulHW: out.debug << "Mul cooperative matrices HW"; break;
     case EOpCooperativeMatrixMulAddHW: out.debug << "MulAdd cooperative matrices HW"; break;

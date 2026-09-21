@@ -1,0 +1,24 @@
+spv.stmatrixHW_Error.comp
+ERROR: 0:22: 'stmatrix_b8_x1_burst1_R' : matrix component type and shape must match the stmatrix variant 
+ERROR: 0:23: 'stmatrix_b8_x1_burst1_R' : matrix component type and shape must match the stmatrix variant 
+ERROR: 0:24: 'stmatrix_b8_x1_burst1_R' : matrix component type and shape must match the stmatrix variant 
+ERROR: 0:25: 'stmatrix_b8_x1_burst1_R' : matrix component type and shape must match the stmatrix variant 
+ERROR: 0:26: 'stmatrix_b8_x1_burst1_R' : offset must be a uint scalar 
+ERROR: 0:27: 'stmatrix_b8_x1_burst1_R' : no matching overloaded function found 
+ERROR: 0:28: 'stmatrix_b8_x1_burst1_R' : no matching overloaded function found 
+ERROR: 0:29: 'stmatrix_b8_x1_burst1_R' : offset must be aligned to the burst size in bytes requires 16-byte alignment
+ERROR: 0:30: 'stmatrix_b8_x2_burst1_C' : matrix component type and shape must match the stmatrix variant 
+ERROR: 0:31: 'stmatrix_b8_x1_burst1_R' : buffer must use buffer or shared storage 
+ERROR: 0:32: 'stmatrix_b8_x1_burst1_R' : buffer must use buffer or shared storage 
+ERROR: 0:33: 'stmatrix_b8_x1_burst1_R' : cannot store to a readonly buffer 
+ERROR: 0:34: 'stmatrix_b8_x1_burst1_R' : no matching overloaded function found 
+ERROR: 0:35: 'stmatrix_b8_x1_burst1_R' : no matching overloaded function found 
+ERROR: 0:36: 'stmatrix_b8_x1_burst1_R' : no matching overloaded function found 
+ERROR: 0:37: 'stmatrix_b8_x1_burst1_R' : no matching overloaded function found 
+ERROR: 0:38: 'stmatrix_b8_x1_burst1_R' : no matching overloaded function found 
+ERROR: 0:39: 'stmatrix_b16_x1_burst1_C' : no matching overloaded function found 
+ERROR: 0:40: 'stmatrix_b8_x1_burst2_R' : no matching overloaded function found 
+ERROR: 19 compilation errors.  No code generated.
+
+
+SPIR-V is not generated for failed compile or link

@@ -161,6 +161,7 @@ set(GLSLANG_HEADERS
     Include/InitializeGlobals.h
     Include/intermediate.h
     Include/LoadMatrixHW.h
+    Include/StoreMatrixHW.h
     Include/PoolAlloc.h
     Include/ResourceLimits.h
     Include/ShHandle.h

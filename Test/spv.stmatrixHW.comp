@@ -1,0 +1,63 @@
+#version 450 core
+#extension GL_HW_neural_shader : require
+#extension GL_EXT_shader_explicit_arithmetic_types : require
+#extension GL_EXT_buffer_reference : require
+layout(local_size_x = 32) in;
+layout(set = 0, binding = 0, std430) coherent volatile buffer Buffer {
+    uvec3 data[];
+} dataBuffer;
+layout(set = 0, binding = 1, std430) writeonly buffer WriteOnly {
+    float data[];
+} writeOnlyBuffer;
+layout(buffer_reference, std430, buffer_reference_align = 4) buffer Global {
+    float data[];
+};
+layout(set = 0, binding = 2) buffer Address { Global data; } address;
+shared uint sharedData[1024];
+layout(constant_id = 0) const uint specOffset = 0u;
+void main()
+{
+    uint offset = gl_LocalInvocationID.x * 16u;
+    coopmatHW<int8_t, 16, 16> m0;
+    ldmatrix_b8_x1_burst1_R(m0, dataBuffer.data, offset);
+    stmatrix_b8_x1_burst1_R(m0, dataBuffer.data, offset);
+    stmatrix_b8_x1_burst1_R(m0, sharedData, 16u);
+    stmatrix_b8_x1_burst1_R(m0, address.data.data, specOffset);
+    stmatrix_b8_x1_burst1_R(m0, writeOnlyBuffer.data, 0u);
+    stmatrix_b8_x1_burst1_R(coopmatHW<int8_t, 16, 16>(0), sharedData, 32u);
+    coopmatHW<int8_t, 32, 16> m1;
+    ldmatrix_b8_x2_burst1_R(m1, dataBuffer.data, offset);
+    stmatrix_b8_x2_burst1_R(m1, dataBuffer.data, offset);
+    stmatrix_b8_x2_burst1_R(m1, sharedData, 16u);
+    stmatrix_b8_x2_burst1_R(m1, address.data.data, specOffset);
+    stmatrix_b8_x2_burst1_R(m1, writeOnlyBuffer.data, 0u);
+    stmatrix_b8_x2_burst1_R(coopmatHW<int8_t, 32, 16>(0), sharedData, 32u);
+    coopmatHW<int8_t, 16, 16> m2;
+    ldmatrix_b8_x1_burst1_C(m2, dataBuffer.data, offset);
+    stmatrix_b8_x1_burst1_C(m2, dataBuffer.data, offset);
+    stmatrix_b8_x1_burst1_C(m2, sharedData, 16u);
+    stmatrix_b8_x1_burst1_C(m2, address.data.data, specOffset);
+    stmatrix_b8_x1_burst1_C(m2, writeOnlyBuffer.data, 0u);
+    stmatrix_b8_x1_burst1_C(coopmatHW<int8_t, 16, 16>(0), sharedData, 32u);
+    coopmatHW<int8_t, 16, 32> m3;
+    ldmatrix_b8_x2_burst1_C(m3, dataBuffer.data, offset);
+    stmatrix_b8_x2_burst1_C(m3, dataBuffer.data, offset);
+    stmatrix_b8_x2_burst1_C(m3, sharedData, 16u);
+    stmatrix_b8_x2_burst1_C(m3, address.data.data, specOffset);
+    stmatrix_b8_x2_burst1_C(m3, writeOnlyBuffer.data, 0u);
+    stmatrix_b8_x2_burst1_C(coopmatHW<int8_t, 16, 32>(0), sharedData, 32u);
+    coopmatHW<int16_t, 16, 8> m4;
+    ldmatrix_b16_x1_burst1_R(m4, dataBuffer.data, offset);
+    stmatrix_b16_x1_burst1_R(m4, dataBuffer.data, offset);
+    stmatrix_b16_x1_burst1_R(m4, sharedData, 16u);
+    stmatrix_b16_x1_burst1_R(m4, address.data.data, specOffset);
+    stmatrix_b16_x1_burst1_R(m4, writeOnlyBuffer.data, 0u);
+    stmatrix_b16_x1_burst1_R(coopmatHW<int16_t, 16, 8>(0), sharedData, 32u);
+    coopmatHW<int16_t, 32, 8> m5;
+    ldmatrix_b16_x2_burst1_R(m5, dataBuffer.data, offset);
+    stmatrix_b16_x2_burst1_R(m5, dataBuffer.data, offset);
+    stmatrix_b16_x2_burst1_R(m5, sharedData, 16u);
+    stmatrix_b16_x2_burst1_R(m5, address.data.data, specOffset);
+    stmatrix_b16_x2_burst1_R(m5, writeOnlyBuffer.data, 0u);
+    stmatrix_b16_x2_burst1_R(coopmatHW<int16_t, 32, 8>(0), sharedData, 32u);
+}

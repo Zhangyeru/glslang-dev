@@ -1,0 +1,41 @@
+#version 450 core
+#extension GL_HW_neural_shader : require
+#extension GL_EXT_shader_explicit_arithmetic_types : require
+layout(local_size_x = 32) in;
+layout(set = 0, binding = 0) buffer Input { uint data[]; } inputBuffer;
+layout(set = 0, binding = 1) readonly buffer ReadOnly { uint data[]; } readOnlyBuffer;
+shared uint sharedData[1024];
+uint privateData[1024];
+shared uint nestedData[2][32];
+shared bool boolData[32];
+struct S { uint x; };
+shared S structData[32];
+shared mat2 matrixData[32];
+void main()
+{
+    coopmatHW<int8_t, 16, 16> valid;
+    coopmatHW<int16_t, 16, 16> wrongWidth;
+    coopmatHW<uint8_t, 16, 16> wrongSign;
+    coopmatHW<float16_t, 16, 16> wrongType;
+    coopmatHW<int8_t, 8, 16> wrongShape;
+    uint localData[32];
+    stmatrix_b8_x1_burst1_R(wrongWidth, inputBuffer.data, 0u);
+    stmatrix_b8_x1_burst1_R(wrongSign, inputBuffer.data, 0u);
+    stmatrix_b8_x1_burst1_R(wrongType, inputBuffer.data, 0u);
+    stmatrix_b8_x1_burst1_R(wrongShape, inputBuffer.data, 0u);
+    stmatrix_b8_x1_burst1_R(valid, inputBuffer.data, 0);
+    stmatrix_b8_x1_burst1_R(valid, inputBuffer.data, uvec2(0));
+    stmatrix_b8_x1_burst1_R(valid, inputBuffer.data, uint64_t(0));
+    stmatrix_b8_x1_burst1_R(valid, inputBuffer.data, 1u);
+    stmatrix_b8_x2_burst1_C(valid, inputBuffer.data, 16u);
+    stmatrix_b8_x1_burst1_R(valid, privateData, 0u);
+    stmatrix_b8_x1_burst1_R(valid, localData, 0u);
+    stmatrix_b8_x1_burst1_R(valid, readOnlyBuffer.data, 0u);
+    stmatrix_b8_x1_burst1_R(valid, nestedData, 0u);
+    stmatrix_b8_x1_burst1_R(valid, boolData, 0u);
+    stmatrix_b8_x1_burst1_R(valid, structData, 0u);
+    stmatrix_b8_x1_burst1_R(valid, matrixData, 0u);
+    stmatrix_b8_x1_burst1_R(valid, inputBuffer.data[0], 0u);
+    stmatrix_b16_x1_burst1_C(wrongWidth, sharedData, 0u);
+    stmatrix_b8_x1_burst2_R(valid, sharedData, 0u);
+}

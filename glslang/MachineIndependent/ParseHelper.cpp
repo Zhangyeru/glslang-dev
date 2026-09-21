@@ -40,6 +40,7 @@
 
 #include "ParseHelper.h"
 #include "../Include/LoadMatrixHW.h"
+#include "../Include/StoreMatrixHW.h"
 #include "Initialize.h"
 #include "Scan.h"
 
@@ -315,6 +316,33 @@ void checkLoadMatrixHWCall(TParseContext& parseContext, const TSourceLoc& loc, c
         parseContext.error(loc, "buffer must use buffer or shared storage", variant.name, "");
     if (buffer.getQualifier().writeonly)
         parseContext.error(loc, "cannot load from a writeonly buffer", variant.name, "");
+
+    TIntermTyped* offset = arguments[2]->getAsTyped();
+    if (offset->getBasicType() != EbtUint || !offset->getType().isScalar() || offset->getType().isArray())
+        parseContext.error(loc, "offset must be a uint scalar", variant.name, "");
+    int value = 0;
+    if (offset->getQualifier().isFrontEndConstant() && getConstantIntValue(offset, value) &&
+        static_cast<unsigned int>(value) % variant.offsetAlignment != 0)
+        parseContext.error(loc, "offset must be aligned to the burst size in bytes", variant.name,
+                           "requires %u-byte alignment", variant.offsetAlignment);
+}
+
+void checkStoreMatrixHWCall(TParseContext& parseContext, const TSourceLoc& loc, const TStoreMatrixHWVariant& variant,
+                            const TIntermSequence& arguments)
+{
+    const TType& matrix = arguments[0]->getAsTyped()->getType();
+    if (!matrix.isCoopMatHW() || matrix.getBasicType() != variant.componentType ||
+        getCoopMatHWRows(matrix) != variant.rows || getCoopMatHWColumns(matrix) != variant.columns)
+        parseContext.error(loc, "matrix component type and shape must match the stmatrix variant", variant.name, "");
+
+    const TType& buffer = arguments[1]->getAsTyped()->getType();
+    if (!buffer.isArray() || buffer.isArrayOfArrays())
+        parseContext.error(loc, "buffer must be a one-dimensional array of numeric scalars or vectors", variant.name,
+                           "");
+    if (buffer.getQualifier().storage != EvqBuffer && buffer.getQualifier().storage != EvqShared)
+        parseContext.error(loc, "buffer must use buffer or shared storage", variant.name, "");
+    if (buffer.getQualifier().readonly)
+        parseContext.error(loc, "cannot store to a readonly buffer", variant.name, "");
 
     TIntermTyped* offset = arguments[2]->getAsTyped();
     if (offset->getBasicType() != EbtUint || !offset->getType().isScalar() || offset->getType().isArray())
@@ -1880,6 +1908,8 @@ TIntermTyped* TParseContext::handleFunctionCall(const TSourceLoc& loc, TFunction
                 if (builtIn) {
                     if (const auto* variant = getLoadMatrixHWVariant(fnCandidate->getBuiltInOp()))
                         checkLoadMatrixHWCall(*this, loc, *variant, aggregate->getSequence());
+                    if (const auto* variant = getStoreMatrixHWVariant(fnCandidate->getBuiltInOp()))
+                        checkStoreMatrixHWCall(*this, loc, *variant, aggregate->getSequence());
                 }
 
                 // Convert 'in' arguments

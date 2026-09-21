@@ -58,6 +58,7 @@ namespace spv {
 // Glslang includes
 #include "../glslang/Include/Common.h"
 #include "../glslang/Include/LoadMatrixHW.h"
+#include "../glslang/Include/StoreMatrixHW.h"
 #include "../glslang/MachineIndependent/SymbolTable.h"
 #include "../glslang/MachineIndependent/localintermediate.h"
 
@@ -4315,6 +4316,12 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
     case glslang::EOpLoadMatrixB16X1Burst2ColumnHW:
     case glslang::EOpLoadMatrixB16X2Burst2ColumnHW:
     case glslang::EOpCooperativeMatrixLoadHW:
+    case glslang::EOpStoreMatrixB8X1Burst1RowHW:
+    case glslang::EOpStoreMatrixB8X2Burst1RowHW:
+    case glslang::EOpStoreMatrixB8X1Burst1ColumnHW:
+    case glslang::EOpStoreMatrixB8X2Burst1ColumnHW:
+    case glslang::EOpStoreMatrixB16X1Burst1RowHW:
+    case glslang::EOpStoreMatrixB16X2Burst1RowHW:
     case glslang::EOpCooperativeMatrixStoreHW:
     case glslang::EOpCooperativeMatrixLoadTensorNV:
     case glslang::EOpCooperativeMatrixStoreTensorNV:
@@ -4680,6 +4687,12 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
             if (arg == 1)
                 lvalue = true;
             break;
+        case glslang::EOpStoreMatrixB8X1Burst1RowHW:
+        case glslang::EOpStoreMatrixB8X2Burst1RowHW:
+        case glslang::EOpStoreMatrixB8X1Burst1ColumnHW:
+        case glslang::EOpStoreMatrixB8X2Burst1ColumnHW:
+        case glslang::EOpStoreMatrixB16X1Burst1RowHW:
+        case glslang::EOpStoreMatrixB16X2Burst1RowHW:
         case glslang::EOpCooperativeMatrixStoreHW:
         case glslang::EOpCooperativeVectorStoreHW:
             if (arg == 1)
@@ -4764,6 +4777,7 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         bool isCoopVec = node->getOp() == glslang::EOpCooperativeVectorLoadNV ||
                          node->getOp() == glslang::EOpCooperativeVectorStoreNV;
         bool isCoopMatHW = glslang::getLoadMatrixHWVariant(node->getOp()) != nullptr ||
+                           glslang::getStoreMatrixHWVariant(node->getOp()) != nullptr ||
                            node->getOp() == glslang::EOpCooperativeMatrixLoadHW ||
                            node->getOp() == glslang::EOpCooperativeMatrixStoreHW;
         bool isCoopVecHW = node->getOp() == glslang::EOpCooperativeVectorLoadHW ||
@@ -5085,6 +5099,38 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
         }
 
         builder.createNoResultOp(spv::OpCooperativeMatrixStoreTensorNV, idImmOps);
+        result = 0;
+    } else if (glslang::getStoreMatrixHWVariant(node->getOp())) {
+        spv::Op opcode = spv::OpNop;
+        switch (node->getOp()) {
+        case glslang::EOpStoreMatrixB8X1Burst1RowHW:
+            opcode = spv::OpStoreMatrixB8X1Burst1RowHW;
+            break;
+        case glslang::EOpStoreMatrixB8X2Burst1RowHW:
+            opcode = spv::OpStoreMatrixB8X2Burst1RowHW;
+            break;
+        case glslang::EOpStoreMatrixB8X1Burst1ColumnHW:
+            opcode = spv::OpStoreMatrixB8X1Burst1ColumnHW;
+            break;
+        case glslang::EOpStoreMatrixB8X2Burst1ColumnHW:
+            opcode = spv::OpStoreMatrixB8X2Burst1ColumnHW;
+            break;
+        case glslang::EOpStoreMatrixB16X1Burst1RowHW:
+            opcode = spv::OpStoreMatrixB16X1Burst1RowHW;
+            break;
+        case glslang::EOpStoreMatrixB16X2Burst1RowHW:
+            opcode = spv::OpStoreMatrixB16X2Burst1RowHW;
+            break;
+        default:
+            assert(false);
+            break;
+        }
+        std::vector<spv::IdImmediate> idImmOps;
+        idImmOps.push_back(spv::IdImmediate(true, operands[1])); // array pointer
+        idImmOps.push_back(spv::IdImmediate(true, operands[0])); // matrix value
+        idImmOps.push_back(spv::IdImmediate(true, operands[2])); // byte offset, possibly nonuniform
+        idImmOps.insert(idImmOps.end(), memoryAccessOperands.begin(), memoryAccessOperands.end());
+        builder.createNoResultOp(opcode, idImmOps);
         result = 0;
     } else if (node->getOp() == glslang::EOpCooperativeMatrixStoreHW) {
         createCooperativeMatrixHWStore(builder, operands, memoryAccessOperands);
