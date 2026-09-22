@@ -1,0 +1,21 @@
+#version 460 core
+#extension GL_HW_neural_shader : require
+#ifndef WIDTH
+#define WIDTH 4
+#endif
+layout(local_size_x=1) in;
+layout(set=0,binding=0) buffer InputA { float data[]; } A;
+layout(set=0,binding=1) buffer InputB { float data[]; } B;
+layout(set=0,binding=2) buffer Output { float data[]; } D;
+
+void main()
+{
+    coopmatHW<float, 2, WIDTH> a, b;
+    coopMatLoadHW(a, A.data, ivec2(2, WIDTH), ivec2(0), 0);
+    coopMatLoadHW(b, B.data, ivec2(2, WIDTH), ivec2(0), 0);
+    precise coopmatHW<float, 2, WIDTH> strictValue = a + b;
+    precise coopmatHW<float, 2, WIDTH> strictScale = strictValue * B.data[2 * WIDTH];
+    coopmatHW<float, 2, WIDTH> relaxed = a - b;
+    coopMatStoreHW(strictScale, D.data, ivec2(4, WIDTH), ivec2(0), 0);
+    coopMatStoreHW(relaxed, D.data, ivec2(4, WIDTH), ivec2(2, 0), 0);
+}

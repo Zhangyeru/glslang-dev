@@ -1,0 +1,126 @@
+OpCapability Shader
+OpCapability VulkanMemoryModel
+OpCapability CooperativeVectorHW
+OpExtension "SPV_HW_neural_shader"
+%1 = OpExtInstImport "GLSL.std.450"
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %main "main" %A %B %D
+OpExecutionMode %main LocalSize 1 1 1
+OpSource GLSL 460
+OpSourceExtension "GL_HW_neural_shader"
+OpName %main "main"
+OpName %tempArg "tempArg"
+OpName %InputA "InputA"
+OpMemberName %InputA 0 "data"
+OpName %A "A"
+OpName %a "a"
+OpName %tempArg_0 "tempArg"
+OpName %InputB "InputB"
+OpMemberName %InputB 0 "data"
+OpName %B "B"
+OpName %b "b"
+OpName %tempArg_1 "tempArg"
+OpName %c "c"
+OpName %strictValue "strictValue"
+OpName %strictScale "strictScale"
+OpName %relaxed "relaxed"
+OpName %Output "Output"
+OpMemberName %Output 0 "data"
+OpName %D "D"
+OpDecorate %_runtimearr_float ArrayStride 4
+OpDecorate %InputA Block
+OpMemberDecorate %InputA 0 Offset 0
+OpDecorate %A Binding 0
+OpDecorate %A DescriptorSet 0
+OpDecorate %_runtimearr_float_0 ArrayStride 4
+OpDecorate %InputB Block
+OpMemberDecorate %InputB 0 Offset 0
+OpDecorate %B Binding 1
+OpDecorate %B DescriptorSet 0
+OpDecorate %42 NoContraction
+OpDecorate %44 NoContraction
+OpDecorate %51 NoContraction
+OpDecorate %_runtimearr_float_1 ArrayStride 4
+OpDecorate %Output Block
+OpMemberDecorate %Output 0 Offset 0
+OpDecorate %D Binding 2
+OpDecorate %D DescriptorSet 0
+%void = OpTypeVoid
+%3 = OpTypeFunction %void
+%float = OpTypeFloat 32
+%uint = OpTypeInt 32 0
+%uint_5 = OpConstant %uint 5
+%9 = OpTypeCooperativeVectorHW %float %uint_5
+%_ptr_Function_9 = OpTypePointer Function %9
+%_runtimearr_float = OpTypeRuntimeArray %float
+%InputA = OpTypeStruct %_runtimearr_float
+%_ptr_StorageBuffer_InputA = OpTypePointer StorageBuffer %InputA
+%A = OpVariable %_ptr_StorageBuffer_InputA StorageBuffer
+%int = OpTypeInt 32 1
+%int_0 = OpConstant %int 0
+%_ptr_StorageBuffer__runtimearr_float = OpTypePointer StorageBuffer %_runtimearr_float
+%uint_0 = OpConstant %uint 0
+%_runtimearr_float_0 = OpTypeRuntimeArray %float
+%InputB = OpTypeStruct %_runtimearr_float_0
+%_ptr_StorageBuffer_InputB = OpTypePointer StorageBuffer %InputB
+%B = OpVariable %_ptr_StorageBuffer_InputB StorageBuffer
+%_ptr_StorageBuffer__runtimearr_float_0 = OpTypePointer StorageBuffer %_runtimearr_float_0
+%int_5 = OpConstant %int 5
+%_ptr_StorageBuffer_float = OpTypePointer StorageBuffer %float
+%_runtimearr_float_1 = OpTypeRuntimeArray %float
+%Output = OpTypeStruct %_runtimearr_float_1
+%_ptr_StorageBuffer_Output = OpTypePointer StorageBuffer %Output
+%D = OpVariable %_ptr_StorageBuffer_Output StorageBuffer
+%_ptr_StorageBuffer__runtimearr_float_1 = OpTypePointer StorageBuffer %_runtimearr_float_1
+%v3uint = OpTypeVector %uint 3
+%uint_1 = OpConstant %uint 1
+%67 = OpConstantComposite %v3uint %uint_1 %uint_1 %uint_1
+%main = OpFunction %void None %3
+%5 = OpLabel
+%tempArg = OpVariable %_ptr_Function_9 Function
+%a = OpVariable %_ptr_Function_9 Function
+%tempArg_0 = OpVariable %_ptr_Function_9 Function
+%b = OpVariable %_ptr_Function_9 Function
+%tempArg_1 = OpVariable %_ptr_Function_9 Function
+%c = OpVariable %_ptr_Function_9 Function
+%strictValue = OpVariable %_ptr_Function_9 Function
+%strictScale = OpVariable %_ptr_Function_9 Function
+%relaxed = OpVariable %_ptr_Function_9 Function
+%19 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %A %int_0
+%21 = OpCooperativeVectorLoadHW %9 %19 %uint_0
+OpStore %tempArg %21
+%23 = OpLoad %9 %tempArg
+OpStore %a %23
+%30 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_0 %B %int_0
+%31 = OpCooperativeVectorLoadHW %9 %30 %uint_0
+OpStore %tempArg_0 %31
+%33 = OpLoad %9 %tempArg_0
+OpStore %b %33
+%35 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %A %int_0
+%36 = OpCooperativeVectorLoadHW %9 %35 %uint_5
+OpStore %tempArg_1 %36
+%38 = OpLoad %9 %tempArg_1
+OpStore %c %38
+%40 = OpLoad %9 %a
+%41 = OpLoad %9 %b
+%42 = OpFMul %9 %40 %41
+%43 = OpLoad %9 %c
+%44 = OpFAdd %9 %42 %43
+OpStore %strictValue %44
+%46 = OpLoad %9 %strictValue
+%49 = OpAccessChain %_ptr_StorageBuffer_float %B %int_0 %int_5
+%50 = OpLoad %float %49
+%51 = OpVectorTimesScalar %9 %46 %50
+OpStore %strictScale %51
+%53 = OpLoad %9 %a
+%54 = OpLoad %9 %b
+%55 = OpFSub %9 %53 %54
+OpStore %relaxed %55
+%56 = OpLoad %9 %strictScale
+%62 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_1 %D %int_0
+OpCooperativeVectorStoreHW %62 %uint_0 %56
+%63 = OpLoad %9 %relaxed
+%64 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_1 %D %int_0
+OpCooperativeVectorStoreHW %64 %uint_5 %63
+OpReturn
+OpFunctionEnd

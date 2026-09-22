@@ -197,6 +197,14 @@ public:
 
 void CheckInput(const HwModule& module, const std::string& name)
 {
+    if (name == "large_struct") {
+        EXPECT_GT(module.count("OpConstantCompositeReplicateEXT",
+                               [&](const HwInstruction& inst) {
+                                   return module.typeIs(inst.type, "OpTypeStruct") && module.containsHw(inst.type);
+                               }),
+                  0u);
+        return;
+    }
     EXPECT_GT(module.hwCount("OpLoad"), 0u);
     EXPECT_GT(module.hwCount("OpStore"), 0u);
     if (name == "alias") {
@@ -244,6 +252,15 @@ void CheckInput(const HwModule& module, const std::string& name)
                                    return module.decorated(inst.id, spv::DecorationNoContraction);
                                }),
                   0u);
+    }
+    if (name == "precise_arithmetic" || name == "precise_matrix_arithmetic") {
+        EXPECT_GT(module.count("OpFAdd",
+                               [&](const HwInstruction& inst) {
+                                   return module.containsHw(inst.type) &&
+                                          module.decorated(inst.id, spv::DecorationNoContraction);
+                               }),
+                  0u);
+        EXPECT_GT(module.hwCount("OpFSub"), 0u);
     }
     if (name == "shared") {
         EXPECT_GT(module.count("OpCooperativeVectorMatrixMulHW"), 0u);
@@ -341,6 +358,25 @@ void CheckOutput(const HwModule& module, const HwLowerCase& test, bool scalar, b
             }
         }
     }
+    if (name == "precise_arithmetic" || name == "precise_matrix_arithmetic") {
+        EXPECT_GT(module.count("OpFAdd"), 0u);
+        EXPECT_GT(module.count("OpFMul") + module.count("OpVectorTimesScalar"), 0u);
+        EXPECT_GT(module.count("OpFSub"), 0u);
+        for (const auto& inst : module.instructions) {
+            if (inst.op == "OpFMul" || inst.op == "OpFAdd" || inst.op == "OpVectorTimesScalar") {
+                EXPECT_TRUE(module.decorated(inst.id, spv::DecorationNoContraction)) << inst.op << " " << inst.id;
+            } else if (inst.op == "OpFSub") {
+                EXPECT_FALSE(module.decorated(inst.id, spv::DecorationNoContraction));
+            }
+        }
+    }
+    if (name == "large_struct") {
+        const unsigned pieces = !scalar && test.width % 2 == 0 ? test.width / 2 : test.width;
+        if (pieces > 65532) {
+            EXPECT_GT(module.count("OpLoopMerge"), 0u);
+        }
+        EXPECT_GT(module.count("OpLoad"), 0u);
+    }
     if (name == "shared") {
         const char* type = !scalar && test.width == 4 ? "OpTypeVector" : "OpTypeFloat";
         EXPECT_GT(module.count("OpExtInst",
@@ -405,6 +441,23 @@ TEST_P(HwExtensionFreeTest, ValidatedGlslPipeline)
     ASSERT_TRUE(tools.Disassemble(compiled.spirvBinary, &inputAssembly));
     const HwModule inputModule(compiled.spirvBinary);
     CheckInput(inputModule, test.name);
+    std::vector<uint32_t> mutatedValues;
+    const bool mutation = std::string(test.name).find("mutation_") == 0;
+    if (mutation) {
+        for (const auto& inst : inputModule.instructions) {
+            if (inst.op != "OpCooperativeVectorMatrixMulHW" && inst.op != "OpCooperativeVectorMatrixMulAddHW" &&
+                inst.op != "OpCooperativeMatrixMulAddHW")
+                continue;
+            const size_t end = std::string(test.name) == "mutation_input" ? 4 : inst.words.size();
+            for (size_t i = 3; i < end; ++i) {
+                const auto* value = inputModule.definition(inst.words[i]);
+                ASSERT_NE(nullptr, value);
+                ASSERT_EQ("OpLoad", value->op);
+                mutatedValues.push_back(value->id);
+            }
+        }
+        ASSERT_FALSE(mutatedValues.empty());
+    }
     std::vector<uint32_t> transportLoads;
     if (std::string(test.name) == "branch" || std::string(test.name) == "loop") {
         transportLoads = inputModule.multiBlockTransportLoads();
@@ -431,6 +484,10 @@ TEST_P(HwExtensionFreeTest, ValidatedGlslPipeline)
             options.push_back(prefix + "unroll-macs=8");
         if (name == "precise")
             options.push_back(prefix + "unroll-macs=4");
+        if (mutation)
+            options.push_back(prefix + "unroll-macs=2");
+        if (name == "precise_arithmetic" || name == "precise_matrix_arithmetic")
+            options.push_back(prefix + "unroll-elements=2");
         for (size_t variant = 0; variant < options.size(); ++variant) {
             const std::string flag = "--hw-lower-to-standard-extension-free" + options[variant];
             SCOPED_TRACE(flag);
@@ -447,6 +504,16 @@ TEST_P(HwExtensionFreeTest, ValidatedGlslPipeline)
             HwModule module(lowered);
             module.expectNoHw(assembly);
             CheckOutput(module, test, scalar, variant != 0, aliasRoot);
+            for (uint32_t id : mutatedValues) {
+                // A surviving but unused load does not preserve the update.
+                // Require its value to feed computation or aggregate staging.
+                const size_t uses = module.count("OpFunctionCall", [&](const HwInstruction& inst) {
+                    return std::find(inst.words.begin() + 4, inst.words.end(), id) != inst.words.end();
+                }) + module.count("OpCompositeExtract", [&](const HwInstruction& inst) {
+                    return inst.words[3] == id;
+                }) + module.count("OpStore", [&](const HwInstruction& inst) { return inst.words[2] == id; });
+                EXPECT_GT(uses, 0u) << "Modified value was bypassed: " << id;
+            }
             for (uint32_t id : transportLoads) {
                 const auto* load = module.definition(id);
                 ASSERT_NE(nullptr, load) << "Cross-block transport load was incorrectly forwarded: " << id;
@@ -457,17 +524,20 @@ TEST_P(HwExtensionFreeTest, ValidatedGlslPipeline)
 #endif
 }
 
-INSTANTIATE_TEST_SUITE_P(Glsl, HwExtensionFreeTest,
-                         ::testing::Values(HwLowerCase{"alias", 4}, HwLowerCase{"alias", 5}, HwLowerCase{"branch", 3},
-                                           HwLowerCase{"branch", 4}, HwLowerCase{"loop", 5}, HwLowerCase{"loop", 8},
-                                           HwLowerCase{"aggregate", 4}, HwLowerCase{"select", 4},
-                                           HwLowerCase{"select", 5}, HwLowerCase{"integer", 3},
-                                           HwLowerCase{"shared", 4}, HwLowerCase{"shared", 3},
-                                           HwLowerCase{"precise", 2}, HwLowerCase{"volatile", 4},
-                                           HwLowerCase{"copy", 4}),
-                         [](const ::testing::TestParamInfo<HwLowerCase>& info) {
-                             return std::string(info.param.name) + "_" + std::to_string(info.param.width);
-                         });
+INSTANTIATE_TEST_SUITE_P(
+    Glsl, HwExtensionFreeTest,
+    ::testing::Values(
+        HwLowerCase{"alias", 4}, HwLowerCase{"alias", 5}, HwLowerCase{"branch", 3}, HwLowerCase{"branch", 4},
+        HwLowerCase{"loop", 5}, HwLowerCase{"loop", 8}, HwLowerCase{"aggregate", 4}, HwLowerCase{"select", 4},
+        HwLowerCase{"select", 5}, HwLowerCase{"integer", 3}, HwLowerCase{"shared", 4}, HwLowerCase{"shared", 3},
+        HwLowerCase{"precise", 2}, HwLowerCase{"volatile", 4}, HwLowerCase{"copy", 4}, HwLowerCase{"mutation_input", 4},
+        HwLowerCase{"mutation_vector", 4}, HwLowerCase{"mutation_vector", 5}, HwLowerCase{"mutation_matrix", 3},
+        HwLowerCase{"mutation_matrix", 4}, HwLowerCase{"precise_arithmetic", 4}, HwLowerCase{"precise_arithmetic", 5},
+        HwLowerCase{"precise_matrix_arithmetic", 3}, HwLowerCase{"precise_matrix_arithmetic", 4},
+        HwLowerCase{"large_struct", 65532}, HwLowerCase{"large_struct", 65533}, HwLowerCase{"large_struct", 65534}),
+    [](const ::testing::TestParamInfo<HwLowerCase>& info) {
+        return std::string(info.param.name) + "_" + std::to_string(info.param.width);
+    });
 
 } // namespace
 } // namespace glslangtest

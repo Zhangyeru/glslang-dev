@@ -1,0 +1,21 @@
+#version 460 core
+#extension GL_HW_neural_shader : require
+#ifndef WIDTH
+#define WIDTH 4
+#endif
+layout(local_size_x=1) in;
+layout(set=0,binding=0) buffer InputA { float data[]; } A;
+layout(set=0,binding=1) buffer InputB { float data[]; } B;
+layout(set=0,binding=2) buffer Output { float data[]; } D;
+
+#pragma use_replicated_composites
+#define V coopvecHW<float, WIDTH>
+struct Pair { V first; V second; };
+struct Outer { Pair pair; };
+Outer globalValue = Outer(Pair(V(1.0), V(1.0)));
+void main()
+{
+    Outer localValue = Outer(Pair(V(2.0), V(2.0)));
+    uint index = gl_GlobalInvocationID.x % WIDTH;
+    D.data[0] = globalValue.pair.first[index] + localValue.pair.second[index];
+}
