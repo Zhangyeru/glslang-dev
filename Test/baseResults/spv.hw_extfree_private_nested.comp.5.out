@@ -1,0 +1,148 @@
+OpCapability Shader
+OpCapability CooperativeVectorHW
+OpExtension "SPV_HW_neural_shader"
+%1 = OpExtInstImport "GLSL.std.450"
+OpMemoryModel Logical GLSL450
+OpEntryPoint GLCompute %main "main" %state %B %A %D
+OpExecutionMode %main LocalSize 1 1 1
+OpSource GLSL 460
+OpSourceExtension "GL_HW_neural_shader"
+OpName %main "main"
+OpName %mutate_u1_u1_ "mutate(u1;u1;"
+OpName %slot "slot"
+OpName %lane "lane"
+OpName %Leaf "Leaf"
+OpMemberName %Leaf 0 "v"
+OpName %Payload "Payload"
+OpMemberName %Payload 0 "leaves"
+OpName %state "state"
+OpName %InputB "InputB"
+OpMemberName %InputB 0 "data"
+OpName %B "B"
+OpName %tempArg "tempArg"
+OpName %InputA "InputA"
+OpMemberName %InputA 0 "data"
+OpName %A "A"
+OpName %tempArg_0 "tempArg"
+OpName %slot_0 "slot"
+OpName %lane_0 "lane"
+OpName %param "param"
+OpName %param_0 "param"
+OpName %Output "Output"
+OpMemberName %Output 0 "data"
+OpName %D "D"
+OpDecorate %_runtimearr_float ArrayStride 4
+OpDecorate %InputB Block
+OpMemberDecorate %InputB 0 Offset 0
+OpDecorate %B Binding 1
+OpDecorate %B DescriptorSet 0
+OpDecorate %_runtimearr_float_0 ArrayStride 4
+OpDecorate %InputA Block
+OpMemberDecorate %InputA 0 Offset 0
+OpDecorate %A Binding 0
+OpDecorate %A DescriptorSet 0
+OpDecorate %_runtimearr_float_1 ArrayStride 4
+OpDecorate %Output Block
+OpMemberDecorate %Output 0 Offset 0
+OpDecorate %D Binding 2
+OpDecorate %D DescriptorSet 0
+%void = OpTypeVoid
+%3 = OpTypeFunction %void
+%uint = OpTypeInt 32 0
+%_ptr_Function_uint = OpTypePointer Function %uint
+%8 = OpTypeFunction %void %_ptr_Function_uint %_ptr_Function_uint
+%float = OpTypeFloat 32
+%uint_5 = OpConstant %uint 5
+%15 = OpTypeCooperativeVectorHW %float %uint_5
+%Leaf = OpTypeStruct %15
+%uint_2 = OpConstant %uint 2
+%_arr_Leaf_uint_2 = OpTypeArray %Leaf %uint_2
+%Payload = OpTypeStruct %_arr_Leaf_uint_2
+%_ptr_Private_Payload = OpTypePointer Private %Payload
+%state = OpVariable %_ptr_Private_Payload Private
+%int = OpTypeInt 32 1
+%int_0 = OpConstant %int 0
+%_runtimearr_float = OpTypeRuntimeArray %float
+%InputB = OpTypeStruct %_runtimearr_float
+%_ptr_StorageBuffer_InputB = OpTypePointer StorageBuffer %InputB
+%B = OpVariable %_ptr_StorageBuffer_InputB StorageBuffer
+%_ptr_StorageBuffer_float = OpTypePointer StorageBuffer %float
+%_ptr_Private_float = OpTypePointer Private %float
+%_ptr_Function_15 = OpTypePointer Function %15
+%_runtimearr_float_0 = OpTypeRuntimeArray %float
+%InputA = OpTypeStruct %_runtimearr_float_0
+%_ptr_StorageBuffer_InputA = OpTypePointer StorageBuffer %InputA
+%A = OpVariable %_ptr_StorageBuffer_InputA StorageBuffer
+%_ptr_StorageBuffer__runtimearr_float_0 = OpTypePointer StorageBuffer %_runtimearr_float_0
+%uint_0 = OpConstant %uint 0
+%_ptr_Private_15 = OpTypePointer Private %15
+%int_1 = OpConstant %int 1
+%uint_1 = OpConstant %uint 1
+%int_2 = OpConstant %int 2
+%_runtimearr_float_1 = OpTypeRuntimeArray %float
+%Output = OpTypeStruct %_runtimearr_float_1
+%_ptr_StorageBuffer_Output = OpTypePointer StorageBuffer %Output
+%D = OpVariable %_ptr_StorageBuffer_Output StorageBuffer
+%_ptr_StorageBuffer__runtimearr_float_1 = OpTypePointer StorageBuffer %_runtimearr_float_1
+%v3uint = OpTypeVector %uint 3
+%86 = OpConstantComposite %v3uint %uint_1 %uint_1 %uint_1
+%main = OpFunction %void None %3
+%5 = OpLabel
+%tempArg = OpVariable %_ptr_Function_15 Function
+%tempArg_0 = OpVariable %_ptr_Function_15 Function
+%slot_0 = OpVariable %_ptr_Function_uint Function
+%lane_0 = OpVariable %_ptr_Function_uint Function
+%param = OpVariable %_ptr_Function_uint Function
+%param_0 = OpVariable %_ptr_Function_uint Function
+%42 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_0 %A %int_0
+%44 = OpCooperativeVectorLoadHW %15 %42 %uint_0
+OpStore %tempArg %44
+%45 = OpLoad %15 %tempArg
+%47 = OpAccessChain %_ptr_Private_15 %state %int_0 %int_0 %int_0
+OpStore %47 %45
+%49 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_0 %A %int_0
+%50 = OpCooperativeVectorLoadHW %15 %49 %uint_5
+OpStore %tempArg_0 %50
+%52 = OpLoad %15 %tempArg_0
+%53 = OpAccessChain %_ptr_Private_15 %state %int_0 %int_1 %int_0
+OpStore %53 %52
+%55 = OpAccessChain %_ptr_StorageBuffer_float %B %int_0 %int_1
+%56 = OpLoad %float %55
+%57 = OpConvertFToU %uint %56
+%59 = OpBitwiseAnd %uint %57 %uint_1
+OpStore %slot_0 %59
+%62 = OpAccessChain %_ptr_StorageBuffer_float %B %int_0 %int_2
+%63 = OpLoad %float %62
+%64 = OpConvertFToU %uint %63
+%65 = OpUMod %uint %64 %uint_5
+OpStore %lane_0 %65
+%67 = OpLoad %uint %slot_0
+OpStore %param %67
+%69 = OpLoad %uint %lane_0
+OpStore %param_0 %69
+%70 = OpFunctionCall %void %mutate_u1_u1_ %param %param_0
+%71 = OpLoad %uint %slot_0
+%72 = OpAccessChain %_ptr_Private_15 %state %int_0 %71 %int_0
+%73 = OpLoad %15 %72
+%79 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_1 %D %int_0
+OpCooperativeVectorStoreHW %79 %uint_0 %73
+%80 = OpLoad %uint %slot_0
+%81 = OpISub %uint %uint_1 %80
+%82 = OpAccessChain %_ptr_Private_15 %state %int_0 %81 %int_0
+%83 = OpLoad %15 %82
+%84 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_1 %D %int_0
+OpCooperativeVectorStoreHW %84 %uint_5 %83
+OpReturn
+OpFunctionEnd
+%mutate_u1_u1_ = OpFunction %void None %8
+%slot = OpFunctionParameter %_ptr_Function_uint
+%lane = OpFunctionParameter %_ptr_Function_uint
+%12 = OpLabel
+%24 = OpLoad %uint %slot
+%25 = OpLoad %uint %lane
+%31 = OpAccessChain %_ptr_StorageBuffer_float %B %int_0 %int_0
+%32 = OpLoad %float %31
+%34 = OpAccessChain %_ptr_Private_float %state %int_0 %24 %int_0 %25
+OpStore %34 %32
+OpReturn
+OpFunctionEnd

@@ -1,17 +1,17 @@
 # GLSL-derived extension-free HW lowering regressions
 
-`Glsl/HwExtensionFreeTest.ValidatedGlslPipeline/*` compiles the sixteen
+`Glsl/HwExtensionFreeTest.ValidatedGlslPipeline/*` compiles the twenty-one
 `spv.hw_extfree_*.comp` sources for Vulkan 1.3 / SPIR-V 1.6. It validates
 the unmodified frontend binary before checking its typed instruction patterns,
 then runs only `--hw-lower-to-standard-extension-free`, validates the result,
 and checks residue and path-specific invariants. Every case also runs with
 `=scalar`. No assembled SPIR-V is used as an input.
 
-The `WIDTH` macro gives 27 source/shape cases. The input disassembly goldens
+The `WIDTH` macro gives 37 source/shape cases. The input disassembly goldens
 are named `baseResults/spv.hw_extfree_<case>.comp.<width>.out`. They record
 frontend output, not lowering input fixtures. Output checks use parsed result
 and type IDs so that unrelated scalar operations cannot stand in for HW value
-coverage. In total, the fixture exercises 80 lowering runs, including the
+coverage. In total, the fixture exercises 120 lowering runs, including the
 additional loop-threshold variants below.
 
 | Source | Widths | Checked behavior |
@@ -32,6 +32,11 @@ additional loop-threshold variants below.
 | `precise_arithmetic` | 4, 5 | Precise vector multiply/add/scale retains NoContraction; neighboring subtraction remains relaxed |
 | `precise_matrix_arithmetic` | 3, 4 | Precise matrix add/scale retains NoContraction in scalar and packed forms |
 | `large_struct` | 65532, 65533, 65534 | Nested replicated structs containing large vector constants, global and local initializers |
+| `switch_return` | 4, 5 | Switch, break, early aggregate return, typed function transport and arithmetic |
+| `do_break` | 4, 5 | Do-while, break, continue and surviving cross-block cooperative value loads |
+| `private_nested` | 4, 5 | Private struct/array/struct root, dynamic component write in a callee, packed index remapping |
+| `workgroup` | 4, 5 | Numeric Workgroup backing, HW load/store, preserved barrier operands and constants |
+| `conversion_extinst` | 4, 5 | HW-typed float/int conversions, signed arithmetic, GLSL.std.450 FClamp and bitcasts |
 
 The select cases additionally use `unroll-elements=2`; integer matmul uses
 `unroll-macs=8`; precise matmul uses `unroll-macs=4`. These variants force
@@ -48,6 +53,12 @@ The large-struct cases straddle the composite instruction word-count limit;
 replicated struct parents must be reconstructed as structs while large array
 children use loop materialization.
 
+The five language cases also run with `unroll-elements=2` in both modes.
+Their output must have additional loops beyond the source loops, so a source
+`do-while` or backing-array copy loop cannot stand in for a generated loop.
+Inputs for branch selection, leaf selection and lane selection come from
+`B.data[1]` and `B.data[2]`, rather than invocation IDs fixed at zero at runtime.
+
 The matrix call cases use structs containing cooperative matrices for their
 parameters and return values, following the existing GLSL flow tests.
 
@@ -58,6 +69,8 @@ cmake --build build -j8
 build/gtests/glslangtests --gtest_filter='*HwExtensionFreeTest*'
 # Only when an intentional frontend change requires new input goldens:
 build/gtests/glslangtests --update-mode --gtest_filter='*HwExtensionFreeTest*'
+# With GLSLANG_ENABLE_HW_VK_TESTS enabled and Vulkan available:
+ctest --test-dir build -R '^vk_hw_language$' --output-on-failure
 ```
 
 An individual source can also follow the standalone pipeline (use `-DWIDTH=5`
@@ -83,4 +96,35 @@ producer, not an arbitrary rewrite of these frontend outputs.
 
 Explicit `FPFastMathMode` and memory operands beyond those emitted by the GLSL
 frontend remain covered by existing optimizer unit tests. Validation and these
-structural checks are not a numerical execution oracle.
+structural checks alone are not a numerical execution oracle.
+
+## Language numerical tests
+
+`vk_hw_language` compiles the same five new `Test/` sources directly, validates
+the frontend binary, runs raw lowering in all four configurations, validates
+and checks residue, then executes each result with `vk_hw_language_tests`.
+It does not freeze, inline, or otherwise optimize the input before lowering.
+Each stage must succeed before the next runs. Sources, binaries, disassembly,
+command diagnostics and `results.json` are under `build/tests/vk_hw/language/`.
+
+The C++ runner uses independent scalar CPU formulas:
+
+| Case | Runtime controls | Expected output |
+| --- | --- | --- |
+| `switch_return` | Keys 0, 1, 2 | `x+4`, `2*x`, `3-x` respectively |
+| `do_break` | Counts 0, 1, 2, 3 | `x+1`, `x+1`, `x+2`, `-x-1` respectively |
+| `private_nested` | Both leaves and every lane | Selected lane replaced by B[0]; other lanes and the other leaf unchanged |
+| `workgroup` | One invocation | `x+2`, through Workgroup memory and both barriers |
+| `conversion_extinst` | Positive/negative fractions and saturation inputs | `clamp(2*(trunc(x)+3), -4, 8)` |
+
+Three deterministic datasets use exactly representable quarter-integers.
+All output bits, including unwritten lanes and two trailing guard elements,
+are compared; failure returns a nonzero exit status and reports the dataset,
+control and lane. The 40 shader/configuration executions cover 432 dispatches.
+Workgroup coverage verifies backing-memory lowering and barrier preservation;
+it does not claim inter-invocation synchronization coverage. This suite covers
+these five operation combinations, not every conversion or ExtInst opcode.
+
+The current `--ssa-rewrite` target-type list does not include HW cooperative
+types. Adding that pass to the branch/loop pipeline therefore does not establish
+HW-valued `OpPhi` coverage; an ordinary integer induction Phi is insufficient.

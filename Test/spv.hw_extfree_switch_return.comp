@@ -1,0 +1,34 @@
+#version 460
+#extension GL_HW_neural_shader : require
+#ifndef WIDTH
+#define WIDTH 4
+#endif
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0) buffer InputA { float data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float data[]; } B;
+layout(set = 0, binding = 2) buffer Output { float data[]; } D;
+
+struct Payload { coopvecHW<float, WIDTH> v; };
+Payload route(Payload p, uint key)
+{
+    switch (key) {
+    case 0u:
+        p.v = p.v + coopvecHW<float, WIDTH>(1.0);
+        break;
+    case 1u:
+        p.v = p.v * coopvecHW<float, WIDTH>(2.0);
+        return p;
+    default:
+        p.v = -p.v;
+        break;
+    }
+    p.v = p.v + coopvecHW<float, WIDTH>(3.0);
+    return p;
+}
+void main()
+{
+    Payload p;
+    coopVecLoadHW(p.v, A.data, 0u);
+    p = route(p, uint(B.data[1]) % 3u);
+    coopVecStoreHW(p.v, D.data, 0u);
+}

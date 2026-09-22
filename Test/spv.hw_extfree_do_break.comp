@@ -1,0 +1,27 @@
+#version 460
+#extension GL_HW_neural_shader : require
+#ifndef WIDTH
+#define WIDTH 4
+#endif
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0) buffer InputA { float data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float data[]; } B;
+layout(set = 0, binding = 2) buffer Output { float data[]; } D;
+
+void main()
+{
+    coopvecHW<float, WIDTH> v;
+    coopVecLoadHW(v, A.data, 0u);
+    uint count = uint(B.data[1]) & 3u;
+    uint i = 0u;
+    do {
+        v = v + coopvecHW<float, WIDTH>(1.0);
+        ++i;
+        if (i >= count)
+            break;
+        if ((i & 1u) != 0u)
+            continue;
+        v = -v;
+    } while (i < 4u);
+    coopVecStoreHW(v, D.data, 0u);
+}

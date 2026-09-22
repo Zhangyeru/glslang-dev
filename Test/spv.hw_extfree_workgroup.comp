@@ -1,0 +1,25 @@
+#version 460
+#extension GL_HW_neural_shader : require
+#ifndef WIDTH
+#define WIDTH 4
+#endif
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0) buffer InputA { float data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float data[]; } B;
+layout(set = 0, binding = 2) buffer Output { float data[]; } D;
+
+// Cooperative objects stay in Function storage; only numeric backing is shared.
+shared float backing[WIDTH];
+void main()
+{
+    for (uint i = 0u; i < WIDTH; ++i)
+        backing[i] = A.data[i];
+    barrier();
+    coopvecHW<float, WIDTH> v;
+    coopVecLoadHW(v, backing, 0u);
+    v = v + coopvecHW<float, WIDTH>(2.0);
+    coopVecStoreHW(v, backing, 0u);
+    barrier();
+    for (uint i = 0u; i < WIDTH; ++i)
+        D.data[i] = backing[i];
+}

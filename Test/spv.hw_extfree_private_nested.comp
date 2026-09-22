@@ -1,0 +1,28 @@
+#version 460
+#extension GL_HW_neural_shader : require
+#ifndef WIDTH
+#define WIDTH 4
+#endif
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0) buffer InputA { float data[]; } A;
+layout(set = 0, binding = 1) buffer InputB { float data[]; } B;
+layout(set = 0, binding = 2) buffer Output { float data[]; } D;
+
+struct Leaf { coopvecHW<float, WIDTH> v; };
+struct Payload { Leaf leaves[2]; };
+Payload state;
+void mutate(uint slot, uint lane)
+{
+    state.leaves[slot].v[lane] = B.data[0];
+}
+void main()
+{
+    coopVecLoadHW(state.leaves[0].v, A.data, 0u);
+    // This branch's vector offset is a scalar element index, not a byte offset.
+    coopVecLoadHW(state.leaves[1].v, A.data, uint(WIDTH));
+    uint slot = uint(B.data[1]) & 1u;
+    uint lane = uint(B.data[2]) % WIDTH;
+    mutate(slot, lane);
+    coopVecStoreHW(state.leaves[slot].v, D.data, 0u);
+    coopVecStoreHW(state.leaves[1u - slot].v, D.data, uint(WIDTH));
+}

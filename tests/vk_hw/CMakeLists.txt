@@ -88,8 +88,34 @@ set_target_properties(vk_hw_runner PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests/vk_hw"
 )
 
+add_executable(vk_hw_language_tests
+    runner/language_test.cpp
+    runner/vulkan_context.cpp
+    runner/compute_pipeline.cpp
+    runner/buffer.cpp
+)
+target_link_libraries(vk_hw_language_tests PRIVATE Vulkan::Vulkan)
+target_compile_features(vk_hw_language_tests PRIVATE cxx_std_17)
+target_compile_options(vk_hw_language_tests PRIVATE
+    $<$<CXX_COMPILER_ID:Clang,GNU>:-fexceptions>
+    $<$<CXX_COMPILER_ID:MSVC>:/EHsc>
+)
+
 if(Python3_Interpreter_FOUND AND TARGET glslang-standalone AND TARGET spirv-opt
    AND TARGET spirv-val AND TARGET spirv-dis)
+    add_test(NAME vk_hw_language
+        COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_language_tests.py
+            --glslang $<TARGET_FILE:glslang-standalone>
+            --spirv-opt $<TARGET_FILE:spirv-opt>
+            --spirv-val $<TARGET_FILE:spirv-val>
+            --spirv-dis $<TARGET_FILE:spirv-dis>
+            --runner $<TARGET_FILE:vk_hw_language_tests>
+            --source-dir ${PROJECT_SOURCE_DIR}/Test
+            --out-dir ${CMAKE_BINARY_DIR}/tests/vk_hw/language
+    )
+    set_tests_properties(vk_hw_language PROPERTIES LABELS "hw;vulkan" TIMEOUT 600)
+
     set(_build_shader_args
         --glslang $<TARGET_FILE:glslang-standalone>
         --spirv-opt $<TARGET_FILE:spirv-opt>

@@ -24,6 +24,12 @@ void PrintTo(const HwLowerCase& test, std::ostream* stream) { *stream << test.na
 
 using HwExtensionFreeTest = GlslangTest<::testing::TestWithParam<HwLowerCase>>;
 
+bool IsLanguageCase(const std::string& name)
+{
+    return name == "switch_return" || name == "do_break" || name == "private_nested" || name == "workgroup" ||
+           name == "conversion_extinst";
+}
+
 #if ENABLE_OPT
 // Inspect parsed IDs and types, not debug names or unrelated scalar operations.
 struct HwInstruction {
@@ -89,6 +95,23 @@ public:
     {
         const auto* inst = definition(type);
         return inst && inst->op == op;
+    }
+
+    uint32_t pointerRoot(uint32_t id) const
+    {
+        const auto* inst = definition(id);
+        while (inst && inst->op == "OpAccessChain") {
+            id = inst->words[3];
+            inst = definition(id);
+        }
+        return id;
+    }
+
+    bool pointerStorage(uint32_t id, spv::StorageClass storage) const
+    {
+        const auto* value = definition(id);
+        const auto* type = value ? definition(value->type) : nullptr;
+        return type && type->op == "OpTypePointer" && type->words[2] == uint32_t(storage);
     }
 
     size_t count(const std::string& op, const std::function<bool(const HwInstruction&)>& predicate = {}) const
@@ -207,6 +230,64 @@ void CheckInput(const HwModule& module, const std::string& name)
     }
     EXPECT_GT(module.hwCount("OpLoad"), 0u);
     EXPECT_GT(module.hwCount("OpStore"), 0u);
+    if (name == "switch_return") {
+        EXPECT_EQ(1u, module.count("OpSwitch"));
+        EXPECT_GE(module.hwCount("OpReturnValue"), 2u);
+        EXPECT_GT(module.hwCount("OpFunctionParameter"), 0u);
+        EXPECT_GT(module.hwCount("OpFunctionCall"), 0u);
+        for (const char* op : {"OpFAdd", "OpFMul", "OpFNegate"})
+            EXPECT_GT(module.hwCount(op), 0u) << op;
+    }
+    if (name == "do_break") {
+        EXPECT_EQ(1u, module.count("OpLoopMerge"));
+        EXPECT_GE(module.count("OpBranchConditional"), 3u);
+        EXPECT_GT(module.hwCount("OpFAdd"), 0u);
+        EXPECT_GT(module.hwCount("OpFNegate"), 0u);
+        EXPECT_FALSE(module.multiBlockTransportLoads().empty());
+    }
+    if (name == "private_nested") {
+        EXPECT_GE(module.count("OpTypeStruct", [&](const HwInstruction& inst) { return module.containsHw(inst.id); }),
+                  2u);
+        EXPECT_EQ(1u, module.count("OpVariable", [&](const HwInstruction& inst) {
+            return module.containsHw(inst.type) && module.pointerStorage(inst.id, spv::StorageClassPrivate);
+        }));
+        EXPECT_GT(module.count("OpStore",
+                               [&](const HwInstruction& inst) {
+                                   const auto* pointer = module.definition(inst.words[1]);
+                                   const auto* value = module.definition(inst.words[2]);
+                                   return pointer && pointer->op == "OpAccessChain" && pointer->words.size() == 8 &&
+                                          module.pointerStorage(pointer->id, spv::StorageClassPrivate) && value &&
+                                          module.typeIs(value->type, "OpTypeFloat") &&
+                                          module.containsHw(module.definition(module.pointerRoot(pointer->id))->type);
+                               }),
+                  0u);
+        EXPECT_EQ(1u, module.count("OpFunctionCall")); // The cross-function mutation.
+        EXPECT_EQ(2u, module.count("OpCooperativeVectorStoreHW"));
+    }
+    if (name == "workgroup") {
+        EXPECT_EQ(2u, module.count("OpControlBarrier"));
+        for (const auto& inst : module.instructions) {
+            if (inst.op == "OpCooperativeVectorLoadHW" || inst.op == "OpCooperativeVectorStoreHW") {
+                const uint32_t pointer = inst.words[inst.op == "OpCooperativeVectorLoadHW" ? 3 : 1];
+                EXPECT_TRUE(module.pointerStorage(pointer, spv::StorageClassWorkgroup));
+            }
+            if (inst.op == "OpVariable" && module.pointerStorage(inst.id, spv::StorageClassWorkgroup)) {
+                EXPECT_FALSE(module.containsHw(inst.type));
+            }
+        }
+        EXPECT_GT(module.hwCount("OpFAdd"), 0u);
+    }
+    if (name == "conversion_extinst") {
+        for (const char* op : {"OpConvertFToS", "OpConvertSToF", "OpIAdd", "OpIMul"})
+            EXPECT_GT(module.hwCount(op), 0u) << op;
+        EXPECT_EQ(2u, module.hwCount("OpBitcast"));
+        EXPECT_EQ(1u, module.count("OpExtInst", [&](const HwInstruction& inst) {
+            const auto* set = module.definition(inst.words[3]);
+            return module.containsHw(inst.type) && inst.words[4] == GLSLstd450FClamp && set &&
+                   set->op == "OpExtInstImport" &&
+                   std::string(reinterpret_cast<const char*>(&set->words[2])) == "GLSL.std.450";
+        }));
+    }
     if (name == "alias") {
         EXPECT_NE(0u, module.componentWriteThenWholeLoadRoot());
     }
@@ -410,6 +491,97 @@ void CheckOutput(const HwModule& module, const HwLowerCase& test, bool scalar, b
         EXPECT_GT(module.count("OpLoopMerge"), 0u);
     }
 }
+
+void CheckLanguageOutput(const HwModule& input, const HwModule& output, const HwLowerCase& test, bool scalar,
+                         bool rolled)
+{
+    const std::string name = test.name;
+    if (!IsLanguageCase(name))
+        return;
+    const bool packed = !scalar && test.width % 2 == 0;
+    const char* arithmeticType = packed ? "OpTypeVector" : "OpTypeFloat";
+    if (name == "switch_return" || name == "do_break" || name == "workgroup") {
+        EXPECT_GT(output.mathCount("OpFAdd", arithmeticType), 0u);
+    }
+    if (name == "switch_return" || name == "do_break") {
+        EXPECT_GT(output.mathCount("OpFNegate", arithmeticType), 0u);
+    }
+    if (name == "switch_return") {
+        EXPECT_GT(output.mathCount("OpFMul", arithmeticType), 0u);
+        for (const auto& inst : input.instructions) {
+            if (inst.op == "OpSwitch" || inst.op == "OpReturnValue") {
+                EXPECT_EQ(1u,
+                          output.count(inst.op, [&](const HwInstruction& other) { return inst.words == other.words; }));
+            }
+        }
+    }
+    if (name == "private_nested") {
+        // Keep the original global and component pointer IDs, including the dynamic
+        // aggregate indices. Packed lowering adds only the piece/lane index split.
+        for (const auto& inst : input.instructions) {
+            if (inst.op != "OpAccessChain" || !input.pointerStorage(inst.id, spv::StorageClassPrivate))
+                continue;
+            const auto* lowered = output.definition(inst.id);
+            ASSERT_NE(nullptr, lowered);
+            EXPECT_EQ("OpAccessChain", lowered->op);
+            EXPECT_EQ(input.pointerRoot(inst.id), output.pointerRoot(inst.id));
+            EXPECT_TRUE(output.pointerStorage(inst.id, spv::StorageClassPrivate));
+            const bool component = !input.containsHw(inst.type);
+            ASSERT_EQ(inst.words.size() + (packed && component ? 1 : 0), lowered->words.size());
+            const size_t end = inst.words.size() - (component ? 1 : 0);
+            EXPECT_TRUE(std::equal(inst.words.begin() + 3, inst.words.begin() + end, lowered->words.begin() + 3));
+        }
+    }
+    if (name == "workgroup") {
+        EXPECT_EQ(2u, output.count("OpControlBarrier"));
+        for (const auto& inst : input.instructions) {
+            if (inst.op == "OpControlBarrier") {
+                EXPECT_EQ(2u,
+                          output.count(inst.op, [&](const HwInstruction& other) { return inst.words == other.words; }));
+                for (size_t i = 1; i < inst.words.size(); ++i) {
+                    const auto* constant = output.definition(inst.words[i]);
+                    ASSERT_NE(nullptr, constant);
+                    EXPECT_EQ(input.definition(inst.words[i])->words, constant->words);
+                }
+            }
+        }
+        EXPECT_GT(output.count("OpLoad",
+                               [&](const HwInstruction& inst) {
+                                   return output.pointerStorage(inst.words[3], spv::StorageClassWorkgroup);
+                               }),
+                  0u);
+        EXPECT_GT(output.count("OpStore",
+                               [&](const HwInstruction& inst) {
+                                   return output.pointerStorage(inst.words[1], spv::StorageClassWorkgroup);
+                               }),
+                  0u);
+    }
+    if (name == "conversion_extinst") {
+        for (const char* op : {"OpConvertFToS", "OpConvertSToF", "OpBitcast"}) {
+            EXPECT_GT(output.mathCount(op, "OpTypeInt") + output.mathCount(op, "OpTypeFloat") +
+                          output.mathCount(op, "OpTypeVector"),
+                      0u)
+                << op;
+        }
+        for (const char* op : {"OpIAdd", "OpIMul"}) {
+            EXPECT_GT(output.count(op,
+                                   [&](const HwInstruction& inst) {
+                                       const auto* type = output.definition(inst.type);
+                                       return type && type->op == "OpTypeInt" && type->words[3] == 1;
+                                   }),
+                      0u)
+                << op;
+        }
+        EXPECT_GT(output.count("OpExtInst",
+                               [&](const HwInstruction& inst) {
+                                   return inst.words[4] == GLSLstd450FClamp && output.typeIs(inst.type, arithmeticType);
+                               }),
+                  0u);
+    }
+    if (rolled) {
+        EXPECT_GT(output.count("OpLoopMerge"), input.count("OpLoopMerge"));
+    }
+}
 #endif
 
 TEST_P(HwExtensionFreeTest, ValidatedGlslPipeline)
@@ -459,7 +631,8 @@ TEST_P(HwExtensionFreeTest, ValidatedGlslPipeline)
         ASSERT_FALSE(mutatedValues.empty());
     }
     std::vector<uint32_t> transportLoads;
-    if (std::string(test.name) == "branch" || std::string(test.name) == "loop") {
+    if (std::string(test.name) == "branch" || std::string(test.name) == "loop" ||
+        std::string(test.name) == "do_break") {
         transportLoads = inputModule.multiBlockTransportLoads();
         ASSERT_FALSE(transportLoads.empty());
     }
@@ -488,6 +661,8 @@ TEST_P(HwExtensionFreeTest, ValidatedGlslPipeline)
             options.push_back(prefix + "unroll-macs=2");
         if (name == "precise_arithmetic" || name == "precise_matrix_arithmetic")
             options.push_back(prefix + "unroll-elements=2");
+        if (IsLanguageCase(name))
+            options.push_back(prefix + "unroll-elements=2");
         for (size_t variant = 0; variant < options.size(); ++variant) {
             const std::string flag = "--hw-lower-to-standard-extension-free" + options[variant];
             SCOPED_TRACE(flag);
@@ -504,6 +679,7 @@ TEST_P(HwExtensionFreeTest, ValidatedGlslPipeline)
             HwModule module(lowered);
             module.expectNoHw(assembly);
             CheckOutput(module, test, scalar, variant != 0, aliasRoot);
+            CheckLanguageOutput(inputModule, module, test, scalar, variant != 0);
             for (uint32_t id : mutatedValues) {
                 // A surviving but unused load does not preserve the update.
                 // Require its value to feed computation or aggregate staging.
@@ -534,7 +710,11 @@ INSTANTIATE_TEST_SUITE_P(
         HwLowerCase{"mutation_vector", 4}, HwLowerCase{"mutation_vector", 5}, HwLowerCase{"mutation_matrix", 3},
         HwLowerCase{"mutation_matrix", 4}, HwLowerCase{"precise_arithmetic", 4}, HwLowerCase{"precise_arithmetic", 5},
         HwLowerCase{"precise_matrix_arithmetic", 3}, HwLowerCase{"precise_matrix_arithmetic", 4},
-        HwLowerCase{"large_struct", 65532}, HwLowerCase{"large_struct", 65533}, HwLowerCase{"large_struct", 65534}),
+        HwLowerCase{"large_struct", 65532}, HwLowerCase{"large_struct", 65533}, HwLowerCase{"large_struct", 65534},
+        HwLowerCase{"switch_return", 4}, HwLowerCase{"switch_return", 5}, HwLowerCase{"do_break", 4},
+        HwLowerCase{"do_break", 5}, HwLowerCase{"private_nested", 4}, HwLowerCase{"private_nested", 5},
+        HwLowerCase{"workgroup", 4}, HwLowerCase{"workgroup", 5}, HwLowerCase{"conversion_extinst", 4},
+        HwLowerCase{"conversion_extinst", 5}),
     [](const ::testing::TestParamInfo<HwLowerCase>& info) {
         return std::string(info.param.name) + "_" + std::to_string(info.param.width);
     });

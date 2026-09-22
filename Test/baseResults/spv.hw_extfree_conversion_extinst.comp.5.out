@@ -1,0 +1,109 @@
+OpCapability Shader
+OpCapability VulkanMemoryModel
+OpCapability ReplicatedCompositesEXT
+OpCapability CooperativeVectorHW
+OpExtension "SPV_EXT_replicated_composites"
+OpExtension "SPV_HW_neural_shader"
+%1 = OpExtInstImport "GLSL.std.450"
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %main "main" %A %D %B
+OpExecutionMode %main LocalSize 1 1 1
+OpSource GLSL 460
+OpSourceExtension "GL_HW_neural_shader"
+OpName %main "main"
+OpName %tempArg "tempArg"
+OpName %InputA "InputA"
+OpMemberName %InputA 0 "data"
+OpName %A "A"
+OpName %v "v"
+OpName %iv "iv"
+OpName %Output "Output"
+OpMemberName %Output 0 "data"
+OpName %D "D"
+OpName %InputB "InputB"
+OpMemberName %InputB 0 "data"
+OpName %B "B"
+OpDecorate %_runtimearr_float ArrayStride 4
+OpDecorate %InputA Block
+OpMemberDecorate %InputA 0 Offset 0
+OpDecorate %A Binding 0
+OpDecorate %A DescriptorSet 0
+OpDecorate %_runtimearr_float_0 ArrayStride 4
+OpDecorate %Output Block
+OpMemberDecorate %Output 0 Offset 0
+OpDecorate %D Binding 2
+OpDecorate %D DescriptorSet 0
+OpDecorate %_runtimearr_float_1 ArrayStride 4
+OpDecorate %InputB Block
+OpMemberDecorate %InputB 0 Offset 0
+OpDecorate %B Binding 1
+OpDecorate %B DescriptorSet 0
+%void = OpTypeVoid
+%3 = OpTypeFunction %void
+%float = OpTypeFloat 32
+%uint = OpTypeInt 32 0
+%uint_5 = OpConstant %uint 5
+%9 = OpTypeCooperativeVectorHW %float %uint_5
+%_ptr_Function_9 = OpTypePointer Function %9
+%_runtimearr_float = OpTypeRuntimeArray %float
+%InputA = OpTypeStruct %_runtimearr_float
+%_ptr_StorageBuffer_InputA = OpTypePointer StorageBuffer %InputA
+%A = OpVariable %_ptr_StorageBuffer_InputA StorageBuffer
+%int = OpTypeInt 32 1
+%int_0 = OpConstant %int 0
+%_ptr_StorageBuffer__runtimearr_float = OpTypePointer StorageBuffer %_runtimearr_float
+%uint_0 = OpConstant %uint 0
+%24 = OpTypeCooperativeVectorHW %int %uint_5
+%_ptr_Function_24 = OpTypePointer Function %24
+%int_3 = OpConstant %int 3
+%31 = OpConstantCompositeReplicateEXT %24 %int_3
+%int_2 = OpConstant %int 2
+%34 = OpConstantCompositeReplicateEXT %24 %int_2
+%float_n4 = OpConstant %float -4
+%40 = OpConstantCompositeReplicateEXT %9 %float_n4
+%float_8 = OpConstant %float 8
+%42 = OpConstantCompositeReplicateEXT %9 %float_8
+%_runtimearr_float_0 = OpTypeRuntimeArray %float
+%Output = OpTypeStruct %_runtimearr_float_0
+%_ptr_StorageBuffer_Output = OpTypePointer StorageBuffer %Output
+%D = OpVariable %_ptr_StorageBuffer_Output StorageBuffer
+%_ptr_StorageBuffer__runtimearr_float_0 = OpTypePointer StorageBuffer %_runtimearr_float_0
+%v3uint = OpTypeVector %uint 3
+%uint_1 = OpConstant %uint 1
+%56 = OpConstantComposite %v3uint %uint_1 %uint_1 %uint_1
+%_runtimearr_float_1 = OpTypeRuntimeArray %float
+%InputB = OpTypeStruct %_runtimearr_float_1
+%_ptr_StorageBuffer_InputB = OpTypePointer StorageBuffer %InputB
+%B = OpVariable %_ptr_StorageBuffer_InputB StorageBuffer
+%main = OpFunction %void None %3
+%5 = OpLabel
+%tempArg = OpVariable %_ptr_Function_9 Function
+%v = OpVariable %_ptr_Function_9 Function
+%iv = OpVariable %_ptr_Function_24 Function
+%19 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %A %int_0
+%21 = OpCooperativeVectorLoadHW %9 %19 %uint_0
+OpStore %tempArg %21
+%23 = OpLoad %9 %tempArg
+OpStore %v %23
+%27 = OpLoad %9 %v
+%28 = OpConvertFToS %24 %27
+OpStore %iv %28
+%29 = OpLoad %24 %iv
+%32 = OpIAdd %24 %29 %31
+%35 = OpIMul %24 %32 %34
+OpStore %iv %35
+%36 = OpLoad %24 %iv
+%37 = OpConvertSToF %9 %36
+OpStore %v %37
+%38 = OpLoad %9 %v
+%43 = OpExtInst %9 %1 FClamp %38 %40 %42
+OpStore %v %43
+%44 = OpLoad %9 %v
+%45 = OpBitcast %24 %44
+%46 = OpBitcast %9 %45
+OpStore %v %46
+%47 = OpLoad %9 %v
+%53 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_0 %D %int_0
+OpCooperativeVectorStoreHW %53 %uint_0 %47
+OpReturn
+OpFunctionEnd
