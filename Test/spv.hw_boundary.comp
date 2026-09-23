@@ -1,0 +1,126 @@
+#version 460 core
+#extension GL_HW_neural_shader : require
+#extension GL_EXT_shader_explicit_arithmetic_types : require
+#extension GL_EXT_shader_8bit_storage : require
+#extension GL_EXT_shader_16bit_storage : require
+// Dimensions, scalar types, and KIND are supplied by boundary_cases.h.
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0) buffer Inputs { AT data[]; } A;
+layout(set = 0, binding = 1) buffer Weights { BT data[]; } B;
+#if KIND == 7
+layout(set = 0, binding = 2) volatile buffer ActivationCache { AT data[]; } C;
+#else
+layout(set = 0, binding = 2) buffer Biases { OT data[]; } C;
+#endif
+layout(set = 0, binding = 3) buffer Outputs { OT data[]; } D;
+
+#if KIND == 6
+struct Activation { coopvecHW<AT, H> value; };
+Activation step(Activation previous, uint expert)
+{
+    coopmatHW<BT, H, H> weights;
+    coopvecHW<OT, H> bias;
+    coopMatLoadHW(weights, B.data, ivec2(2 * H, H), ivec2(expert * H, 0), 0);
+    coopVecLoadHW(bias, C.data, 0u);
+    Activation next;
+    coopVecMatMulAddHW(next.value, previous.value, weights, bias);
+    next.value = max(next.value, coopvecHW<OT, H>(OT(0)));
+    return next;
+}
+#endif
+
+void main()
+{
+#if KIND == 1
+    coopmatHW<AT, M, K> x;
+    coopmatHW<BT, K, N> w;
+    coopmatHW<OT, M, N> bias, y;
+    coopMatLoadHW(x, A.data, ivec2(M, K), ivec2(0), 0);
+    coopMatLoadHW(w, B.data, ivec2(K, N), ivec2(0), 0);
+    coopMatLoadHW(bias, C.data, ivec2(M, N), ivec2(0), 0);
+    coopMatMulAddHW(y, x, w, bias);
+    coopMatStoreHW(y, D.data, ivec2(M, N), ivec2(0, 1), 0);
+#elif KIND == 9
+    coopmatHW<AT, M, N> w;
+    coopMatLoadHW(w, A.data, ivec2(M, N), ivec2(0), 0);
+    coopMatStoreHW(w, D.data, ivec2(M, N), ivec2(0, 1), 0);
+#elif KIND == 2
+    coopvecHW<AT, N> x, residual;
+    coopVecLoadHW(x, A.data, 0u);
+    coopVecLoadHW(residual, B.data, 0u);
+    coopvecHW<OT, N> y = max((x + residual) * OT(0.5), coopvecHW<OT, N>(OT(0)));
+    coopVecStoreHW(y, D.data, 1u);
+#elif KIND == 6
+    Activation state;
+    coopVecLoadHW(state.value, A.data, 0u);
+    uint control = uint(C.data[H + N]);
+    for (uint iteration = 0; iteration < control / 2u; ++iteration)
+        state = step(state, control & 1u);
+    coopmatHW<BT, H, N> head;
+    coopvecHW<OT, N> bias, y;
+    coopMatLoadHW(head, B.data, ivec2(H, N), ivec2(2 * H * H / N, 0), 0);
+    coopVecLoadHW(bias, C.data, H);
+    coopVecMatMulAddHW(y, state.value, head, bias);
+    coopVecStoreHW(y, D.data, 1u);
+#elif KIND == 7
+    coopvecHW<AT, K> x;
+    coopmatHW<BT, K, H> w0;
+    coopmatHW<BT, H, N> w1;
+    coopvecHW<BT, H> bias0h;
+    coopvecHW<BT, N> bias1h;
+    coopvecHW<OT, H> hidden;
+    coopvecHW<OT, N> y;
+    coopVecLoadHW(x, A.data, 0u);
+    coopMatLoadHW(w0, B.data, ivec2(K, H), ivec2(0), 0);
+    coopVecLoadHW(bias0h, B.data, K * H + H * N);
+    coopVecMatMulAddHW(hidden, x, w0, coopvecHW<OT, H>(bias0h));
+    hidden = max(hidden, coopvecHW<OT, H>(OT(0)));
+    coopvecHW<AT, H> activation = coopvecHW<AT, H>(hidden);
+    // Materialized FP16 activations are used by split inference stages.
+    // The cache makes the storage precision observable to the runner.
+    coopVecStoreHW(activation, C.data, 1u);
+    memoryBarrierBuffer();
+    coopVecLoadHW(activation, C.data, 1u);
+    coopMatLoadHW(w1, B.data, ivec2(H, N), ivec2(0, K * H), 0);
+    coopVecLoadHW(bias1h, B.data, K * H + H * N + H);
+    coopVecMatMulAddHW(y, activation, w1, coopvecHW<OT, N>(bias1h));
+    y = max(y, coopvecHW<OT, N>(OT(0)));
+    coopVecStoreHW(y, D.data, 1u);
+#else
+    coopvecHW<AT, K> x;
+    coopmatHW<BT, K, N> w;
+    coopvecHW<OT, N> bias;
+#if KIND == 8
+    precise coopvecHW<OT, N> y;
+#else
+    coopvecHW<OT, N> y;
+#endif
+#if KIND == 3
+#if OFFSET_KIND == 0
+    const uint offset = 0u;
+#elif OFFSET_KIND == 1
+    const uint offset = 1u;
+#elif OFFSET_KIND == 2
+    const uint offset = 3u;
+#else
+    uint offset = uint(C.data[N]);
+#endif
+    coopVecLoadHW(x, A.data, offset);
+    coopMatLoadHW(w, B.data, ivec2(K + 3, N + 3), ivec2(offset), LAYOUT);
+#else
+    coopVecLoadHW(x, A.data, 0u);
+    coopMatLoadHW(w, B.data, ivec2(K, N), ivec2(0), 0);
+#endif
+    coopVecLoadHW(bias, C.data, 0u);
+#if KIND == 4
+    // A loaded value is a snapshot even when its source storage changes.
+    B.data[0] = BT(4);
+    B.data[K * N - 1] = BT(-4);
+#elif KIND == 5
+    uint lane = uint(C.data[N]) == 0u ? 0u : K * N - 1u;
+    w[lane] = BT(4);
+#endif
+    coopVecMatMulAddHW(y, x, w, bias);
+    coopVecStoreHW(y, D.data, 1u);
+#endif
+}

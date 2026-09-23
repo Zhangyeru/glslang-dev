@@ -43,6 +43,7 @@ struct CaseConfig {
     ReduceAxis reduce_axis = ReduceAxis::kRow;
     ReduceOp reduce_op = ReduceOp::kAdd;
     std::string shader_path;
+    std::string boundary_case;
 };
 
 struct VerifyResult {

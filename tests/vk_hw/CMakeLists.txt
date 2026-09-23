@@ -33,8 +33,13 @@ endif()
 add_executable(vk_hw_reference_tests
     runner/reference_test.cpp
     runner/reference.cpp
+    runner/boundary.cpp
 )
 target_compile_features(vk_hw_reference_tests PRIVATE cxx_std_17)
+target_compile_options(vk_hw_reference_tests PRIVATE
+    $<$<CXX_COMPILER_ID:Clang,GNU>:-fexceptions>
+    $<$<CXX_COMPILER_ID:MSVC>:/EHsc>
+)
 add_test(NAME vk_hw_reference_tests COMMAND vk_hw_reference_tests)
 set_tests_properties(vk_hw_reference_tests PROPERTIES LABELS "hw")
 
@@ -71,6 +76,7 @@ endif()
 
 add_executable(vk_hw_runner
     runner/main.cpp
+    runner/boundary.cpp
     runner/vulkan_context.cpp
     runner/compute_pipeline.cpp
     runner/buffer.cpp
@@ -103,6 +109,25 @@ target_compile_options(vk_hw_language_tests PRIVATE
 
 if(Python3_Interpreter_FOUND AND TARGET glslang-standalone AND TARGET spirv-opt
    AND TARGET spirv-val AND TARGET spirv-dis)
+    set(_boundary_args
+        --glslang $<TARGET_FILE:glslang-standalone>
+        --spirv-opt $<TARGET_FILE:spirv-opt>
+        --spirv-val $<TARGET_FILE:spirv-val>
+        --spirv-dis $<TARGET_FILE:spirv-dis>
+        --runner $<TARGET_FILE:vk_hw_runner>
+        --source ${PROJECT_SOURCE_DIR}/Test/spv.hw_boundary.comp
+        --baseline ${CMAKE_CURRENT_SOURCE_DIR}/shaders/boundary/baseline.comp
+        --out-dir ${CMAKE_BINARY_DIR}/tests/vk_hw/boundary
+    )
+    add_test(NAME vk_hw_boundary
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_boundary_tests.py ${_boundary_args})
+    set_tests_properties(vk_hw_boundary PROPERTIES LABELS "hw;vulkan" TIMEOUT 1800
+        FIXTURES_SETUP vk_hw_boundary_spv)
+    add_test(NAME vk_hw_boundary_perf
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_boundary_tests.py
+            ${_boundary_args} --perf --max-ratio 5.0)
+    set_tests_properties(vk_hw_boundary_perf PROPERTIES LABELS "hw;vulkan" TIMEOUT 1800
+        FIXTURES_REQUIRED vk_hw_boundary_spv RUN_SERIAL TRUE)
     add_test(NAME vk_hw_language
         COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_language_tests.py

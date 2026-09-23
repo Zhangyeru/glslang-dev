@@ -4,6 +4,7 @@
 // you may not use this file except in compliance with the License.
 
 #include "reference.h"
+#include "boundary.h"
 
 #include <cmath>
 #include <cstring>
@@ -309,6 +310,49 @@ bool TestFloatCompareDistinguishesSignedZeroAndAcceptsNaN()
     return vk_hw::CompareOutputRaw(config, {FloatRaw(NAN)}, {FloatRaw(-NAN)}).pass;
 }
 
+bool TestBoundaryWitnesses()
+{
+    using namespace vk_hw;
+    for (const auto& test : BoundaryCases()) {
+        const auto first = MakeBoundaryData(test, 0, 0);
+        for (unsigned dataset = 0; dataset < 3; ++dataset) {
+            for (unsigned control = 0; control < test.controls(); ++control) {
+                const auto data = MakeBoundaryData(test, dataset, control);
+                if (data.a.size() != first.a.size() || data.b.size() != first.b.size() ||
+                    data.c.size() != first.c.size() || data.expected.size() != test.m * test.n + 2 ||
+                    data.expected.front() != data.expected.back()) {
+                    std::cerr << test.name << ": inconsistent boundary buffer ABI\n";
+                    return false;
+                }
+            }
+        }
+        if (test.kind == 7) {
+            const auto witness = MakeBoundaryData(test, 2, 0);
+            // Omitting the half conversion would produce 32.015625 instead.
+            for (unsigned i = 1; i <= test.n; ++i) {
+                if (witness.expected[i] != FloatRaw(32.0f) || !witness.exact) return false;
+            }
+        }
+        if (test.kind == 6) {
+            const auto once = MakeBoundaryData(test, 0, 3);
+            const auto twice = MakeBoundaryData(test, 0, 5);
+            const auto other = MakeBoundaryData(test, 0, 2);
+            if (once.expected == other.expected || twice.expected == once.expected ||
+                first.expected == once.expected) return false;
+        }
+        if (test.kind == 8 && first.expected[1] != FloatRaw(0.0f)) return false;
+        if (test.kind == 0 && std::string(test.output) == "int") {
+            const auto tail = MakeBoundaryData(test, 1, 0);
+            for (unsigned j = 0; j < test.n; ++j) {
+                const uint64_t raw = tail.b[(test.k - 1) * test.n + j];
+                const int weight = std::string(test.b) == "int8_t" && raw >= 128 ? int(raw) - 256 : int(raw);
+                if (tail.expected[j + 1] != uint32_t(weight)) return false;
+            }
+        }
+    }
+    return true;
+}
+
 } // namespace
 
 int main()
@@ -319,7 +363,7 @@ int main()
                    TestIntegerMatmulWrapsAt32Bits() && TestMixedFloatUsesAccumulatorFma() &&
                    TestConvertedF16BiasUsesAccumulatorType() && TestMixedMlpQuantizesIntermediateActivation() &&
                    TestArbitraryDepthMlpReference() && TestIntegerReduceUsesOperandSignedness() &&
-                   TestFloatCompareDistinguishesSignedZeroAndAcceptsNaN()
+                   TestFloatCompareDistinguishesSignedZeroAndAcceptsNaN() && TestBoundaryWitnesses()
                ? 0
                : 1;
 }

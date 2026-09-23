@@ -4,6 +4,7 @@
 // you may not use this file except in compliance with the License.
 
 #include "buffer.h"
+#include "boundary.h"
 #include "compute_pipeline.h"
 #include "reference.h"
 #include "timer.h"
@@ -186,6 +187,8 @@ CaseConfig ParseArgs(int argc, char** argv)
 
         if (arg == "--shader") {
             config.shader_path = require_value("--shader");
+        } else if (arg == "--boundary-case") {
+            config.boundary_case = require_value("--boundary-case");
         } else if (arg == "--case") {
             config.kind = ParseCaseKind(require_value("--case"));
         } else if (arg == "--dtype") {
@@ -398,13 +401,22 @@ void PrintLayerDims(const std::vector<uint32_t>& dims)
     std::cout << "]";
 }
 
-void PrintJson(const CaseConfig& config, const TimeStats& stats, const VerifyResult& verify)
+void PrintJson(const CaseConfig& config, const TimeStats& stats, const VerifyResult& verify,
+               unsigned verified_dispatches = 0, const VkPhysicalDeviceProperties* device = nullptr)
 {
     const double gflops = stats.avg > 0.0 ? static_cast<double>(FlopCount(config)) / stats.avg : 0.0;
 
     std::cout << std::fixed << std::setprecision(6);
     std::cout << "{\n";
-    std::cout << "  \"case\": \"" << CaseName(config.kind) << "\",\n";
+    if (!config.boundary_case.empty()) {
+        std::cout << "  \"boundary_case\": \"" << JsonEscape(config.boundary_case) << "\",\n";
+        std::cout << "  \"verified_dispatches\": " << verified_dispatches << ",\n";
+        if (device) {
+            std::cout << "  \"device\": \"" << JsonEscape(device->deviceName) << "\",\n";
+            std::cout << "  \"driver_version\": " << device->driverVersion << ",\n";
+        }
+    }
+    std::cout << "  \"case\": \"" << (config.boundary_case.empty() ? CaseName(config.kind) : "boundary") << "\",\n";
     std::cout << "  \"shader\": \"" << JsonEscape(config.shader_path) << "\",\n";
     std::cout << "  \"dtype\": \"" << DTypeName(config.dtype) << "\",\n";
     std::cout << "  \"a_dtype\": \"" << DTypeName(config.a_dtype) << "\",\n";
@@ -433,8 +445,14 @@ void PrintJson(const CaseConfig& config, const TimeStats& stats, const VerifyRes
     std::cout << "  \"gpu_time_ns_p50\": " << stats.p50 << ",\n";
     std::cout << "  \"gpu_time_ns_p90\": " << stats.p90 << ",\n";
     std::cout << "  \"gpu_time_ns_max\": " << stats.max << ",\n";
-    std::cout << "  \"gflops_avg\": " << gflops << ",\n";
-    std::cout << "  \"gops_avg\": " << gflops << ",\n";
+    // Boundary scenarios include routing and memory-only work, so the ordinary
+    // matmul operation count would be misleading. Their metric is GPU time.
+    if (config.boundary_case.empty()) {
+        std::cout << "  \"gflops_avg\": " << gflops << ",\n";
+        std::cout << "  \"gops_avg\": " << gflops << ",\n";
+    } else {
+        std::cout << "  \"gflops_avg\": null,\n  \"gops_avg\": null,\n";
+    }
     std::cout << "  \"verify\": \"" << (verify.pass ? "pass" : "fail") << "\",\n";
     std::cout << "  \"max_abs_error\": " << verify.max_abs_error << ",\n";
     std::cout << "  \"max_rel_error\": " << verify.max_rel_error << "\n";
@@ -444,7 +462,9 @@ void PrintJson(const CaseConfig& config, const TimeStats& stats, const VerifyRes
 void PrintSkipJson(const CaseConfig& config, const std::string& reason)
 {
     std::cout << "{\n";
-    std::cout << "  \"case\": \"" << CaseName(config.kind) << "\",\n";
+    if (!config.boundary_case.empty())
+        std::cout << "  \"boundary_case\": \"" << JsonEscape(config.boundary_case) << "\",\n";
+    std::cout << "  \"case\": \"" << (config.boundary_case.empty() ? CaseName(config.kind) : "boundary") << "\",\n";
     std::cout << "  \"shader\": \"" << JsonEscape(config.shader_path) << "\",\n";
     std::cout << "  \"dtype\": \"" << DTypeName(config.dtype) << "\",\n";
     std::cout << "  \"a_dtype\": \"" << DTypeName(config.a_dtype) << "\",\n";
@@ -508,9 +528,124 @@ std::string MissingFeature(const VulkanContext& context, DType dtype)
     return {};
 }
 
+void PrintBoundaryCases()
+{
+    std::cout << "[";
+    bool first = true;
+    for (const auto& test : BoundaryCases()) {
+        if (!first) std::cout << ",";
+        first = false;
+        std::cout << "{\"name\":\"" << test.name << "\",\"controls\":" << test.controls() << ",\"defines\":[";
+        auto defines = test.defines();
+        defines.push_back(std::string("INTEGER=") + (std::string(test.output) == "int" ? "1" : "0"));
+        for (size_t i = 0; i < defines.size(); ++i)
+            std::cout << (i ? "," : "") << "\"" << defines[i] << "\"";
+        std::cout << "],\"modes\":[";
+        const auto modes = test.modes();
+        for (size_t i = 0; i < modes.size(); ++i)
+            std::cout << (i ? "," : "") << "\"" << modes[i] << "\"";
+        std::cout << "]}";
+    }
+    std::cout << "]\n";
+}
+
+int RunBoundary(CaseConfig config)
+{
+    const auto& cases = BoundaryCases();
+    const auto found = std::find_if(cases.begin(), cases.end(), [&](const BoundaryCase& test) {
+        return config.boundary_case == test.name;
+    });
+    if (found == cases.end()) throw std::runtime_error("unknown boundary case " + config.boundary_case);
+    const auto& test = *found;
+    config.a_dtype = BoundaryType(test.a);
+    config.b_dtype = BoundaryType(test.b);
+    config.c_dtype = config.accum_dtype = config.dtype = BoundaryType(test.output);
+    if (test.kind == 7) config.c_dtype = config.a_dtype;
+    config.activation_dtype = config.a_dtype;
+    config.m = test.m;
+    config.n = test.n;
+    config.k = test.k;
+    VulkanContext context;
+    for (DType type : {config.a_dtype, config.b_dtype, config.dtype}) {
+        const auto missing = MissingFeature(context, type);
+        if (!missing.empty()) {
+            PrintSkipJson(config, "boundary case requires Vulkan feature " + missing);
+            return 0;
+        }
+    }
+    ComputePipeline pipeline(&context, ReadSpirv(config.shader_path),
+                             std::vector<VkDescriptorType>(4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER));
+    const auto prototype = MakeBoundaryData(test, 0, 0);
+    Buffer a(&context, prototype.a.size() * ElementSize(config.a_dtype));
+    Buffer b(&context, prototype.b.size() * ElementSize(config.b_dtype));
+    Buffer c(&context, prototype.c.size() * ElementSize(config.c_dtype));
+    Buffer d(&context, prototype.expected.size() * ElementSize(config.dtype));
+    pipeline.UpdateDescriptors({a.descriptor(), b.descriptor(), c.descriptor(), d.descriptor()});
+    DispatchTimer timer(&context);
+    std::vector<double> samples;
+    VerifyResult score;
+    for (unsigned dataset = 0; dataset < 3; ++dataset) {
+        for (unsigned control = 0; control < test.controls(); ++control) {
+            const auto data = MakeBoundaryData(test, dataset, control);
+            const auto aBytes = EncodeRawBuffer(data.a, config.a_dtype);
+            const auto bBytes = EncodeRawBuffer(data.b, config.b_dtype);
+            const auto cBytes = EncodeRawBuffer(data.c, config.c_dtype);
+            const RawValues initial(data.expected.size(), data.expected.front());
+            const auto dBytes = EncodeRawBuffer(initial, config.dtype);
+            auto reset = [&]() {
+                a.Upload(aBytes);
+                b.Upload(bBytes);
+                c.Upload(cBytes);
+                d.Upload(dBytes);
+            };
+            // Every dataset/control is verified; timing samples use dataset 0 only.
+            const unsigned warmup = dataset == 0 ? config.warmup : 0;
+            const unsigned repeat = dataset == 0 ? config.repeat : 1;
+            for (unsigned i = 0; i < warmup + repeat; ++i) {
+                reset();
+                const double ns = timer.Run(pipeline);
+                if (dataset == 0 && i >= warmup) samples.push_back(ns);
+            }
+            const auto actual = DecodeRawBuffer(d.Download(d.size()), config.dtype);
+            const bool guards = actual.front() == data.expected.front() && actual.back() == data.expected.back();
+            const auto comparison = CompareOutputRaw(config, data.expected, actual);
+            const bool values = data.exact ? actual == data.expected : comparison.pass;
+            score.max_abs_error = std::max(score.max_abs_error, comparison.max_abs_error);
+            score.max_rel_error = std::max(score.max_rel_error, comparison.max_rel_error);
+            if (!guards || !values) {
+                std::cerr << test.name << " dataset=" << dataset << " control=" << control << " mismatch\n";
+                for (size_t i = 0; i < actual.size(); ++i) {
+                    if (actual[i] != data.expected[i])
+                        std::cerr << "lane " << i << " expected bits=" << data.expected[i]
+                                  << " actual bits=" << actual[i] << '\n';
+                }
+                throw std::runtime_error("boundary output or guard mismatch");
+            }
+            if (test.kind == 4) {
+                RawValues mutated = data.b;
+                mutated.front() = FloatToHalfBits(4);
+                mutated.back() = FloatToHalfBits(-4);
+                if (DecodeRawBuffer(b.Download(b.size()), config.b_dtype) != mutated)
+                    throw std::runtime_error("snapshot source writes were lost or corrupted");
+            }
+            if (test.kind == 7 && DecodeRawBuffer(c.Download(c.size()), config.c_dtype) != data.cache_expected)
+                throw std::runtime_error("FP16 activation cache or guard mismatch");
+        }
+    }
+    VkPhysicalDeviceProperties device;
+    vkGetPhysicalDeviceProperties(context.physical_device(), &device);
+    PrintJson(config, ComputeStats(samples), score, 3 * test.controls(), &device);
+    return 0;
+}
+
 int Run(int argc, char** argv)
 {
+    if (argc == 2 && std::string(argv[1]) == "--list-boundary-cases") {
+        PrintBoundaryCases();
+        return 0;
+    }
     const CaseConfig config = ParseArgs(argc, argv);
+    if (!config.boundary_case.empty()) return RunBoundary(config);
     const std::vector<uint32_t> spirv = ReadSpirv(config.shader_path);
 
     const RawValues a = MakeRawInput(ElementCountA(config), 1, config.a_dtype);

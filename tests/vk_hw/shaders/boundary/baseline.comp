@@ -1,0 +1,114 @@
+#version 460 core
+#extension GL_EXT_shader_explicit_arithmetic_types : require
+#extension GL_EXT_shader_8bit_storage : require
+#extension GL_EXT_shader_16bit_storage : require
+// Standard GLSL oracle, written independently of the HW lowering output.
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0) buffer Inputs { AT data[]; } A;
+layout(set = 0, binding = 1) buffer Weights { BT data[]; } B;
+#if KIND == 7
+layout(set = 0, binding = 2) volatile buffer ActivationCache { AT data[]; } C;
+#else
+layout(set = 0, binding = 2) buffer Biases { OT data[]; } C;
+#endif
+layout(set = 0, binding = 3) buffer Outputs { OT data[]; } D;
+
+OT mac(OT sum, AT x, BT w)
+{
+#if KIND == 8
+    precise OT product = OT(x) * OT(w);
+    precise OT result = sum + product;
+    return result;
+#elif INTEGER
+    return sum + OT(x) * OT(w);
+#else
+    return fma(OT(x), OT(w), sum);
+#endif
+}
+
+void main()
+{
+#if KIND == 9
+    for (uint i = 0; i < M * N; ++i)
+        D.data[i + 1] = OT(A.data[i]);
+#elif KIND == 2
+    for (uint i = 0; i < N; ++i)
+        D.data[i + 1] = max((OT(A.data[i]) + OT(B.data[i])) * OT(0.5), OT(0));
+#elif KIND == 6
+    AT state[H], next[H];
+    for (uint i = 0; i < H; ++i)
+        state[i] = A.data[i];
+    uint control = uint(C.data[H + N]);
+    for (uint iteration = 0; iteration < control / 2u; ++iteration) {
+        for (uint j = 0; j < H; ++j) {
+            OT sum = C.data[j];
+            for (uint i = 0; i < H; ++i)
+                sum = mac(sum, state[i], B.data[(control & 1u) * H * H + i * H + j]);
+            next[j] = AT(max(sum, OT(0)));
+        }
+        for (uint i = 0; i < H; ++i)
+            state[i] = next[i];
+    }
+    for (uint j = 0; j < N; ++j) {
+        OT sum = C.data[H + j];
+        for (uint i = 0; i < H; ++i)
+            sum = mac(sum, state[i], B.data[2 * H * H + i * N + j]);
+        D.data[j + 1] = sum;
+    }
+#elif KIND == 7
+    AT hidden[H];
+    for (uint j = 0; j < H; ++j) {
+        OT sum = OT(B.data[K * H + H * N + j]);
+        for (uint i = 0; i < K; ++i)
+            sum = mac(sum, A.data[i], B.data[i * H + j]);
+        hidden[j] = AT(max(sum, OT(0)));
+    }
+    for (uint j = 0; j < H; ++j)
+        C.data[j + 1] = hidden[j];
+    memoryBarrierBuffer();
+    for (uint j = 0; j < H; ++j)
+        hidden[j] = C.data[j + 1];
+    for (uint j = 0; j < N; ++j) {
+        OT sum = OT(B.data[K * H + H * N + H + j]);
+        for (uint i = 0; i < H; ++i)
+            sum = mac(sum, hidden[i], B.data[K * H + i * N + j]);
+        D.data[j + 1] = max(sum, OT(0));
+    }
+#else
+    // Load before the snapshot test writes the source buffer.
+    BT weights[K * N];
+    uint offset = 0;
+#if KIND == 3
+#if OFFSET_KIND == 3
+    offset = uint(C.data[N]);
+#else
+    offset = OFFSET_KIND == 2 ? 3u : OFFSET_KIND;
+#endif
+#endif
+    for (uint i = 0; i < K; ++i) {
+        for (uint j = 0; j < N; ++j) {
+#if KIND == 3
+            uint address = LAYOUT == 0 ? (i + offset) * (N + 3) + j + offset
+                                      : (j + offset) * (K + 3) + i + offset;
+#else
+            uint address = i * N + j;
+#endif
+            weights[i * N + j] = B.data[address];
+        }
+    }
+#if KIND == 4
+    B.data[0] = BT(4);
+    B.data[K * N - 1] = BT(-4);
+#elif KIND == 5
+    weights[uint(C.data[N]) == 0u ? 0 : K * N - 1] = BT(4);
+#endif
+    for (uint row = 0; row < M; ++row) {
+        for (uint j = 0; j < N; ++j) {
+            OT sum = C.data[row * N + j];
+            for (uint i = 0; i < K; ++i)
+                sum = mac(sum, A.data[row * K + i + offset], weights[i * N + j]);
+            D.data[row * N + j + 1] = sum;
+        }
+    }
+#endif
+}

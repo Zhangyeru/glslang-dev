@@ -3,6 +3,7 @@
 
 #include "SPIRV/GLSL.std.450.h"
 #include "TestFixture.h"
+#include "../tests/vk_hw/runner/boundary_cases.h"
 
 #include <functional>
 #include <unordered_map>
@@ -718,6 +719,141 @@ INSTANTIATE_TEST_SUITE_P(
     [](const ::testing::TestParamInfo<HwLowerCase>& info) {
         return std::string(info.param.name) + "_" + std::to_string(info.param.width);
     });
+
+using HwBoundaryTest = GlslangTest<::testing::TestWithParam<vk_hw::BoundaryCase>>;
+
+TEST_P(HwBoundaryTest, ValidatedInferenceBoundary)
+{
+#if !ENABLE_OPT
+    GTEST_SKIP() << "SPIRV-Tools is required for HW lowering";
+#else
+    const auto& test = GetParam();
+    std::string source;
+    tryLoadFile(GlobalTestSettings.testRoot + "/spv.hw_boundary.comp", "boundary shader", &source);
+    ASSERT_FALSE(source.empty());
+    std::string preamble;
+    for (auto define : test.defines()) {
+        define[define.find('=')] = ' ';
+        preamble += "#define " + define + "\n";
+    }
+    source.insert(source.find('\n') + 1, preamble);
+    const auto controls = DeriveOptions(Source::GLSL, Semantics::Vulkan, Target::Spv);
+    const auto compiled = compileAndLink("spv.hw_boundary.comp", source, "", controls,
+                                         glslang::EShTargetVulkan_1_3, glslang::EShTargetSpv_1_6);
+    std::ostringstream diagnostics;
+    outputResultToStream(&diagnostics, compiled, controls);
+    ASSERT_FALSE(compiled.spirvBinary.empty()) << diagnostics.str();
+    const auto consumer = [&](spv_message_level_t, const char*, const spv_position_t&, const char* message) {
+        diagnostics << message << '\n';
+    };
+    spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_3);
+    tools.SetMessageConsumer(consumer);
+    ASSERT_TRUE(tools.Validate(compiled.spirvBinary)) << diagnostics.str();
+    const HwModule input(compiled.spirvBinary);
+    const std::string operation = test.kind == 1 ? "OpCooperativeMatrixMulAddHW"
+                                  : test.kind == 9 ? "OpCooperativeMatrixLoadHW"
+                                  : test.kind == 2 ? "OpFAdd" : "OpCooperativeVectorMatrixMulAddHW";
+    std::vector<uint32_t> values;
+    for (const auto& inst : input.instructions) {
+        if (inst.op == operation && input.containsHw(inst.type)) values.push_back(inst.id);
+    }
+    ASSERT_FALSE(values.empty()) << "No typed operation for intended boundary";
+    if (test.kind == 6) {
+        EXPECT_GT(input.count("OpLoopMerge"), 0u);
+        EXPECT_GT(input.hwCount("OpReturnValue"), 0u);
+    }
+    if (test.kind == 7) {
+        EXPECT_GE(input.hwCount("OpFConvert"), 3u);
+        EXPECT_EQ(1u, input.count("OpMemoryBarrier"));
+    }
+    if (test.kind == 8) {
+        ASSERT_TRUE(input.decorated(values.front(), spv::DecorationNoContraction));
+    }
+    ASSERT_FALSE(::testing::Test::HasFailure());
+
+    for (const auto& mode : test.modes()) {
+        SCOPED_TRACE(mode);
+        spvtools::Optimizer optimizer(SPV_ENV_VULKAN_1_3);
+        optimizer.SetMessageConsumer(consumer);
+        ASSERT_TRUE(optimizer.RegisterPassFromFlag("--hw-lower-to-standard-extension-free" +
+                                                   (mode.empty() ? "" : "=" + mode)));
+        std::vector<uint32_t> binary;
+        ASSERT_TRUE(optimizer.Run(compiled.spirvBinary.data(), compiled.spirvBinary.size(), &binary))
+            << diagnostics.str();
+        ASSERT_TRUE(tools.Validate(binary)) << diagnostics.str();
+        std::string assembly;
+        ASSERT_TRUE(tools.Disassemble(binary, &assembly));
+        const HwModule output(binary);
+        output.expectNoHw(assembly);
+        const bool scalar = mode.find("scalar") != std::string::npos;
+        if (scalar) {
+            for (const char* op : {"OpFAdd", "OpFMul", "OpIMul"})
+                EXPECT_EQ(0u, output.mathCount(op, "OpTypeVector"));
+        }
+        if (test.kind == 8) {
+            EXPECT_EQ(0u, output.count("OpExtInst", [](const HwInstruction& inst) {
+                return inst.words[4] == GLSLstd450Fma;
+            }));
+            EXPECT_GT(output.count("OpFMul", [&](const HwInstruction& inst) {
+                return output.decorated(inst.id, spv::DecorationNoContraction);
+            }), 0u);
+        }
+        // Follow the original result into its replacement helper. Count only
+        // that function's loops, not unrelated load/store helpers or debug names.
+        auto loopsForValue = [&](uint32_t id) {
+            const auto* value = output.definition(id);
+            EXPECT_NE(nullptr, value);
+            if (!value) return size_t(0);
+            uint32_t owner = 0, current = 0;
+            for (const auto& inst : output.instructions) {
+                if (inst.op == "OpFunction") current = inst.id;
+                if (inst.id == id) owner = current;
+            }
+            if (value->op == "OpFunctionCall") owner = value->words[3];
+            size_t loops = 0;
+            for (const auto& inst : output.instructions) {
+                if (inst.op == "OpFunction") current = inst.id;
+                if (current == owner && inst.op == "OpLoopMerge") ++loops;
+            }
+            return loops;
+        };
+        const std::string name = test.name;
+        if (name.find("direct_f32_") == 0 || name == "mac_f16_64x64" || test.kind == 9) {
+            unsigned limit = 4096;
+            if (!scalar && name.find("direct_f32_") == 0) limit = test.kind == 1 ? 2048 : 256;
+            if (mode.find("4095") != std::string::npos) limit = 4095;
+            if (mode.find("4097") != std::string::npos) limit = 4097;
+            const unsigned work = test.kind == 9 ? test.m * test.n : test.m * test.n * test.k;
+            const auto loops = loopsForValue(values.front());
+            if (test.kind == 9 && !scalar) {
+                // Packed memory uses chunk helpers even below the unroll limit.
+                // Above it, scalar memory loops stage packed values in the caller.
+                EXPECT_GT(loops, 0u);
+                if (work > limit) {
+                    EXPECT_EQ(0u, output.count("OpFunctionCall"));
+                } else {
+                    EXPECT_GT(output.count("OpFunctionCall"), 0u);
+                }
+            } else if (work > limit) {
+                EXPECT_GT(loops, 0u);
+            } else {
+                EXPECT_EQ(0u, loops);
+            }
+        }
+        if (test.kind == 2 && scalar) {
+            const auto loops = loopsForValue(values.front());
+            if (test.n > 64) {
+                EXPECT_GT(loops, 0u);
+            } else {
+                EXPECT_EQ(0u, loops);
+            }
+        }
+    }
+#endif
+}
+
+INSTANTIATE_TEST_SUITE_P(Inference, HwBoundaryTest, ::testing::ValuesIn(vk_hw::BoundaryCases()),
+                        [](const ::testing::TestParamInfo<vk_hw::BoundaryCase>& info) { return info.param.name; });
 
 } // namespace
 } // namespace glslangtest
