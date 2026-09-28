@@ -227,6 +227,8 @@ def cases():
     for name in ("workgroup_exchange", "descriptor_alias", "descriptor_overlap", "inbounds"):
         result.append(dict(name=name, dtype="float", context=name, required=["OpCooperativeVectorLoadHW"]))
     result[-1]["required"].append("OpInBoundsAccessChain")
+    for name in ("ordinary_array_extract", "ordinary_nested_array_extract"):
+        result.append(dict(name=name, dtype="float", context=name, required=["OpCooperativeVectorLoadHW", "OpFAdd"]))
     add("fragment_add", "float", "x+y", "OpFAdd", lambda x, y: x + y, graphics=True)
     add("multi_entry", "float", "x+y", "OpFAdd", lambda x, y: x + y, multi_entry=True)
     return result
@@ -241,6 +243,34 @@ layout(set=0,binding=0) coherent buffer AA {{ float data[]; }} A;
 layout(set=0,binding=1) coherent buffer BB {{ float data[]; }} B;
 layout(set=0,binding=2) buffer DD {{ float data[]; }} D;
 """
+    if kind in ("ordinary_array_extract", "ordinary_nested_array_extract"):
+        # WIDTH=4 lowers to vec2[2], which can reuse this ordinary array type.
+        # Keep both array elements and vector components distinct in the oracle.
+        nested = kind == "ordinary_nested_array_extract"
+        aggregate = (
+            """struct Packet { float tag; vec2 values[2]; };
+Packet makeArray() {
+    return Packet(B.data[0], vec2[2](vec2(B.data[1], B.data[2]), vec2(B.data[3], B.data[4])));
+}
+"""
+            if nested
+            else """vec2[2] makeArray() {
+    return vec2[2](vec2(B.data[1], B.data[2]), vec2(B.data[3], B.data[4]));
+}
+"""
+        )
+        return (
+            header
+            + aggregate
+            + f"""void main() {{
+    vec2 selected=makeArray(){'.values' if nested else ''}[1];
+    coopvecHW<float,WIDTH> x;
+    coopVecLoadHW(x,A.data,1u);
+    x=x*selected.x+coopvecHW<float,WIDTH>(selected.y);
+    coopVecStoreHW(x,D.data,1u);
+}}
+"""
+        )
     if kind == "workgroup_exchange":
         return (
             header
@@ -520,7 +550,13 @@ def execute_case(args, case, width, folder):
                 continue
             if case.get("context"):
                 kind = case["context"]
-                if kind == "inbounds":
+                if kind in ("ordinary_array_extract", "ordinary_nested_array_extract"):
+                    av = [17] + [(i - dataset - 2) * 0.25 for i in range(width)] + [19]
+                    bv = [23, -3 * (dataset + 1), 5 * (dataset + 2), 2.5 * (dataset + 1), -7 - dataset]
+                    bv += [29] * (width + 2 - len(bv))
+                    expected = [x * bv[3] + bv[4] for x in av[1:-1]]
+                    modified = pack(av, "float")
+                elif kind == "inbounds":
                     av = [17] + [(i + dataset) * 0.25 for i in range(width)] + [19]
                     expected = av[1:-1]
                     expected[-1] = 19

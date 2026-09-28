@@ -131,3 +131,15 @@ these five operation combinations, not every conversion or ExtInst opcode.
 See `tests/vk_hw/LANGUAGE_CONTRACT.md` for the legal-input domain, transactional
 recovery and the wider numerical matrix. Ordinary integer induction Phi remains
 insufficient evidence for cooperative value transport.
+
+## Ordinary array type collisions and scalar block layout
+
+`Glsl/HwArrayCollisionTest.PreservesOrdinaryArrayIndices/*` compiles
+`spv.hw_extfree_array_collision.comp` with ordinary and scalar SSBO layouts.
+The ordinary `vec2[2]` function return shares its SPIR-V type with the packed
+representation of `coopvecHW<float, 4>`. The test requires the ordinary `[1]`
+extraction to remain unchanged and packed arithmetic to survive default and
+`no-direct,no-fusion` lowering without a scalar retry. Explicit scalar lowering
+is also validated. Both input and output validation receive the same validator
+options; the scalar fixture requires them because its `vec3` member starts at
+offset 8. These two source configurations add six raw lowering runs.

@@ -1,0 +1,29 @@
+#version 460
+#extension GL_HW_neural_shader : require
+#extension GL_EXT_scalar_block_layout : require
+
+#ifndef SCALAR_LAYOUT
+#define SCALAR_LAYOUT 0
+#endif
+
+layout(local_size_x = 1) in;
+#if SCALAR_LAYOUT
+// The vec3 at offset 8 requires scalar block layout validation.
+layout(scalar, set = 0, binding = 0) buffer Buf { vec2 pad; vec3 extra; float data[]; } b;
+#else
+layout(std430, set = 0, binding = 0) buffer Buf { float data[]; } b;
+#endif
+
+vec2[2] ordinaryArray()
+{
+    return vec2[2](vec2(b.data[0], b.data[1]), vec2(b.data[2], b.data[3]));
+}
+
+void main()
+{
+    coopvecHW<float, 4> value;
+    coopVecLoadHW(value, b.data, 0u);
+    // This ordinary array has the same type as the packed HW representation.
+    vec2 selected = ordinaryArray()[1];
+    coopVecStoreHW(value + coopvecHW<float, 4>(selected.x), b.data, 0u);
+}

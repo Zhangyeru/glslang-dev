@@ -769,6 +769,118 @@ TEST_P(HwSsaTest, ValidatedCooperativePhiPipeline)
 
 INSTANTIATE_TEST_SUITE_P(Glsl, HwSsaTest, ::testing::Values(4u, 5u));
 
+using HwArrayCollisionTest = GlslangTest<::testing::TestWithParam<bool>>;
+
+TEST_P(HwArrayCollisionTest, PreservesOrdinaryArrayIndices)
+{
+#if !ENABLE_OPT
+    GTEST_SKIP() << "SPIRV-Tools is required for HW lowering";
+#else
+    const bool scalarLayout = GetParam();
+    const std::string file = "spv.hw_extfree_array_collision.comp";
+    std::string source;
+    tryLoadFile(GlobalTestSettings.testRoot + "/" + file, "array collision GLSL", &source);
+    ASSERT_FALSE(source.empty());
+    source.insert(source.find('\n') + 1, std::string("#define SCALAR_LAYOUT ") + (scalarLayout ? "1\n" : "0\n"));
+    const auto controls = DeriveOptions(Source::GLSL, Semantics::Vulkan, Target::Spv);
+    const auto compiled =
+        compileAndLink(file, source, "", controls, glslang::EShTargetVulkan_1_3, glslang::EShTargetSpv_1_6);
+    std::ostringstream compileMessages;
+    outputResultToStream(&compileMessages, compiled, controls);
+    ASSERT_FALSE(compiled.spirvBinary.empty()) << compileMessages.str();
+
+    std::ostringstream diagnostics;
+    const auto consumer = [&](spv_message_level_t, const char*, const spv_position_t&, const char* message) {
+        diagnostics << message << '\n';
+    };
+    spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_3);
+    tools.SetMessageConsumer(consumer);
+    if (scalarLayout) {
+        ASSERT_FALSE(tools.Validate(compiled.spirvBinary)) << "Fixture no longer requires scalar block layout";
+        diagnostics.str("");
+    }
+    spvtools::ValidatorOptions validatorOptions;
+    validatorOptions.SetScalarBlockLayout(scalarLayout);
+    ASSERT_TRUE(tools.Validate(compiled.spirvBinary.data(), compiled.spirvBinary.size(), validatorOptions))
+        << "Invalid frontend input:\n" << diagnostics.str();
+
+    const HwModule input(compiled.spirvBinary);
+    const HwInstruction* ordinaryExtract = nullptr;
+    uint32_t cooperativeSum = 0;
+    uint32_t ordinaryArrayType = 0;
+    for (const auto& inst : input.instructions) {
+        if (inst.op == "OpFAdd" && input.containsHw(inst.type))
+            cooperativeSum = inst.id;
+        if (inst.op != "OpCompositeExtract")
+            continue;
+        const auto* array = input.definition(inst.words[3]);
+        if (array && array->op == "OpFunctionCall" && input.typeIs(array->type, "OpTypeArray")) {
+            ASSERT_EQ(nullptr, ordinaryExtract);
+            ordinaryExtract = &inst;
+            ordinaryArrayType = array->type;
+        }
+    }
+    ASSERT_NE(nullptr, ordinaryExtract);
+    ASSERT_EQ(5u, ordinaryExtract->words.size());
+    ASSERT_EQ(1u, ordinaryExtract->words[4]);
+    const auto* vectorType = input.definition(ordinaryExtract->type);
+    ASSERT_NE(nullptr, vectorType);
+    ASSERT_EQ("OpTypeVector", vectorType->op);
+    ASSERT_EQ(2u, vectorType->words[3]);
+    ASSERT_TRUE(input.typeIs(vectorType->words[2], "OpTypeFloat"));
+    const auto* arrayType = input.definition(ordinaryArrayType);
+    ASSERT_NE(nullptr, arrayType);
+    ASSERT_EQ(vectorType->id, arrayType->words[2]);
+    const auto* arrayLength = input.definition(arrayType->words[3]);
+    ASSERT_NE(nullptr, arrayLength);
+    ASSERT_EQ("OpConstant", arrayLength->op);
+    ASSERT_EQ(2u, arrayLength->words[3]);
+    ASSERT_NE(0u, cooperativeSum);
+
+    for (const char* mode : {"", "=no-direct,no-fusion", "=scalar"}) {
+        SCOPED_TRACE(mode);
+        diagnostics.str("");
+        spvtools::Optimizer optimizer(SPV_ENV_VULKAN_1_3);
+        optimizer.SetMessageConsumer(consumer);
+        ASSERT_TRUE(optimizer.RegisterPassFromFlag(std::string("--hw-lower-to-standard-extension-free") + mode));
+        spvtools::OptimizerOptions optimizerOptions;
+        optimizerOptions.set_validator_options(validatorOptions);
+        std::vector<uint32_t> lowered;
+        ASSERT_TRUE(optimizer.Run(compiled.spirvBinary.data(), compiled.spirvBinary.size(), &lowered, optimizerOptions))
+            << diagnostics.str();
+        // A successful scalar retry would hide corruption in packed lowering.
+        EXPECT_TRUE(diagnostics.str().empty()) << diagnostics.str();
+        ASSERT_TRUE(tools.Validate(lowered.data(), lowered.size(), validatorOptions))
+            << "Invalid lowered output:\n" << diagnostics.str();
+        std::string assembly;
+        ASSERT_TRUE(tools.Disassemble(lowered, &assembly));
+        const HwModule output(lowered);
+        output.expectNoHw(assembly);
+        const auto* extracted = output.definition(ordinaryExtract->id);
+        ASSERT_NE(nullptr, extracted);
+        EXPECT_EQ(ordinaryExtract->op, extracted->op);
+        EXPECT_EQ(ordinaryExtract->words, extracted->words);
+        const auto* sum = output.definition(cooperativeSum);
+        ASSERT_NE(nullptr, sum);
+        const auto* loweredType = output.definition(sum->type);
+        ASSERT_NE(nullptr, loweredType);
+        ASSERT_EQ("OpTypeArray", loweredType->op);
+        if (std::string(mode) == "=scalar") {
+            EXPECT_TRUE(output.typeIs(loweredType->words[2], "OpTypeFloat"));
+        } else {
+            // Require the collision itself and retained packed arithmetic.
+            EXPECT_EQ(ordinaryArrayType, loweredType->id);
+            EXPECT_GT(output.mathCount("OpFAdd", "OpTypeVector"), 0u);
+        }
+    }
+#endif
+}
+
+INSTANTIATE_TEST_SUITE_P(Glsl, HwArrayCollisionTest, ::testing::Values(false, true),
+                        [](const ::testing::TestParamInfo<bool>& info) {
+                            return info.param ? "ScalarLayout" : "StandardLayout";
+                        });
+
 using HwBoundaryTest = GlslangTest<::testing::TestWithParam<vk_hw::BoundaryCase>>;
 
 TEST_P(HwBoundaryTest, ValidatedInferenceBoundary)

@@ -32,7 +32,9 @@ ordinary constant 0 or 1; dynamic/spec layout is validator-invalid. This
 contract does not add runtime-shaped cooperative values.
 
 Success requires valid standard SPIR-V, no HW or replicated-composites residue,
-and preservation of defined value, memory and floating-point behavior. Other
+and preservation of defined value, memory and floating-point behavior. Cooperative
+value provenance determines index rewriting: ordinary arrays can share a
+lowered vector's type without acquiring cooperative indexing semantics. Other
 standard extensions/capabilities needed by the program may remain. Buffer
 leaf types can include f64/i64/u64 even though cooperative components cannot.
 Equal-width memory type changes reinterpret bits; cross-width accesses convert
@@ -71,9 +73,11 @@ Each lowering attempt owns an independent IR context. Failure cannot publish
 partially rewritten types, helpers, memory operations or stale analyses.
 Normalization and legality failures do not trigger optimization recovery.
 Recoverable generation failures retry with scalar lowering from the original
-binary. When ordinary target validation accepts the original module, an invalid
-generated candidate also triggers recovery. A failed scalar attempt leaves the
-original module intact. Resource exhaustion is diagnosed without repeated
+binary. Input and generated candidates use the caller's validator options,
+including scalar block layout and validation limits. Each attempt retains an
+owned copy of those options. When input validation accepts the original module,
+an invalid generated candidate also triggers recovery. A failed scalar attempt
+leaves the original module intact. Resource exhaustion is diagnosed without repeated
 retries. Fault-injection unit tests exercise both successful and failed recovery.
 
 `no-direct` and `no-fusion` independently disable those optimizations without
