@@ -20,9 +20,6 @@ struct DefaultMaterialMaterialStruct
     DefaultMaterialSingleMaterialStruct material[64];
 };
 
-const f16vec2 _388[8] = f16vec2[](f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)));
-const float16_t _433[3] = float16_t[](float16_t(0.0), float16_t(0.0), float16_t(0.0));
-
 struct DefaultMaterialSingleUserMaterialStruct
 {
     uvec4 userData[16];
@@ -569,58 +566,23 @@ mediump vec3 evaluateNetwork2(mediump vec3 envmap, mediump vec3 dirmap, mediump 
     f16vec2 _RESERVED_IDENTIFIER_FIXUP_325[8] = _380;
     f16vec2 tempArg_5[8] = _380;
     f16vec2 out1[8] = _380;
-    f16vec2 _9106[8] = _380;
-    uint _9105 = 0u;
-    f16vec2 _9104[8];
-    uint _9112;
-    for (;;)
-    {
-        _9112 = _9105;
-        if (_9112 < 8u)
-        {
-            _9104[_9112] = max(_9106[_9112], _388[_9112]);
-            _9105 = _9112 + 1u;
-            continue;
-        }
-        else
-        {
-            break;
-        }
-    }
-    out1 = _9104;
-    f16vec2 inVec2[8] = _9104;
-    uint _9121 = 3616u + 0u;
-    uint _9124 = 3616u + 1u;
-    uint _9127 = 3616u + 2u;
-    float16_t _414[3] = float16_t[](nn_buf.data[_9121], nn_buf.data[_9124], nn_buf.data[_9127]);
+    f16vec2 _389[8] = f16vec2[](max(_380[0], f16vec2[](f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)))[0]), max(_380[1], f16vec2[](f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)))[1]), max(_380[2], f16vec2[](f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)))[2]), max(_380[3], f16vec2[](f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)))[3]), max(_380[4], f16vec2[](f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)))[4]), max(_380[5], f16vec2[](f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)))[5]), max(_380[6], f16vec2[](f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)))[6]), max(_380[7], f16vec2[](f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)), f16vec2(float16_t(0.0)))[7]));
+    out1 = _389;
+    f16vec2 inVec2[8] = _389;
+    uint _9126 = 3616u + 0u;
+    uint _9129 = 3616u + 1u;
+    uint _9132 = 3616u + 2u;
+    float16_t _414[3] = float16_t[](nn_buf.data[_9126], nn_buf.data[_9129], nn_buf.data[_9132]);
     float16_t tempArg_1[3] = _414;
     float16_t _RESERVED_IDENTIFIER_FIXUP_349[3] = _414;
     float16_t tempArg_7[3] = _414;
     float16_t bias2[3] = _414;
-    float16_t _425[3] = _8817(_9104, _414);
+    float16_t _425[3] = _8817(_389, _414);
     float16_t tempArg_2[3] = _425;
     float16_t _RESERVED_IDENTIFIER_FIXUP_361[3] = _425;
     float16_t tempArg_8[3] = _425;
     float16_t out2[3] = _425;
-    float16_t _9133[3] = out2;
-    uint _9132 = 0u;
-    float16_t _9131[3];
-    uint _9139;
-    for (;;)
-    {
-        _9139 = _9132;
-        if (_9139 < 3u)
-        {
-            _9131[_9139] = max(_9133[_9139], _433[_9139]);
-            _9132 = _9139 + 1u;
-            continue;
-        }
-        else
-        {
-            break;
-        }
-    }
-    out2 = _9131;
+    out2 = float16_t[](max(out2[0], float16_t[](float16_t(0.0), float16_t(0.0), float16_t(0.0))[0]), max(out2[1], float16_t[](float16_t(0.0), float16_t(0.0), float16_t(0.0))[1]), max(out2[2], float16_t[](float16_t(0.0), float16_t(0.0), float16_t(0.0))[2]));
     return vec3(float(out2[0]), float(out2[1]), float(out2[2]));
 }
 

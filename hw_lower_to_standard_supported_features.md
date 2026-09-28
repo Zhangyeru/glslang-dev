@@ -1,5 +1,7 @@
 # HW Lower-to-Standard Pass 功能说明
 
+> 2026-09-28 更新：当前事务式回退、SSA、数值覆盖与输入边界见 [LANGUAGE_CONTRACT.md](tests/vk_hw/LANGUAGE_CONTRACT.md)，性能修正见 [BOUNDARY_TESTS.md](tests/vk_hw/BOUNDARY_TESTS.md)。下文旧验证统计保留为历史记录。
+
 ## 1. 总体结论
 
 当前 `hw-lower-to-standard` 已能完整处理本文定义的 cooperative matrix/vector 子集，将其转换为标准 SPIR-V array、vec2 或 scalar 代码；但还不能等价 lower 整个 `SPV_HW_neural_shader`。
@@ -68,7 +70,7 @@ specialization-constant shape，但必须先按 4.2 节执行 freeze/fold normal
 | Vector matmul-add | `Input[K] * Matrix[K×N] + Bias[N] -> Result[N]` | 与 vector matmul 相同；`Bias` 必须为 `[N]` |
 | Reduce、conversion 和逐元素操作 | 输入输出保持相同的 vector length 或 matrix rows/cols | 每个 cooperative type 分别满足上述 element limit |
 
-默认 `max_unrolled_elements` 和 `max_unrolled_matmul_macs` 都是 `4,096`。受这些阈值控制且具有 loop fallback 的 load/store、reduce 和 generic matmul，在超过 unroll threshold、但没有超过 hard limit 时会改用结构化循环，而不是因 shape 过大而失败。force-scalar 模式下不超过 `min(max_unrolled_elements, 64)` 的 f16/f32 逐元素操作静态展开，其他逐元素路径使用结构化循环。matrix/vector direct 也在 unrolled 和 runtime structured-loop helper 之间分流；f32 accumulator 另外使用 matrix `2,048` MAC、vector `256` MAC 的内部上限，避免指令和寄存器压力。两种形式都保留 direct pointer streaming，并继续受总体 element/MAC hard limit 约束。常量和 composite 构造仍受 4.2 节单独列出的 constituent 规则约束。
+默认 `max_unrolled_elements` 和 `max_unrolled_matmul_macs` 都是 `4,096`。受这些阈值控制且具有 loop fallback 的 load/store、reduce 和 generic matmul，在超过 unroll threshold、但没有超过 hard limit 时会改用结构化循环，而不是因 shape 过大而失败。force-scalar 模式下不超过 `max_unrolled_elements` 的 f16/f32 逐元素操作静态展开，其他逐元素路径使用结构化循环。matrix/vector direct 也在 unrolled 和 runtime structured-loop helper 之间分流；f32 accumulator 另外使用 matrix `1,024` MAC、vector `256` MAC 的内部上限，避免指令和寄存器压力。两种形式都保留 direct pointer streaming，并继续受总体 element/MAC hard limit 约束。常量和 composite 构造仍受 4.2 节单独列出的 constituent 规则约束。
 
 默认 packed 模式不会改变通用 shape 支持范围：
 
@@ -261,7 +263,7 @@ matmul。它捕获可安全移动的原始 buffer pointer，在生成的 helper 
 | Direct load 移动与别名 | load 与 matmul 之间不能存在可能写入同一内存的指令；不同 module root 只有在 pointer path 均无 `Aliased` / `AliasedPointer` 时才可视为不相交 | 仅该 operand 改用 constant/value |
 | Function transport | 可穿过无 MemoryAccess operand、pointer 未带 `Volatile` decoration 的 Function `OpStore` / `OpLoad`；`Volatile` 或其他带语义的 memory access 不可删除 | 至少该 operand 改用 constant/value 并保留 transport；删除闭包不成立时整条回退 |
 | Direct source 共享与删除闭包 | 已捕获 source 的其他 live user 只能经兼容 bitcast/封闭 Function transport 流向其他 HW op；待删除 load/transport 的 user 必须闭合 | 安全共享时保留原 source/transport 并继续 direct；存在 unsafe shared user 或 kill-chain 不闭合时，取消整条 Matrix/Vector direct，走 generic 路径 |
-| 尺寸预算 | `max_elements` / `max_matmul_macs` 是 direct eligibility hard limit；unrolled 阈值为配置值，f32 result 再取 matrix 2048 / vector 256 MAC 的较小值 | hard limit 失败时 validation 拒绝；unroll threshold 只切换代码形态 |
+| 尺寸预算 | `max_elements` / `max_matmul_macs` 是 direct eligibility hard limit；unrolled 阈值为配置值，f32 result 再取 matrix 1024 / vector 256 MAC 的较小值 | hard limit 失败时 validation 拒绝；unroll threshold 只切换代码形态 |
 
 上表中的 operand 独立 fallback 仅指“无法把该 operand 解析为可捕获 direct source”的情况。一旦 source
 已被捕获，direct 重写还必须同时证明共享 use 安全且待删除链闭合；这类整体安全性检查失败不会只将

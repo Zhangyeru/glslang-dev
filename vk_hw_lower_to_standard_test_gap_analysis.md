@@ -1,5 +1,7 @@
 # vk_hw Lower-to-Standard 测试覆盖与缺口分析
 
+> 2026-09-28 更新：当前事务式回退、SSA、数值覆盖与输入边界见 [LANGUAGE_CONTRACT.md](tests/vk_hw/LANGUAGE_CONTRACT.md)，性能修正见 [BOUNDARY_TESTS.md](tests/vk_hw/BOUNDARY_TESTS.md)。下文旧验证统计保留为历史记录。
+
 ## 1. 文档目的
 
 本文档记录 `HwLowerToStandardPass` 与 `tests/vk_hw` 的交叉覆盖审计结果，并给出后续端到端测试建设顺序。

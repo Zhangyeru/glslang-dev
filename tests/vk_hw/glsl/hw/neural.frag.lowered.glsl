@@ -20,8 +20,6 @@ struct DefaultMaterialMaterialStruct
     DefaultMaterialSingleMaterialStruct material[64];
 };
 
-const vec2 _398[8] = vec2[](vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0));
-
 struct DefaultMaterialSingleUserMaterialStruct
 {
     uvec4 userData[16];
@@ -577,17 +575,19 @@ mediump vec3 evaluateNetwork2(mediump vec3 envmap, mediump vec3 dirmap, mediump 
     vec2 _RESERVED_IDENTIFIER_FIXUP_325[8] = _390;
     vec2 tempArg_5[8] = _390;
     vec2 out1[8] = _390;
-    vec2 _10456[8] = _390;
-    uint _10455 = 0u;
-    vec2 _10454[8];
-    uint _10462;
+    vec2 _399[8] = vec2[](max(_390[0], vec2[](vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0))[0]), max(_390[1], vec2[](vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0))[1]), max(_390[2], vec2[](vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0))[2]), max(_390[3], vec2[](vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0))[3]), max(_390[4], vec2[](vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0))[4]), max(_390[5], vec2[](vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0))[5]), max(_390[6], vec2[](vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0))[6]), max(_390[7], vec2[](vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0))[7]));
+    out1 = _399;
+    vec2 _10482[8] = _399;
+    uint _10480 = 0u;
+    f16vec2 _10479[8];
+    uint _10487;
     for (;;)
     {
-        _10462 = _10455;
-        if (_10462 < 8u)
+        _10487 = _10480;
+        if (_10487 < 8u)
         {
-            _10454[_10462] = max(_10456[_10462], _398[_10462]);
-            _10455 = _10462 + 1u;
+            _10479[_10487] = f16vec2(_10482[_10487]);
+            _10480 = _10487 + 1u;
             continue;
         }
         else
@@ -595,27 +595,8 @@ mediump vec3 evaluateNetwork2(mediump vec3 envmap, mediump vec3 dirmap, mediump 
             break;
         }
     }
-    out1 = _10454;
-    vec2 _10475[8] = _10454;
-    uint _10474 = 0u;
-    f16vec2 _10473[8];
-    uint _10480;
-    for (;;)
-    {
-        _10480 = _10474;
-        if (_10480 < 8u)
-        {
-            _10473[_10480] = f16vec2(_10475[_10480]);
-            _10474 = _10480 + 1u;
-            continue;
-        }
-        else
-        {
-            break;
-        }
-    }
-    f16vec2 inVec2[8] = _10473;
-    float _441[3] = _10096(_10473);
+    f16vec2 inVec2[8] = _10479;
+    float _441[3] = _10096(_10479);
     float tempArg_1[3] = _441;
     float _RESERVED_IDENTIFIER_FIXUP_361[3] = _441;
     float tempArg_8[3] = _441;

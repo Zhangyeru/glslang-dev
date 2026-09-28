@@ -1,0 +1,17 @@
+#version 460
+#extension GL_HW_neural_shader : require
+#ifndef WIDTH
+#define WIDTH 4
+#endif
+layout(local_size_x=1) in;
+layout(set=0,binding=0) coherent buffer AA { float data[]; } A;
+layout(set=0,binding=1) coherent buffer BB { float data[]; } B;
+layout(set=0,binding=2) buffer DD { float data[]; } D;
+void main() {
+    coopvecHW<float,WIDTH> before,after;
+    coopVecLoadHW(before,A.data,1u);
+    B.data[1]=19.0;
+    memoryBarrierBuffer();
+    coopVecLoadHW(after,A.data,1u);
+    coopVecStoreHW(before+after,D.data,1u);
+}

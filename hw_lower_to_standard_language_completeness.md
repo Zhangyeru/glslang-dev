@@ -2,7 +2,7 @@
 
 ## 1. 范围与当前结论
 
-核对日期：2026-09-15。本文以当前 `lower-0605` 工作区为准：glslang `e252d0e5`、
+初始核对日期：2026-09-15。下述历史记录以当时 `lower-0605` 工作区为准：glslang `e252d0e5`、
 SPIRV-Tools `5e242e48`、SPIRV-Headers `223be10`，以及本次两个 P0 的工作区修改。不同分支的 API 或测试结论不能直接套用。
 本分支 matrix load/store 使用 `Matrix Shape` / `Matrix Offset` 的 ivec2 接口。
 
@@ -10,7 +10,13 @@ SPIRV-Tools `5e242e48`、SPIRV-Headers `223be10`，以及本次两个 P0 的工�
 复杂组合语言结构、跨位宽 memory conversion 和严格浮点路径，并有 packed/direct/两层 MLP 优化。
 **目前仍不能宣称“任意 validator 接受的 vec/mat-only module 均可 extension-free lower”。**
 两个 P0 已按当前 Vulkan 范围实现：layout 限定为普通常量 0/1，默认取消人为 element/MAC 限额，
-超大常量改用循环物化。仍缺少优化代码生成失败后统一恢复与 scalar fallback 的保证，以及完备性验证矩阵。
+超大常量改用循环物化。
+
+2026-09-28 补充：已实现独立 IR context 的事务式 lowering、可恢复失败后的原始输入 scalar 重试、
+`no-direct`/`no-fusion` 控制、HW 类型 SSA promotion、合法集合自动审计和 GLSL 数值/种子生成测试。
+当前接口与边界以 [LANGUAGE_CONTRACT.md](tests/vk_hw/LANGUAGE_CONTRACT.md) 为准；
+数值测试包含 HW Phi、in-bounds intrinsic、跨位宽 memory、descriptor alias、跨 invocation Workgroup、
+fragment 执行和多 entry point。范围仍是明确规格化后、uint32 可表示的 Vulkan vec/mat 输入。
 
 本文的完备性目标覆盖 cooperative vec/mat 类型、相关 HW 操作，以及 validator 允许作用于这些值的
 core、extended instruction、SSA/CFG、函数、aggregate 和 memory 结构。TensorMap、CpAsync、HW Barrier、
@@ -367,27 +373,26 @@ Function initializer 在函数入口初始化；Private 与合法 Output initial
 循环物化需要实际存储和初始化时间；编译器后端与设备资源限制仍存在，不承诺大尺寸的固定运行或编译成本。
 测试见 [large constant tests](External/spirv-tools/test/opt/hw_lower_to_standard_constants_test.cpp)。
 
-### 3.5 优化回退 contract：已有不匹配回退，缺少统一失败恢复
+### 3.5 优化回退 contract：事务式尝试和标量恢复
 
-已经实现的行为是：direct/fusion 不匹配或无法证明 source 可移动、共享 use/kill-list 安全时，保留
-原语义并走 value/generic 路径；force-scalar 模式禁用 direct 与两层 fusion。严格浮点也走 generic。
-当前 direct 仅融合输入读取与计算，不合并后续 store；这属于优化边界，不是 store 功能缺口。
+每次 lowering 在独立 IR context 中运行，成功后才提交到原 context，并重建模块相关 analyses。
+未匹配继续走 generic；输入合法性、规格化和显式资源策略失败直接诊断。
+可恢复的生成失败，以及对普通 target validation 接受的输入生成非法输出时，从原始二进制重试
+scalar，并禁用 direct/fusion。重试失败保留原模块；ID 耗尽不进行重复重试。
+故障注入单测覆盖生成后失败、非法生成结果、恢复成功和恢复失败。
 
-但 [Process / LowerHwInstructions](External/spirv-tools/source/opt/hw_lower_to_standard_pass.cpp) 中仍有：
+显式 scalar 模式仍可对可安全移动的同精度大 FP16 vector matmul 使用标量流式读取；
+`no-direct` 可以单独关闭该优化。恢复使用的保守 scalar 尝试总是关闭 direct/fusion。
 
-- 两层 fusion 返回 `Status::Failure` 时，整个 pass 直接失败；
-- direct 返回 `false` 时向上传播失败；其他生成/类型重写阶段也会传播失败；
-- 没有围绕整个优化阶段建立统一的 IR 恢复和 scalar 重试机制。
+### 3.6 合法集合审计与验证边界
 
-因此“优化代码生成失败必定回退 scalar”仍是目标，不是现有保证。返回失败本身也不证明每条路径都有
-可触发的合法输入缺陷；需要审计失败来源，区分非法输入、未匹配、资源不足和生成失败，并避免在
-部分修改过的 IR 上直接重试。
+`tests/vk_hw/language_contract.json` 将操作闭包对应到转换规则和实现/单测文件；自动审计检查
+lowering closure 和 validator 的未审查变更。`vk_hw_semantics` 从 GLSL 生成运算及组合用例，
+检查真实 HW 类型输入、raw lower、输出验证、residue、CPU 数值与 guard，再执行五种模式差分。
+种子程序支持可重复扩展与保留失败阶段的 GLSL 缩减。raw pass 与 specialization pipeline 分开记录。
 
-### 3.6 验证覆盖尚不等于语言完备性证明
-
-当前有 focused positive/negative tests、Vulkan function/reference、标准 baseline/perf 和组合 workload。
-仍需建立从 validator 合法集合出发的自动能力矩阵，以及系统性差分测试和只生成合法 module 的 fuzzing。
-现有案例数量不能证明任意 nesting、CFG、pointer path、decoration 和 opcode 组合都成功。
+这些机制提供持续回归证据，有限测试不构成任意 nesting、CFG、pointer path 和装饰组合的数学证明。
+未冻结 specialization 和 uint32 不可表示的尺寸仍是显式输入边界。
 
 ## 4. 验证证据与回归要求
 
@@ -476,12 +481,12 @@ ctest --test-dir build --output-on-failure -j32
 |---|---|---|
 | P0，已实现 | Layout 仅允许普通常量 0/1 | 前端和 validator 正负例；固定 RowMajor/ColumnMajor；spec shape 用例保留 |
 | P0，已实现 | 取消默认人为限额，超大常量循环物化 | 显式限额与表示溢出负例；constituent 边界、函数/全局初始化、packed/scalar 及 Vulkan 用例 |
-| P1 | 审计错误路径并建立可恢复的优化失败回退 | 不匹配与生成失败分开；重试基于有效 IR；禁用 direct/fusion/packed 后仍满足相同功能 contract |
-| P1 | 自动能力矩阵、差分测试与合法输入 fuzzing | 覆盖类型 × shape × opcode × storage × decoration × CFG/aggregate；检查输出验证、residue 和语义 |
+| 已实现 | 审计错误路径并建立可恢复的优化失败回退 | 不匹配与生成失败分开；重试基于有效 IR；禁用 direct/fusion/packed 后仍满足相同功能 contract |
+| 已实现 | 自动能力矩阵、差分测试与合法输入 fuzzing | 覆盖类型 × shape × opcode × storage × decoration × CFG/aggregate；检查输出验证、residue 和语义 |
 
 最终目标是：对范围内、完成明确 specialization normalization 的合法 vec/mat module，默认配置不因
 优化准入、可循环表达的尺寸或语言组合而失败；输出通过 `spirv-val`，无目标 HW/replicated residue，
 并与参考结果一致。Raw pass 与 preprocessing pipeline 的验收必须分开记录。
 
 非法输入、明确范围外的 HW 能力、用户显式配置的资源策略和实际不可恢复资源错误应单独诊断。
-本次关闭两个 P0 在上述范围内的实现缺口；P1 的统一失败恢复、自动能力矩阵和更广泛完备性验证仍待完成。
+本次关闭两个 P0 在上述范围内的实现缺口；上述 P1 已由 2026-09-28 的恢复、审计和 GLSL 数值生成体系补齐；持续扩展覆盖仍适用。

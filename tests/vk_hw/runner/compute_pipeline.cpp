@@ -10,7 +10,7 @@
 namespace vk_hw {
 
 ComputePipeline::ComputePipeline(VulkanContext* context, const std::vector<uint32_t>& code,
-                                 const std::vector<VkDescriptorType>& descriptor_types)
+                                 const std::vector<VkDescriptorType>& descriptor_types, const char* entry_point)
     : context_(context), descriptor_types_(descriptor_types)
 {
     VkShaderModuleCreateInfo module_info = {};
@@ -45,7 +45,7 @@ ComputePipeline::ComputePipeline(VulkanContext* context, const std::vector<uint3
     stage_info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     stage_info.stage = VK_SHADER_STAGE_COMPUTE_BIT;
     stage_info.module = shader_module_;
-    stage_info.pName = "main";
+    stage_info.pName = entry_point;
 
     VkComputePipelineCreateInfo pipeline_info = {};
     pipeline_info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;

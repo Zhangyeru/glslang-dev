@@ -4804,8 +4804,14 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
                     alignment = 16;
                 }
 
-                // HW MemoryAccess: only Volatile, Aligned, Nontemporal (no scope ID)
-                int memoryAccess = spv::MemoryAccessMaskNone;
+                // HW memory instructions carry the same visibility contract as
+                // ordinary accesses. In particular, coherent descriptor aliases
+                // must not lose MakePointerVisible/Available and their scope.
+                int memoryAccess = TranslateMemoryAccess(coherentFlags);
+                const bool isLoad = node->getOp() == glslang::EOpCooperativeMatrixLoadHW ||
+                                    node->getOp() == glslang::EOpCooperativeVectorLoadHW;
+                memoryAccess &= ~(isLoad ? spv::MemoryAccessMakePointerAvailableKHRMask
+                                         : spv::MemoryAccessMakePointerVisibleKHRMask);
                 if (coherentFlags.volatil)
                     memoryAccess |= spv::MemoryAccessVolatileMask;
                 if (coherentFlags.nontemporal)
@@ -4819,6 +4825,10 @@ bool TGlslangToSpvTraverser::visitAggregate(glslang::TVisit visit, glslang::TInt
                     memoryAccessOperands.push_back(spv::IdImmediate(false, memoryAccess));
                     if (memoryAccess & spv::MemoryAccessAlignedMask)
                         memoryAccessOperands.push_back(spv::IdImmediate(false, alignment));
+                    if (memoryAccess &
+                        (spv::MemoryAccessMakePointerAvailableKHRMask | spv::MemoryAccessMakePointerVisibleKHRMask))
+                        memoryAccessOperands.push_back(
+                            spv::IdImmediate(true, builder.makeUintConstant(TranslateMemoryScope(coherentFlags))));
                 }
             }
         }

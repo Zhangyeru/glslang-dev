@@ -1,0 +1,96 @@
+OpCapability Shader
+OpCapability VulkanMemoryModel
+OpCapability CooperativeVectorHW
+OpExtension "SPV_HW_neural_shader"
+%1 = OpExtInstImport "GLSL.std.450"
+OpMemoryModel Logical Vulkan
+OpEntryPoint GLCompute %main "main" %A %B %D
+OpExecutionMode %main LocalSize 1 1 1
+OpSource GLSL 460
+OpSourceExtension "GL_HW_neural_shader"
+OpName %main "main"
+OpName %tempArg "tempArg"
+OpName %AA "AA"
+OpMemberName %AA 0 "data"
+OpName %A "A"
+OpName %before "before"
+OpName %BB "BB"
+OpMemberName %BB 0 "data"
+OpName %B "B"
+OpName %tempArg_0 "tempArg"
+OpName %after "after"
+OpName %DD "DD"
+OpMemberName %DD 0 "data"
+OpName %D "D"
+OpDecorate %_runtimearr_float ArrayStride 4
+OpDecorate %AA Block
+OpMemberDecorate %AA 0 Offset 0
+OpDecorate %A Binding 0
+OpDecorate %A DescriptorSet 0
+OpDecorate %_runtimearr_float_0 ArrayStride 4
+OpDecorate %BB Block
+OpMemberDecorate %BB 0 Offset 0
+OpDecorate %B Binding 1
+OpDecorate %B DescriptorSet 0
+OpDecorate %_runtimearr_float_1 ArrayStride 4
+OpDecorate %DD Block
+OpMemberDecorate %DD 0 Offset 0
+OpDecorate %D Binding 2
+OpDecorate %D DescriptorSet 0
+%void = OpTypeVoid
+%3 = OpTypeFunction %void
+%float = OpTypeFloat 32
+%uint = OpTypeInt 32 0
+%uint_4 = OpConstant %uint 4
+%9 = OpTypeCooperativeVectorHW %float %uint_4
+%_ptr_Function_9 = OpTypePointer Function %9
+%_runtimearr_float = OpTypeRuntimeArray %float
+%AA = OpTypeStruct %_runtimearr_float
+%_ptr_StorageBuffer_AA = OpTypePointer StorageBuffer %AA
+%A = OpVariable %_ptr_StorageBuffer_AA StorageBuffer
+%int = OpTypeInt 32 1
+%int_0 = OpConstant %int 0
+%uint_5 = OpConstant %uint 5
+%_ptr_StorageBuffer__runtimearr_float = OpTypePointer StorageBuffer %_runtimearr_float
+%uint_1 = OpConstant %uint 1
+%_runtimearr_float_0 = OpTypeRuntimeArray %float
+%BB = OpTypeStruct %_runtimearr_float_0
+%_ptr_StorageBuffer_BB = OpTypePointer StorageBuffer %BB
+%B = OpVariable %_ptr_StorageBuffer_BB StorageBuffer
+%int_1 = OpConstant %int 1
+%float_19 = OpConstant %float 19
+%_ptr_StorageBuffer_float = OpTypePointer StorageBuffer %float
+%uint_72 = OpConstant %uint 72
+%_runtimearr_float_1 = OpTypeRuntimeArray %float
+%DD = OpTypeStruct %_runtimearr_float_1
+%_ptr_StorageBuffer_DD = OpTypePointer StorageBuffer %DD
+%D = OpVariable %_ptr_StorageBuffer_DD StorageBuffer
+%_ptr_StorageBuffer__runtimearr_float_1 = OpTypePointer StorageBuffer %_runtimearr_float_1
+%v3uint = OpTypeVector %uint 3
+%49 = OpConstantComposite %v3uint %uint_1 %uint_1 %uint_1
+%main = OpFunction %void None %3
+%5 = OpLabel
+%tempArg = OpVariable %_ptr_Function_9 Function
+%before = OpVariable %_ptr_Function_9 Function
+%tempArg_0 = OpVariable %_ptr_Function_9 Function
+%after = OpVariable %_ptr_Function_9 Function
+%20 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %A %int_0
+%22 = OpCooperativeVectorLoadHW %9 %20 %uint_1 MakePointerVisible|NonPrivatePointer %uint_5
+OpStore %tempArg %22
+%24 = OpLoad %9 %tempArg
+OpStore %before %24
+%32 = OpAccessChain %_ptr_StorageBuffer_float %B %int_0 %int_1
+OpStore %32 %float_19 MakePointerAvailable|NonPrivatePointer %uint_5
+OpMemoryBarrier %uint_5 %uint_72
+%35 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %A %int_0
+%36 = OpCooperativeVectorLoadHW %9 %35 %uint_1 MakePointerVisible|NonPrivatePointer %uint_5
+OpStore %tempArg_0 %36
+%38 = OpLoad %9 %tempArg_0
+OpStore %after %38
+%39 = OpLoad %9 %before
+%40 = OpLoad %9 %after
+%41 = OpFAdd %9 %39 %40
+%47 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_1 %D %int_0
+OpCooperativeVectorStoreHW %47 %uint_1 %41
+OpReturn
+OpFunctionEnd

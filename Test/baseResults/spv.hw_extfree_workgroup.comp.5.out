@@ -107,7 +107,7 @@ OpStore %i %39
 OpBranch %10
 %12 = OpLabel
 OpControlBarrier %uint_2 %uint_2 %uint_264
-%44 = OpCooperativeVectorLoadHW %41 %backing %uint_0
+%44 = OpCooperativeVectorLoadHW %41 %backing %uint_0 MakePointerVisible|NonPrivatePointer %uint_2
 OpStore %tempArg %44
 %46 = OpLoad %41 %tempArg
 OpStore %v %46
@@ -115,7 +115,7 @@ OpStore %v %46
 %50 = OpFAdd %41 %47 %49
 OpStore %v %50
 %51 = OpLoad %41 %v
-OpCooperativeVectorStoreHW %backing %uint_0 %51
+OpCooperativeVectorStoreHW %backing %uint_0 %51 MakePointerAvailable|NonPrivatePointer %uint_2
 OpControlBarrier %uint_2 %uint_2 %uint_264
 OpStore %i_0 %uint_0
 OpBranch %53

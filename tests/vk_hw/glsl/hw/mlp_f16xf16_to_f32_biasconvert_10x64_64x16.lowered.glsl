@@ -9,8 +9,6 @@
 #extension GL_EXT_shader_16bit_storage : require
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
-const vec2 _117[8] = vec2[](vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0));
-
 layout(set = 0, binding = 0, std430) buffer InputX
 {
     float16_t x[10];
@@ -31,10 +29,10 @@ f16vec2 _9160(uint _9161)
     return f16vec2(InX.x[_9161], InX.x[_9161 + 1u]);
 }
 
-void _9218(uint _9219, vec2 _9220)
+void _9222(uint _9223, vec2 _9224)
 {
-    OutY.y[_9219] = _9220.x;
-    OutY.y[_9219 + 1u] = _9220.y;
+    OutY.y[_9223] = _9224.x;
+    OutY.y[_9223 + 1u] = _9224.y;
 }
 
 void main()
@@ -246,35 +244,18 @@ void main()
     vec2 _113[8] = vec2[](vec2(fma(_8985, vec2(f16vec2(Params.data[1664u], Params.data[1665u])), fma(_8984, vec2(f16vec2(Params.data[1648u], Params.data[1649u])), _8724))), vec2(fma(_8985, vec2(f16vec2(Params.data[1666u], Params.data[1667u])), fma(_8984, vec2(f16vec2(Params.data[1650u], Params.data[1651u])), _8742))), vec2(fma(_8985, vec2(f16vec2(Params.data[1668u], Params.data[1669u])), fma(_8984, vec2(f16vec2(Params.data[1652u], Params.data[1653u])), _8760))), vec2(fma(_8985, vec2(f16vec2(Params.data[1670u], Params.data[1671u])), fma(_8984, vec2(f16vec2(Params.data[1654u], Params.data[1655u])), _8778))), vec2(fma(_8985, vec2(f16vec2(Params.data[1672u], Params.data[1673u])), fma(_8984, vec2(f16vec2(Params.data[1656u], Params.data[1657u])), _8796))), vec2(fma(_8985, vec2(f16vec2(Params.data[1674u], Params.data[1675u])), fma(_8984, vec2(f16vec2(Params.data[1658u], Params.data[1659u])), _8814))), vec2(fma(_8985, vec2(f16vec2(Params.data[1676u], Params.data[1677u])), fma(_8984, vec2(f16vec2(Params.data[1660u], Params.data[1661u])), _8832))), vec2(fma(_8985, vec2(f16vec2(Params.data[1678u], Params.data[1679u])), fma(_8984, vec2(f16vec2(Params.data[1662u], Params.data[1663u])), _8850))));
     vec2 tempArg_1[8] = _113;
     vec2 outputValue[8] = _113;
-    vec2 _9202[8] = _113;
-    uint _9201 = 0u;
-    vec2 _9200[8];
-    uint _9208;
+    vec2 _118[8] = vec2[](max(_113[0], vec2[](vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0))[0]), max(_113[1], vec2[](vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0))[1]), max(_113[2], vec2[](vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0))[2]), max(_113[3], vec2[](vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0))[3]), max(_113[4], vec2[](vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0))[4]), max(_113[5], vec2[](vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0))[5]), max(_113[6], vec2[](vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0))[6]), max(_113[7], vec2[](vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0))[7]));
+    outputValue = _118;
+    vec2 _9235[8] = _118;
+    uint _9236 = 0u;
+    uint _9241;
     for (;;)
     {
-        _9208 = _9201;
-        if (_9208 < 8u)
+        _9241 = _9236;
+        if (_9241 < 16u)
         {
-            _9200[_9208] = max(_9202[_9208], _117[_9208]);
-            _9201 = _9208 + 1u;
-            continue;
-        }
-        else
-        {
-            break;
-        }
-    }
-    outputValue = _9200;
-    vec2 _9229[8] = _9200;
-    uint _9230 = 0u;
-    uint _9235;
-    for (;;)
-    {
-        _9235 = _9230;
-        if (_9235 < 16u)
-        {
-            _9218(0u + _9235, _9229[_9235 / 2u]);
-            _9230 = _9235 + 2u;
+            _9222(0u + _9241, _9235[_9241 / 2u]);
+            _9236 = _9241 + 2u;
             continue;
         }
         else

@@ -28,7 +28,7 @@ using HwExtensionFreeTest = GlslangTest<::testing::TestWithParam<HwLowerCase>>;
 bool IsLanguageCase(const std::string& name)
 {
     return name == "switch_return" || name == "do_break" || name == "private_nested" || name == "workgroup" ||
-           name == "conversion_extinst";
+           name == "conversion_extinst" || name == "ssa";
 }
 
 #if ENABLE_OPT
@@ -369,6 +369,12 @@ void CheckInput(const HwModule& module, const std::string& name)
                 EXPECT_NE(0u, inst.words[mask] & uint32_t(spv::MemoryAccessVolatileMask));
             }
         }
+    }
+    if (name == "coherent") {
+        EXPECT_EQ(2u, module.count("OpCooperativeVectorLoadHW", [&](const HwInstruction& inst) {
+            return inst.words.size() == 7 && (inst.words[5] & uint32_t(spv::MemoryAccessMakePointerVisibleMask)) != 0 &&
+                   (inst.words[5] & uint32_t(spv::MemoryAccessNonPrivatePointerMask)) != 0;
+        }));
     }
 }
 
@@ -715,10 +721,53 @@ INSTANTIATE_TEST_SUITE_P(
         HwLowerCase{"switch_return", 4}, HwLowerCase{"switch_return", 5}, HwLowerCase{"do_break", 4},
         HwLowerCase{"do_break", 5}, HwLowerCase{"private_nested", 4}, HwLowerCase{"private_nested", 5},
         HwLowerCase{"workgroup", 4}, HwLowerCase{"workgroup", 5}, HwLowerCase{"conversion_extinst", 4},
-        HwLowerCase{"conversion_extinst", 5}),
+        HwLowerCase{"conversion_extinst", 5}, HwLowerCase{"ssa", 4}, HwLowerCase{"ssa", 5}, HwLowerCase{"coherent", 4}),
     [](const ::testing::TestParamInfo<HwLowerCase>& info) {
         return std::string(info.param.name) + "_" + std::to_string(info.param.width);
     });
+
+using HwSsaTest = GlslangTest<::testing::TestWithParam<unsigned>>;
+
+TEST_P(HwSsaTest, ValidatedCooperativePhiPipeline)
+{
+#if !ENABLE_OPT
+    GTEST_SKIP() << "SPIRV-Tools is required";
+#else
+    std::string source;
+    tryLoadFile(GlobalTestSettings.testRoot + "/spv.hw_extfree_ssa.comp", "SSA GLSL", &source);
+    source.insert(source.find('\n') + 1, "#define WIDTH " + std::to_string(GetParam()) + "\n");
+    const auto controls = DeriveOptions(Source::GLSL, Semantics::Vulkan, Target::Spv);
+    const auto compiled = compileAndLink("spv.hw_extfree_ssa.comp", source, "", controls, glslang::EShTargetVulkan_1_3,
+                                         glslang::EShTargetSpv_1_6);
+    ASSERT_FALSE(compiled.spirvBinary.empty());
+    spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_3);
+    ASSERT_TRUE(tools.Validate(compiled.spirvBinary));
+    spvtools::Optimizer promote(SPV_ENV_VULKAN_1_3);
+    ASSERT_TRUE(promote.RegisterPassFromFlag("--ssa-rewrite"));
+    std::vector<uint32_t> ssa;
+    ASSERT_TRUE(promote.Run(compiled.spirvBinary.data(), compiled.spirvBinary.size(), &ssa));
+    ASSERT_TRUE(tools.Validate(ssa));
+    const HwModule input(ssa);
+    for (const char* type : {"OpTypeCooperativeVectorHW", "OpTypeCooperativeMatrixHW"}) {
+        EXPECT_GT(input.count("OpPhi", [&](const HwInstruction& inst) { return input.typeIs(inst.type, type); }), 0u);
+    }
+    ASSERT_FALSE(::testing::Test::HasFailure());
+    for (const char* mode :
+         {"", "=scalar", "=no-direct,no-fusion", "=unroll-elements=2", "=scalar,unroll-elements=2"}) {
+        SCOPED_TRACE(mode);
+        spvtools::Optimizer lower(SPV_ENV_VULKAN_1_3);
+        ASSERT_TRUE(lower.RegisterPassFromFlag(std::string("--hw-lower-to-standard-extension-free") + mode));
+        std::vector<uint32_t> output;
+        ASSERT_TRUE(lower.Run(ssa.data(), ssa.size(), &output));
+        ASSERT_TRUE(tools.Validate(output));
+        std::string assembly;
+        ASSERT_TRUE(tools.Disassemble(output, &assembly));
+        HwModule(output).expectNoHw(assembly);
+    }
+#endif
+}
+
+INSTANTIATE_TEST_SUITE_P(Glsl, HwSsaTest, ::testing::Values(4u, 5u));
 
 using HwBoundaryTest = GlslangTest<::testing::TestWithParam<vk_hw::BoundaryCase>>;
 
@@ -820,7 +869,8 @@ TEST_P(HwBoundaryTest, ValidatedInferenceBoundary)
         const std::string name = test.name;
         if (name.find("direct_f32_") == 0 || name == "mac_f16_64x64" || test.kind == 9) {
             unsigned limit = 4096;
-            if (!scalar && name.find("direct_f32_") == 0) limit = test.kind == 1 ? 2048 : 256;
+            if (name.find("direct_f32_") == 0)
+                limit = test.kind == 1 ? 1024 : scalar ? 4096 : 256;
             if (mode.find("4095") != std::string::npos) limit = 4095;
             if (mode.find("4097") != std::string::npos) limit = 4097;
             const unsigned work = test.kind == 9 ? test.m * test.n : test.m * test.n * test.k;
@@ -842,7 +892,8 @@ TEST_P(HwBoundaryTest, ValidatedInferenceBoundary)
         }
         if (test.kind == 2 && scalar) {
             const auto loops = loopsForValue(values.front());
-            if (test.n > 64) {
+            const unsigned limit = mode.find("unroll-elements=128") == std::string::npos ? 4096 : 128;
+            if (test.n > limit) {
                 EXPECT_GT(loops, 0u);
             } else {
                 EXPECT_EQ(0u, loops);

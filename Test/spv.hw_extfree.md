@@ -1,17 +1,17 @@
 # GLSL-derived extension-free HW lowering regressions
 
-`Glsl/HwExtensionFreeTest.ValidatedGlslPipeline/*` compiles the twenty-one
+`Glsl/HwExtensionFreeTest.ValidatedGlslPipeline/*` compiles the twenty-three
 `spv.hw_extfree_*.comp` sources for Vulkan 1.3 / SPIR-V 1.6. It validates
 the unmodified frontend binary before checking its typed instruction patterns,
 then runs only `--hw-lower-to-standard-extension-free`, validates the result,
 and checks residue and path-specific invariants. Every case also runs with
 `=scalar`. No assembled SPIR-V is used as an input.
 
-The `WIDTH` macro gives 37 source/shape cases. The input disassembly goldens
+The `WIDTH` macro gives 40 source/shape cases. The input disassembly goldens
 are named `baseResults/spv.hw_extfree_<case>.comp.<width>.out`. They record
 frontend output, not lowering input fixtures. Output checks use parsed result
 and type IDs so that unrelated scalar operations cannot stand in for HW value
-coverage. In total, the fixture exercises 120 lowering runs, including the
+coverage. In total, the fixture exercises 130 lowering runs, including the
 additional loop-threshold variants below.
 
 | Source | Widths | Checked behavior |
@@ -37,6 +37,8 @@ additional loop-threshold variants below.
 | `private_nested` | 4, 5 | Private struct/array/struct root, dynamic component write in a callee, packed index remapping |
 | `workgroup` | 4, 5 | Numeric Workgroup backing, HW load/store, preserved barrier operands and constants |
 | `conversion_extinst` | 4, 5 | HW-typed float/int conversions, signed arithmetic, GLSL.std.450 FClamp and bitcasts |
+| `ssa` | 4, 5 | Vector and matrix loop backedges and diamond merges; a separate SSA pipeline requires HW-typed Phi |
+| `coherent` | 4 | HW loads retain MakePointerVisible, NonPrivatePointer and the scope ID |
 
 The select cases additionally use `unroll-elements=2`; integer matmul uses
 `unroll-macs=8`; precise matmul uses `unroll-macs=4`. These variants force
@@ -88,11 +90,12 @@ build/External/spirv-tools/tools/spirv-dis build/output.spv -o build/output.spva
 
 ## Coverage boundaries
 
-These tests do not claim HW-valued `OpPhi` or `OpInBoundsAccessChain` coverage.
-The ordinary frontend uses memory-backed cooperative loop/branch values and
-`OpAccessChain`. Existing optimizer assembly tests remain supplementary phi
-coverage; adding in-bounds access-chain coverage requires a separately justified
-producer, not an arbitrary rewrite of these frontend outputs.
+The raw frontend still uses memory-backed cooperative loop/branch values.
+`Glsl/HwSsaTest.ValidatedCooperativePhiPipeline/*` separately applies
+`--ssa-rewrite`, validates that result, requires both vector and matrix HW-valued
+Phi, and lowers it in five modes. The SSA target-type set now includes HW types.
+`vk_hw_semantics` additionally uses legal `GL_EXT_spirv_intrinsics` GLSL to
+produce an `OpInBoundsAccessChain` to a statically in-range cooperative component.
 
 Explicit `FPFastMathMode` and memory operands beyond those emitted by the GLSL
 frontend remain covered by existing optimizer unit tests. Validation and these
@@ -100,10 +103,10 @@ structural checks alone are not a numerical execution oracle.
 
 ## Language numerical tests
 
-`vk_hw_language` compiles the same five new `Test/` sources directly, validates
-the frontend binary, runs raw lowering in all four configurations, validates
+`vk_hw_language` compiles the six language `Test/` sources directly, validates
+the frontend binary, runs lowering in five configurations, validates
 and checks residue, then executes each result with `vk_hw_language_tests`.
-It does not freeze, inline, or otherwise optimize the input before lowering.
+Only the `ssa` source receives the explicit SSA producer pass before lowering.
 Each stage must succeed before the next runs. Sources, binaries, disassembly,
 command diagnostics and `results.json` are under `build/tests/vk_hw/language/`.
 
@@ -120,11 +123,11 @@ The C++ runner uses independent scalar CPU formulas:
 Three deterministic datasets use exactly representable quarter-integers.
 All output bits, including unwritten lanes and two trailing guard elements,
 are compared; failure returns a nonzero exit status and reports the dataset,
-control and lane. The 40 shader/configuration executions cover 432 dispatches.
+control and lane. The 60 shader/configuration executions cover 660 dispatches.
 Workgroup coverage verifies backing-memory lowering and barrier preservation;
 it does not claim inter-invocation synchronization coverage. This suite covers
 these five operation combinations, not every conversion or ExtInst opcode.
 
-The current `--ssa-rewrite` target-type list does not include HW cooperative
-types. Adding that pass to the branch/loop pipeline therefore does not establish
-HW-valued `OpPhi` coverage; an ordinary integer induction Phi is insufficient.
+See `tests/vk_hw/LANGUAGE_CONTRACT.md` for the legal-input domain, transactional
+recovery and the wider numerical matrix. Ordinary integer induction Phi remains
+insufficient evidence for cooperative value transport.

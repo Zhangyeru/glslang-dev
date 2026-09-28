@@ -18,7 +18,7 @@ namespace vk_hw {
 class ComputePipeline {
 public:
     ComputePipeline(VulkanContext* context, const std::vector<uint32_t>& code,
-                    const std::vector<VkDescriptorType>& descriptor_types);
+                    const std::vector<VkDescriptorType>& descriptor_types, const char* entry_point = "main");
     ~ComputePipeline();
 
     ComputePipeline(const ComputePipeline&) = delete;

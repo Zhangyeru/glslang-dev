@@ -11,17 +11,19 @@ HwExtensionFreeTest cases own the detailed typed input/output assertions.
 import argparse
 import json
 import pathlib
+import re
 import subprocess
 
 from build_shaders import has_hw_residue
 
 
-CASES = ("switch_return", "do_break", "private_nested", "workgroup", "conversion_extinst")
+CASES = ("switch_return", "do_break", "private_nested", "workgroup", "conversion_extinst", "ssa")
 MODES = {
     "default": "",
     "scalar": "=scalar",
     "rolled": "=unroll-elements=2",
     "scalar_rolled": "=scalar,unroll-elements=2",
+    "generic": "=no-direct,no-fusion",
 }
 
 
@@ -59,16 +61,39 @@ def main():
                 try:
                     source = pathlib.Path(args.source_dir) / f"spv.hw_extfree_{name}.comp"
                     binary = folder / "input.spv"
-                    run([args.glslang, "--target-env", "vulkan1.3", "-V", f"-DWIDTH={width}",
-                         source, "-o", binary], log)
+                    run(
+                        [args.glslang, "--target-env", "vulkan1.3", "-V", f"-DWIDTH={width}", source, "-o", binary], log
+                    )
                     record["stage"] = "input-validation"
                     run([args.spirv_val, "--target-env", "vulkan1.3", binary], log)
                     run([args.spirv_dis, binary, "-o", folder / "input.spvasm"], log)
+                    if name == "ssa":
+                        record["stage"] = "ssa-promotion"
+                        promoted = folder / "ssa.spv"
+                        run([args.spirv_opt, "--target-env=vulkan1.3", "--ssa-rewrite", binary, "-o", promoted], log)
+                        run([args.spirv_val, "--target-env", "vulkan1.3", promoted], log)
+                        assembly = folder / "ssa.spvasm"
+                        run([args.spirv_dis, promoted, "-o", assembly], log)
+                        text = assembly.read_text()
+                        for kind in ("Matrix", "Vector"):
+                            types = re.findall(r"(%\S+) = OpTypeCooperative" + kind + r"HW\b", text)
+                            if not any(re.search(r"OpPhi " + re.escape(t) + r"\s", text) for t in types):
+                                raise RuntimeError(f"no HW {kind} Phi after SSA promotion")
+                        binary = promoted
                     for mode, options in MODES.items():
                         record["stage"] = f"{mode}:lower"
                         lowered = folder / f"{mode}.spv"
-                        run([args.spirv_opt, "--target-env=vulkan1.3",
-                             "--hw-lower-to-standard-extension-free" + options, binary, "-o", lowered], log)
+                        run(
+                            [
+                                args.spirv_opt,
+                                "--target-env=vulkan1.3",
+                                "--hw-lower-to-standard-extension-free" + options,
+                                binary,
+                                "-o",
+                                lowered,
+                            ],
+                            log,
+                        )
                         record["stage"] = f"{mode}:output-validation"
                         run([args.spirv_val, "--target-env", "vulkan1.3", lowered], log)
                         assembly = lowered.with_suffix(".spvasm")
@@ -82,7 +107,7 @@ def main():
                             raise RuntimeError(f"no successful numerical verification: {result}")
                         record["modes"][mode] = result
                     record["stage"] = "pass"
-                    print(f"{name}_{width}: all four lowering modes verified", flush=True)
+                    print(f"{name}_{width}: all {len(MODES)} lowering modes verified", flush=True)
                 finally:
                     (folder / "commands.json").write_text(json.dumps(log, indent=2) + "\n", encoding="utf-8")
     finally:

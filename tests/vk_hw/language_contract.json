@@ -1,0 +1,196 @@
+{
+  "scope": "Validated Vulkan HW vec/mat modules after explicit specialization normalization; positive uint32-representable logical shapes.",
+  "groups": {
+    "conversion": {
+      "opcodes": [
+        "OpConvertFToS",
+        "OpConvertFToU",
+        "OpConvertSToF",
+        "OpConvertUToF",
+        "OpFConvert",
+        "OpSConvert",
+        "OpUConvert"
+      ],
+      "rule": "Matching cooperative shapes; numeric component conversions and equal-width per-component bitcasts; packed/scalar representations may differ.",
+      "implementation": [
+        "External/spirv-tools/source/opt/hw_lower_to_standard_elementwise.cpp"
+      ],
+      "unit_suites": [
+        "External/spirv-tools/test/opt/hw_lower_to_standard_elementwise_test.cpp",
+        "External/spirv-tools/test/opt/hw_lower_to_standard_aggregate_test.cpp"
+      ]
+    },
+    "arithmetic": {
+      "opcodes": [
+        "OpBitwiseAnd",
+        "OpBitwiseOr",
+        "OpBitwiseXor",
+        "OpFAdd",
+        "OpFDiv",
+        "OpFMul",
+        "OpFNegate",
+        "OpFSub",
+        "OpIAdd",
+        "OpIMul",
+        "OpISub",
+        "OpNot",
+        "OpSDiv",
+        "OpSNegate",
+        "OpShiftLeftLogical",
+        "OpShiftRightArithmetic",
+        "OpShiftRightLogical",
+        "OpUDiv"
+      ],
+      "rule": "Matching shapes; numeric domains and widths follow validator; UDiv is same-width unsigned; shifts/bitwise are cooperative-vector only. Preserve NoContraction and FP controls.",
+      "implementation": [
+        "External/spirv-tools/source/opt/hw_lower_to_standard_elementwise.cpp"
+      ],
+      "unit_suites": [
+        "External/spirv-tools/test/opt/hw_lower_to_standard_elementwise_test.cpp",
+        "External/spirv-tools/test/opt/hw_lower_to_standard_validation_test.cpp"
+      ]
+    },
+    "scale": {
+      "opcodes": [
+        "OpMatrixTimesScalar",
+        "OpVectorTimesScalar"
+      ],
+      "rule": "Vector/matrix shape unchanged; scalar operand exactly matches cooperative component type.",
+      "implementation": [
+        "External/spirv-tools/source/opt/hw_lower_to_standard_elementwise.cpp"
+      ],
+      "unit_suites": [
+        "External/spirv-tools/test/opt/hw_lower_to_standard_elementwise_test.cpp"
+      ]
+    },
+    "structural": {
+      "opcodes": [
+        "OpAccessChain",
+        "OpArrayLength",
+        "OpBitcast",
+        "OpCompositeConstruct",
+        "OpCompositeConstructReplicateEXT",
+        "OpCompositeExtract",
+        "OpCompositeInsert",
+        "OpConstantComposite",
+        "OpConstantCompositeReplicateEXT",
+        "OpConstantNull",
+        "OpCopyLogical",
+        "OpCopyMemory",
+        "OpCopyMemorySized",
+        "OpCopyObject",
+        "OpEntryPoint",
+        "OpExtInst",
+        "OpFunction",
+        "OpFunctionCall",
+        "OpFunctionParameter",
+        "OpInBoundsAccessChain",
+        "OpInBoundsPtrAccessChain",
+        "OpLifetimeStart",
+        "OpLifetimeStop",
+        "OpLoad",
+        "OpPhi",
+        "OpPtrAccessChain",
+        "OpPtrDiff",
+        "OpPtrEqual",
+        "OpPtrNotEqual",
+        "OpReturnValue",
+        "OpSelect",
+        "OpSizeOf",
+        "OpSpecConstantComposite",
+        "OpSpecConstantCompositeReplicateEXT",
+        "OpStore",
+        "OpTypeArray",
+        "OpTypeForwardPointer",
+        "OpTypeFunction",
+        "OpTypePointer",
+        "OpTypeRuntimeArray",
+        "OpTypeStruct",
+        "OpUndef",
+        "OpVariable",
+        "OpVectorExtractDynamic",
+        "OpVectorInsertDynamic"
+      ],
+      "rule": "Recursively replace every contained type; preserve CFG, value identity, pointer path, storage class and function signatures. Constant-only uses remain constant. Storage/signature legality is still required.",
+      "implementation": [
+        "External/spirv-tools/source/opt/hw_lower_to_standard_aggregate.cpp",
+        "External/spirv-tools/source/opt/hw_lower_to_standard_types.cpp",
+        "External/spirv-tools/source/opt/hw_lower_to_standard_constants.cpp",
+        "External/spirv-tools/source/opt/hw_lower_to_standard_pass.cpp"
+      ],
+      "unit_suites": [
+        "External/spirv-tools/test/opt/hw_lower_to_standard_aggregate_test.cpp",
+        "External/spirv-tools/test/opt/hw_lower_to_standard_composition_test.cpp",
+        "External/spirv-tools/test/opt/hw_lower_to_standard_constants_test.cpp"
+      ]
+    },
+    "hw": {
+      "opcodes": [
+        "OpCooperativeMatrixLengthHW",
+        "OpCooperativeMatrixLoadHW",
+        "OpCooperativeMatrixMulAddHW",
+        "OpCooperativeMatrixReduceHW",
+        "OpCooperativeMatrixStoreHW",
+        "OpCooperativeVectorLoadHW",
+        "OpCooperativeVectorMatrixMulAddHW",
+        "OpCooperativeVectorMatrixMulHW",
+        "OpCooperativeVectorStoreHW",
+        "OpTypeCooperativeMatrixHW",
+        "OpTypeCooperativeVectorHW"
+      ],
+      "rule": "Logical shape/index/layout and memory conversion contracts; matmul accumulator widens within a numeric domain; result equals bias/C type; reduce axis/op are resolved constants.",
+      "implementation": [
+        "External/spirv-tools/source/opt/hw_lower_to_standard_memory.cpp",
+        "External/spirv-tools/source/opt/hw_lower_to_standard_matmul.cpp",
+        "External/spirv-tools/source/opt/hw_lower_to_standard_types.cpp",
+        "External/spirv-tools/source/opt/hw_lower_to_standard_direct.cpp"
+      ],
+      "unit_suites": [
+        "External/spirv-tools/test/opt/hw_lower_to_standard_memory_test.cpp",
+        "External/spirv-tools/test/opt/hw_lower_to_standard_matmul_test.cpp",
+        "External/spirv-tools/test/opt/hw_lower_to_standard_aggregate_test.cpp"
+      ]
+    },
+    "extinst": {
+      "opcodes": [
+        "Atan",
+        "Exp",
+        "FClamp",
+        "FMax",
+        "FMin",
+        "Fma",
+        "Log",
+        "NClamp",
+        "NMax",
+        "NMin",
+        "SClamp",
+        "SMax",
+        "SMin",
+        "Step",
+        "Tanh",
+        "UClamp",
+        "UMax",
+        "UMin"
+      ],
+      "rule": "Cooperative vector only; all operands have matching shape and component type; floating, signed and unsigned domains follow the whitelist.",
+      "implementation": [
+        "External/spirv-tools/source/opt/hw_lower_to_standard_elementwise.cpp",
+        "External/spirv-tools/source/opt/hw_lower_to_standard_validation.cpp"
+      ],
+      "unit_suites": [
+        "External/spirv-tools/test/opt/hw_lower_to_standard_elementwise_test.cpp",
+        "External/spirv-tools/test/opt/hw_lower_to_standard_validation_test.cpp"
+      ]
+    }
+  },
+  "validator_sha256": {
+    "External/spirv-tools/source/val/validate_arithmetics.cpp": "6b44c88ee5bc998a8b3a786e68fd5f84638c4ebe1495092b7794ac47d0ca49c6",
+    "External/spirv-tools/source/val/validate_bitwise.cpp": "69ffee3ca96f40a3eeca26780d078c78a6c5aef33362f032ac77a8dd47570503",
+    "External/spirv-tools/source/val/validate_composites.cpp": "75077c3147e49178c41263f82d59c7dc03e93b00d1767bfaa156e1417ad597a6",
+    "External/spirv-tools/source/val/validate_conversion.cpp": "28da1b38444983e3a8a41eccc33264f1b70cdc515465a4bb1962ec4fda3815f0",
+    "External/spirv-tools/source/val/validate_extensions.cpp": "eb7caa4ca24f4494482c89868c4b87a1d840cb133866e8857a87e85e5e0b3b6d",
+    "External/spirv-tools/source/val/validate_logicals.cpp": "752afd00d58248febba095768a69b3dd9c87b55d4dc55ef1a3e867f135e0ad05",
+    "External/spirv-tools/source/val/validate_memory.cpp": "0e536bd53fef047032ab146f0c2dca07500b4ae1bdac506684bff0501eff7247",
+    "External/spirv-tools/source/val/validate_type.cpp": "83518babababf19bf782bca2ab9facb7a309cad1a2f68dabcf7491a44a114924"
+  }
+}

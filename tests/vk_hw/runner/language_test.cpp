@@ -3,6 +3,7 @@
 
 #include "buffer.h"
 #include "compute_pipeline.h"
+#include "graphics_test.h"
 #include "vulkan_context.h"
 
 #include <algorithm>
@@ -37,6 +38,21 @@ std::vector<uint8_t> Bytes(const std::vector<float>& values)
     std::vector<uint8_t> bytes(values.size() * sizeof(float));
     std::memcpy(bytes.data(), values.data(), bytes.size());
     return bytes;
+}
+
+std::vector<uint8_t> ReadBytes(const std::string& path)
+{
+    std::ifstream file(path, std::ios::binary);
+    if (!file)
+        throw std::runtime_error("cannot open " + path);
+    return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
+}
+
+void WriteBytes(const std::string& path, const std::vector<uint8_t>& bytes)
+{
+    std::ofstream file(path, std::ios::binary);
+    if (!file.write(reinterpret_cast<const char*>(bytes.data()), bytes.size()))
+        throw std::runtime_error("cannot write " + path);
 }
 
 // A single workgroup, with an explicit device-to-host visibility barrier.
@@ -88,12 +104,75 @@ private:
     VkCommandBuffer command_ = VK_NULL_HANDLE;
 };
 
+// File-based transport keeps the numerical oracle outside the GPU runner. All
+// three buffers are returned, allowing the caller to check alias writes/guards.
+void ExecuteFiles(char** argv)
+{
+    VulkanContext context;
+    const std::string features = argv[9];
+    std::string missing;
+    if (features.find("f16") != std::string::npos && !context.supports_shader_float16())
+        missing += " shaderFloat16";
+    if (features.find("i16") != std::string::npos && !context.supports_shader_int16())
+        missing += " shaderInt16";
+    if (features.find("f64") != std::string::npos && !context.supports_shader_float64())
+        missing += " shaderFloat64";
+    if (features.find("i64") != std::string::npos && !context.supports_shader_int64())
+        missing += " shaderInt64";
+    if (features.find("s16") != std::string::npos && !context.supports_storage_buffer_16bit())
+        missing += " storageBuffer16";
+    const bool graphics = features.find("graphics:") == 0;
+    if (graphics && !context.supports_fragment_stores())
+        missing += " graphicsQueue/fragmentStoresAndAtomics";
+    if (!missing.empty()) {
+        std::cout << "{\"status\":\"skip\",\"skip_reason\":\"missing" << missing << "\"}\n";
+        return;
+    }
+    const auto a = ReadBytes(argv[3]), b = ReadBytes(argv[4]), d = ReadBytes(argv[5]);
+    Buffer aBuffer(&context, a.size()), bBuffer(&context, b.size()), dBuffer(&context, d.size());
+    aBuffer.Upload(a);
+    bBuffer.Upload(b);
+    dBuffer.Upload(d);
+    if (graphics) {
+        DrawFragment(context, ReadSpirv(features.substr(9)), ReadSpirv(argv[2]),
+                     {aBuffer.descriptor(), bBuffer.descriptor(), dBuffer.descriptor()});
+        WriteBytes(argv[6], dBuffer.Download(d.size()));
+        WriteBytes(std::string(argv[6]) + ".a", aBuffer.Download(a.size()));
+        WriteBytes(std::string(argv[6]) + ".b", bBuffer.Download(b.size()));
+        std::cout << "{\"status\":\"pass\",\"draws\":1}\n";
+        return;
+    }
+    ComputePipeline pipeline(&context, ReadSpirv(argv[2]),
+                             std::vector<VkDescriptorType>(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER), argv[8]);
+    auto bDescriptor = bBuffer.descriptor();
+    const std::string alias = argv[7];
+    VkDeviceSize offset = 0;
+    if (alias != "separate") {
+        bDescriptor = aBuffer.descriptor();
+        if (alias == "overlap") {
+            VkPhysicalDeviceProperties properties;
+            vkGetPhysicalDeviceProperties(context.physical_device(), &properties);
+            offset = std::max<VkDeviceSize>(256, properties.limits.minStorageBufferOffsetAlignment);
+            if (offset + b.size() > a.size())
+                throw std::runtime_error("alias buffer too small");
+            bDescriptor.offset = offset;
+        }
+        bDescriptor.range = std::min<VkDeviceSize>(b.size(), a.size() - offset);
+    }
+    pipeline.UpdateDescriptors({aBuffer.descriptor(), bDescriptor, dBuffer.descriptor()});
+    Dispatch(context, pipeline).Run();
+    WriteBytes(argv[6], dBuffer.Download(d.size()));
+    WriteBytes(std::string(argv[6]) + ".a", aBuffer.Download(a.size()));
+    WriteBytes(std::string(argv[6]) + ".b", bBuffer.Download(b.size()));
+    std::cout << "{\"status\":\"pass\",\"alias_offset\":" << offset << "}\n";
+}
+
 unsigned Run(const std::string& shader, const std::string& name, unsigned width)
 {
     if (width != 4 && width != 5)
         throw std::runtime_error("language test width must be 4 or 5");
     if (name != "switch_return" && name != "do_break" && name != "private_nested" && name != "workgroup" &&
-        name != "conversion_extinst")
+        name != "conversion_extinst" && name != "ssa")
         throw std::runtime_error("unknown language case " + name);
 
     VulkanContext context;
@@ -105,10 +184,10 @@ unsigned Run(const std::string& shader, const std::string& name, unsigned width)
     Buffer dBuffer(&context, (2 * width + 2) * sizeof(float));
     pipeline.UpdateDescriptors({aBuffer.descriptor(), bBuffer.descriptor(), dBuffer.descriptor()});
     Dispatch dispatch(context, pipeline);
-    const unsigned controls = name == "switch_return"    ? 3
-                              : name == "do_break"       ? 4
-                              : name == "private_nested" ? 2 * width
-                                                         : 1;
+    const unsigned controls = name == "switch_return"               ? 3
+                              : name == "do_break" || name == "ssa" ? 4
+                              : name == "private_nested"            ? 2 * width
+                                                                    : 1;
     const float samples[] = {-7.75f, -5.5f, -3.25f, -1.75f, -0.25f, 0.75f, 1.5f, 4.25f, 6.5f, 11.75f};
     unsigned checked = 0;
     for (unsigned dataset = 0; dataset < 3; ++dataset) {
@@ -130,6 +209,12 @@ unsigned Run(const std::string& shader, const std::string& name, unsigned width)
                 else if (name == "private_nested") {
                     expected[i] = i == lane ? b[0] : a[slot * width + i];
                     expected[width + i] = a[(1 - slot) * width + i];
+                } else if (name == "ssa") {
+                    float value = x;
+                    for (unsigned iteration = 0; iteration < control; ++iteration)
+                        value = (iteration & 1u) == 0u ? value + 1.0f : value * 2.0f;
+                    value += (control & 1u) != 0u ? 3.0f : -1.0f;
+                    expected[i] = expected[width + i] = value;
                 } else if (name == "workgroup")
                     expected[i] = x + 2.0f;
                 else
@@ -163,6 +248,10 @@ unsigned Run(const std::string& shader, const std::string& name, unsigned width)
 int main(int argc, char** argv)
 {
     try {
+        if (argc == 10 && std::string(argv[1]) == "--execute") {
+            ExecuteFiles(argv);
+            return 0;
+        }
         if (argc != 4)
             throw std::runtime_error("usage: vk_hw_language_tests shader.spv case width");
         const unsigned checked = Run(argv[1], argv[2], unsigned(std::stoul(argv[3])));

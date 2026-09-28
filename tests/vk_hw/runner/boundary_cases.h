@@ -34,6 +34,10 @@ struct BoundaryCase {
     std::vector<std::string> modes() const
     {
         std::vector<std::string> result = {"", "scalar"};
+        if (kind == 2 && n >= 127) {
+            result.push_back("unroll-elements=128");
+            result.push_back("scalar,unroll-elements=128");
+        }
         if (std::string(name) == "mac_f16_64x64" || kind == 9) {
             for (const char* prefix : {"", "scalar,"}) {
                 for (unsigned limit : {4095, 4096, 4097})
@@ -50,20 +54,33 @@ struct BoundaryCase {
 inline const std::vector<BoundaryCase>& BoundaryCases()
 {
     static const std::vector<BoundaryCase> cases = {
-        {"head_f16_16x1", 0, 1, 1, 16}, {"head_f16_16x2", 0, 1, 2, 16}, {"head_f16_16x3", 0, 1, 3, 16},
-        {"channels_f16_64x63", 0, 1, 63, 64}, {"mac_f16_64x64", 0, 1, 64, 64},
-        {"channels_f16_64x65", 0, 1, 65, 64}, {"channels_f16_63x64", 0, 1, 64, 63},
+        {"head_f16_16x1", 0, 1, 1, 16},
+        {"head_f16_16x2", 0, 1, 2, 16},
+        {"head_f16_16x3", 0, 1, 3, 16},
+        {"channels_f16_64x63", 0, 1, 63, 64},
+        {"mac_f16_64x64", 0, 1, 64, 64},
+        {"channels_f16_64x65", 0, 1, 65, 64},
+        {"channels_f16_63x64", 0, 1, 64, 63},
         {"channels_f16_65x64", 0, 1, 64, 65},
-        {"batch_f16_1x16x16", 1, 1, 16, 16}, {"batch_f16_2x16x16", 1, 2, 16, 16},
-        {"batch_f16_3x16x16", 1, 3, 16, 16}, {"batch_f16_3x17x15", 1, 3, 17, 15},
+        {"batch_f16_1x16x16", 1, 1, 16, 16},
+        {"batch_f16_2x16x16", 1, 2, 16, 16},
+        {"batch_f16_3x16x16", 1, 3, 16, 16},
+        {"batch_f16_3x17x15", 1, 3, 17, 15},
         {"direct_f32_16x15", 0, 1, 15, 16, "float", "float", "float"},
         {"direct_f32_16x16", 0, 1, 16, 16, "float", "float", "float"},
         {"direct_f32_16x17", 0, 1, 17, 16, "float", "float", "float"},
         {"direct_f32_8x15x16", 1, 8, 15, 16, "float", "float", "float"},
+        {"direct_f32_8x7x16", 1, 8, 7, 16, "float", "float", "float"},
+        {"direct_f32_8x8x16", 1, 8, 8, 16, "float", "float", "float"},
+        {"direct_f32_8x9x16", 1, 8, 9, 16, "float", "float", "float"},
         {"direct_f32_8x16x16", 1, 8, 16, 16, "float", "float", "float"},
         {"direct_f32_8x17x16", 1, 8, 17, 16, "float", "float", "float"},
-        {"activation_f16_63", 2, 1, 63, 63}, {"activation_f16_64", 2, 1, 64, 64},
+        {"activation_f16_63", 2, 1, 63, 63},
+        {"activation_f16_64", 2, 1, 64, 64},
         {"activation_f16_65", 2, 1, 65, 65},
+        {"activation_f16_127", 2, 1, 127, 127},
+        {"activation_f16_128", 2, 1, 128, 128},
+        {"activation_f16_129", 2, 1, 129, 129},
         {"slice_row_zero", 3, 1, 16, 16, "float16_t", "float16_t", "float16_t", 16, 0, 0},
         {"slice_row_one", 3, 1, 16, 16, "float16_t", "float16_t", "float16_t", 16, 0, 1},
         {"slice_row_last", 3, 1, 16, 16, "float16_t", "float16_t", "float16_t", 16, 0, 2},
@@ -72,7 +89,8 @@ inline const std::vector<BoundaryCase>& BoundaryCases()
         {"slice_column_one", 3, 1, 16, 16, "float16_t", "float16_t", "float16_t", 16, 1, 1},
         {"slice_column_last", 3, 1, 16, 16, "float16_t", "float16_t", "float16_t", 16, 1, 2},
         {"slice_column_dynamic", 3, 1, 16, 16, "float16_t", "float16_t", "float16_t", 16, 1, 3},
-        {"snapshot_f16_16x16", 4, 1, 16, 16}, {"mutation_f16_16x16", 5, 1, 16, 16},
+        {"snapshot_f16_16x16", 4, 1, 16, 16},
+        {"mutation_f16_16x16", 5, 1, 16, 16},
         {"route_f16_16x16x4", 6, 1, 4, 16},
         {"rounding_10x64x16", 7, 1, 16, 10, "float16_t", "float16_t", "float", 64},
         {"rounding_10x65x3", 7, 1, 3, 10, "float16_t", "float16_t", "float", 65},

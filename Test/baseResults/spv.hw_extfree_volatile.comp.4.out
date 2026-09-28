@@ -53,11 +53,12 @@ OpDecorate %D DescriptorSet 0
 %A = OpVariable %_ptr_StorageBuffer_InputA StorageBuffer
 %int = OpTypeInt 32 1
 %int_0 = OpConstant %int 0
+%uint_5 = OpConstant %uint 5
 %_ptr_StorageBuffer__runtimearr_float = OpTypePointer StorageBuffer %_runtimearr_float
 %uint_0 = OpConstant %uint 0
 %uint_2 = OpConstant %uint 2
-%25 = OpTypeCooperativeMatrixHW %float %uint_2 %uint_4 MatrixUseAHW
-%_ptr_Function_25 = OpTypePointer Function %25
+%26 = OpTypeCooperativeMatrixHW %float %uint_2 %uint_4 MatrixUseAHW
+%_ptr_Function_26 = OpTypePointer Function %26
 %_runtimearr_float_0 = OpTypeRuntimeArray %float
 %InputB = OpTypeStruct %_runtimearr_float_0
 %_ptr_StorageBuffer_InputB = OpTypePointer StorageBuffer %InputB
@@ -66,8 +67,8 @@ OpDecorate %D DescriptorSet 0
 %v2int = OpTypeVector %int 2
 %int_2 = OpConstant %int 2
 %int_4 = OpConstant %int 4
-%37 = OpConstantComposite %v2int %int_2 %int_4
-%38 = OpConstantComposite %v2int %int_0 %int_0
+%38 = OpConstantComposite %v2int %int_2 %int_4
+%39 = OpConstantComposite %v2int %int_0 %int_0
 %v3uint = OpTypeVector %uint 3
 %_ptr_Input_v3uint = OpTypePointer Input %v3uint
 %gl_GlobalInvocationID = OpVariable %_ptr_Input_v3uint Input
@@ -78,51 +79,51 @@ OpDecorate %D DescriptorSet 0
 %_ptr_StorageBuffer_Output = OpTypePointer StorageBuffer %Output
 %D = OpVariable %_ptr_StorageBuffer_Output StorageBuffer
 %_ptr_StorageBuffer__runtimearr_float_1 = OpTypePointer StorageBuffer %_runtimearr_float_1
-%61 = OpConstantComposite %v2int %int_4 %int_4
-%62 = OpConstantComposite %v2int %int_2 %int_0
+%62 = OpConstantComposite %v2int %int_4 %int_4
+%63 = OpConstantComposite %v2int %int_2 %int_0
 %uint_16 = OpConstant %uint 16
 %int_6 = OpConstant %int 6
-%70 = OpConstantComposite %v2int %int_6 %int_4
-%71 = OpConstantComposite %v2int %int_4 %int_0
+%71 = OpConstantComposite %v2int %int_6 %int_4
+%72 = OpConstantComposite %v2int %int_4 %int_0
 %uint_1 = OpConstant %uint 1
-%73 = OpConstantComposite %v3uint %uint_1 %uint_1 %uint_1
+%74 = OpConstantComposite %v3uint %uint_1 %uint_1 %uint_1
 %main = OpFunction %void None %3
 %5 = OpLabel
 %tempArg = OpVariable %_ptr_Function_9 Function
 %vectorValue = OpVariable %_ptr_Function_9 Function
-%tempArg_0 = OpVariable %_ptr_Function_25 Function
-%matrixValue = OpVariable %_ptr_Function_25 Function
-%19 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %A %int_0
-%21 = OpCooperativeVectorLoadHW %9 %19 %uint_0 Volatile
-OpStore %tempArg %21
-%23 = OpLoad %9 %tempArg
-OpStore %vectorValue %23
-%33 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_0 %B %int_0
-%39 = OpCooperativeMatrixLoadHW %25 %33 %37 %38 %int_0 Volatile
-OpStore %tempArg_0 %39
-%41 = OpLoad %25 %tempArg_0
-OpStore %matrixValue %41
-%46 = OpAccessChain %_ptr_Input_uint %gl_GlobalInvocationID %uint_0
-%47 = OpLoad %uint %46
-%49 = OpIEqual %bool %47 %uint_0
-OpSelectionMerge %51 None
-OpBranchConditional %49 %50 %63
-%50 = OpLabel
-%52 = OpLoad %9 %vectorValue
-%58 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_1 %D %int_0
-OpCooperativeVectorStoreHW %58 %uint_0 %52 Volatile
-%59 = OpLoad %25 %matrixValue
-%60 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_1 %D %int_0
-OpCooperativeMatrixStoreHW %60 %59 %61 %62 %int_0 Volatile
-OpBranch %51
-%63 = OpLabel
-%64 = OpLoad %9 %vectorValue
-%65 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_1 %D %int_0
-OpCooperativeVectorStoreHW %65 %uint_16 %64 Volatile
-%67 = OpLoad %25 %matrixValue
-%68 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_1 %D %int_0
-OpCooperativeMatrixStoreHW %68 %67 %70 %71 %int_0 Volatile
-OpBranch %51
+%tempArg_0 = OpVariable %_ptr_Function_26 Function
+%matrixValue = OpVariable %_ptr_Function_26 Function
+%20 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %A %int_0
+%22 = OpCooperativeVectorLoadHW %9 %20 %uint_0 Volatile|MakePointerVisible|NonPrivatePointer %uint_5
+OpStore %tempArg %22
+%24 = OpLoad %9 %tempArg
+OpStore %vectorValue %24
+%34 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_0 %B %int_0
+%40 = OpCooperativeMatrixLoadHW %26 %34 %38 %39 %int_0 Volatile|MakePointerVisible|NonPrivatePointer %uint_5
+OpStore %tempArg_0 %40
+%42 = OpLoad %26 %tempArg_0
+OpStore %matrixValue %42
+%47 = OpAccessChain %_ptr_Input_uint %gl_GlobalInvocationID %uint_0
+%48 = OpLoad %uint %47
+%50 = OpIEqual %bool %48 %uint_0
+OpSelectionMerge %52 None
+OpBranchConditional %50 %51 %64
 %51 = OpLabel
+%53 = OpLoad %9 %vectorValue
+%59 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_1 %D %int_0
+OpCooperativeVectorStoreHW %59 %uint_0 %53 Volatile|MakePointerAvailable|NonPrivatePointer %uint_5
+%60 = OpLoad %26 %matrixValue
+%61 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_1 %D %int_0
+OpCooperativeMatrixStoreHW %61 %60 %62 %63 %int_0 Volatile|MakePointerAvailable|NonPrivatePointer %uint_5
+OpBranch %52
+%64 = OpLabel
+%65 = OpLoad %9 %vectorValue
+%66 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_1 %D %int_0
+OpCooperativeVectorStoreHW %66 %uint_16 %65 Volatile|MakePointerAvailable|NonPrivatePointer %uint_5
+%68 = OpLoad %26 %matrixValue
+%69 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float_1 %D %int_0
+OpCooperativeMatrixStoreHW %69 %68 %71 %72 %int_0 Volatile|MakePointerAvailable|NonPrivatePointer %uint_5
+OpBranch %52
+%52 = OpLabel
 OpReturn
 OpFunctionEnd

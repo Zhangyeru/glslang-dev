@@ -14,6 +14,12 @@
 
 find_package(Python3 COMPONENTS Interpreter QUIET)
 if(Python3_Interpreter_FOUND)
+    add_test(NAME vk_hw_language_contract
+        COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/scripts/audit_language_contract.py
+            --root ${PROJECT_SOURCE_DIR}
+            --report ${CMAKE_BINARY_DIR}/tests/vk_hw/language_contract.json)
+    set_tests_properties(vk_hw_language_contract PROPERTIES LABELS "hw")
     add_test(NAME vk_hw_build_shaders_script_tests
         COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_CURRENT_SOURCE_DIR}/scripts/test_build_shaders.py
@@ -96,6 +102,7 @@ set_target_properties(vk_hw_runner PROPERTIES
 
 add_executable(vk_hw_language_tests
     runner/language_test.cpp
+    runner/graphics_test.cpp
     runner/vulkan_context.cpp
     runner/compute_pipeline.cpp
     runner/buffer.cpp
@@ -119,6 +126,18 @@ if(Python3_Interpreter_FOUND AND TARGET glslang-standalone AND TARGET spirv-opt
         --baseline ${CMAKE_CURRENT_SOURCE_DIR}/shaders/boundary/baseline.comp
         --out-dir ${CMAKE_BINARY_DIR}/tests/vk_hw/boundary
     )
+    if(TARGET spirv-link)
+        add_test(NAME vk_hw_semantics
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_semantic_tests.py
+                --glslang $<TARGET_FILE:glslang-standalone>
+                --spirv-opt $<TARGET_FILE:spirv-opt>
+                --spirv-val $<TARGET_FILE:spirv-val>
+                --spirv-dis $<TARGET_FILE:spirv-dis>
+                --spirv-link $<TARGET_FILE:spirv-link>
+                --runner $<TARGET_FILE:vk_hw_language_tests>
+                --out-dir ${CMAKE_BINARY_DIR}/tests/vk_hw/semantics)
+        set_tests_properties(vk_hw_semantics PROPERTIES LABELS "hw;vulkan" TIMEOUT 1800)
+    endif()
     add_test(NAME vk_hw_boundary
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_boundary_tests.py ${_boundary_args})
     set_tests_properties(vk_hw_boundary PROPERTIES LABELS "hw;vulkan" TIMEOUT 1800

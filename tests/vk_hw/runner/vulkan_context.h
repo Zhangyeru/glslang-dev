@@ -31,6 +31,9 @@ public:
     bool supports_shader_float16() const { return supports_shader_float16_; }
     bool supports_shader_int8() const { return supports_shader_int8_; }
     bool supports_shader_int16() const { return supports_shader_int16_; }
+    bool supports_shader_float64() const { return supports_shader_float64_; }
+    bool supports_shader_int64() const { return supports_shader_int64_; }
+    bool supports_fragment_stores() const { return supports_fragment_stores_; }
     bool supports_storage_buffer_8bit() const { return supports_storage_buffer_8bit_; }
     bool supports_storage_buffer_16bit() const { return supports_storage_buffer_16bit_; }
     bool supports_scalar_block_layout() const { return supports_scalar_block_layout_; }
@@ -48,6 +51,10 @@ private:
     bool supports_shader_float16_ = false;
     bool supports_shader_int8_ = false;
     bool supports_shader_int16_ = false;
+    bool supports_shader_float64_ = false;
+    bool supports_shader_int64_ = false;
+    bool graphics_queue_ = false;
+    bool supports_fragment_stores_ = false;
     bool supports_storage_buffer_8bit_ = false;
     bool supports_storage_buffer_16bit_ = false;
     bool supports_scalar_block_layout_ = false;

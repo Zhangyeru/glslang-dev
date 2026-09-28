@@ -87,6 +87,7 @@ void VulkanContext::PickPhysicalDevice()
                 vkGetPhysicalDeviceProperties(device, &properties);
                 physical_device_ = device;
                 queue_family_index_ = index;
+                graphics_queue_ = (queues[index].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0;
                 timestamp_period_ns_ = properties.limits.timestampPeriod;
                 return;
             }
@@ -155,8 +156,9 @@ void VulkanContext::CreateDevice()
     float16_int8.shaderFloat16 = float16_int8.shaderFloat16 ? VK_TRUE : VK_FALSE;
     float16_int8.shaderInt8 = float16_int8.shaderInt8 ? VK_TRUE : VK_FALSE;
     scalar_block.scalarBlockLayout = scalar_block.scalarBlockLayout ? VK_TRUE : VK_FALSE;
-    features2.features.shaderFloat64 = VK_FALSE;
-    features2.features.shaderInt64 = VK_FALSE;
+    supports_shader_float64_ = features2.features.shaderFloat64 == VK_TRUE;
+    supports_shader_int64_ = features2.features.shaderInt64 == VK_TRUE;
+    supports_fragment_stores_ = graphics_queue_ && features2.features.fragmentStoresAndAtomics == VK_TRUE;
 
     const float queue_priority = 1.0f;
     VkDeviceQueueCreateInfo queue_info = {};

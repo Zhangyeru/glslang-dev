@@ -129,36 +129,36 @@ spv.coopvecHWloadstore.comp
          %27 = OpAccessChain %_ptr_StorageBuffer__runtimearr_v3ulong %matrixBuf %int_0
                OpCooperativeVectorStoreHW %27 %uint_0 %26
          %35 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %matrixBuf2 %int_0
-         %37 = OpCooperativeVectorLoadHW %9 %35 %uint_1
+         %37 = OpCooperativeVectorLoadHW %9 %35 %uint_1 MakePointerVisible|NonPrivatePointer %uint_5
                OpStore %tempArg_0 %37
          %38 = OpLoad %9 %tempArg_0
                OpStore %v %38
          %39 = OpLoad %9 %v
          %40 = OpAccessChain %_ptr_StorageBuffer__runtimearr_half %matrixBuf2 %int_0
-               OpCooperativeVectorStoreHW %40 %uint_1 %39
+               OpCooperativeVectorStoreHW %40 %uint_1 %39 MakePointerAvailable|NonPrivatePointer %uint_5
          %47 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %matrixBuf3 %int_0
-         %49 = OpCooperativeVectorLoadHW %9 %47 %uint_2 Volatile
+         %49 = OpCooperativeVectorLoadHW %9 %47 %uint_2 Volatile|MakePointerVisible|NonPrivatePointer %uint_5
                OpStore %tempArg_1 %49
          %50 = OpLoad %9 %tempArg_1
                OpStore %v %50
          %51 = OpLoad %9 %v
          %52 = OpAccessChain %_ptr_StorageBuffer__runtimearr_float %matrixBuf3 %int_0
-               OpCooperativeVectorStoreHW %52 %uint_2 %51 Volatile
+               OpCooperativeVectorStoreHW %52 %uint_2 %51 Volatile|MakePointerAvailable|NonPrivatePointer %uint_5
          %59 = OpLoad %_ptr_PhysicalStorageBuffer_MatrixBuf4 %matrixBuf4
          %61 = OpAccessChain %_ptr_PhysicalStorageBuffer__runtimearr_half_0 %59 %int_0
-         %63 = OpCooperativeVectorLoadHW %9 %61 %uint_3 Aligned 16
+         %63 = OpCooperativeVectorLoadHW %9 %61 %uint_3 Aligned|MakePointerVisible|NonPrivatePointer 16 %uint_5
                OpStore %tempArg_2 %63
          %64 = OpLoad %9 %tempArg_2
                OpStore %v %64
          %65 = OpLoad %9 %v
          %66 = OpLoad %_ptr_PhysicalStorageBuffer_MatrixBuf4 %matrixBuf4
          %67 = OpAccessChain %_ptr_PhysicalStorageBuffer__runtimearr_half_0 %66 %int_0
-               OpCooperativeVectorStoreHW %67 %uint_3 %65 Aligned 16
-         %74 = OpCooperativeVectorLoadHW %9 %matrixShmem %uint_4
+               OpCooperativeVectorStoreHW %67 %uint_3 %65 Aligned|MakePointerAvailable|NonPrivatePointer 16 %uint_5
+         %74 = OpCooperativeVectorLoadHW %9 %matrixShmem %uint_4 MakePointerVisible|NonPrivatePointer %uint_2
                OpStore %tempArg_3 %74
          %75 = OpLoad %9 %tempArg_3
                OpStore %v %75
          %76 = OpLoad %9 %v
-               OpCooperativeVectorStoreHW %matrixShmem %uint_4 %76
+               OpCooperativeVectorStoreHW %matrixShmem %uint_4 %76 MakePointerAvailable|NonPrivatePointer %uint_2
                OpReturn
                OpFunctionEnd

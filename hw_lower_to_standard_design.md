@@ -1,5 +1,7 @@
 # HW Lower-to-Standard Pass 技术设计
 
+> 2026-09-28 更新：当前事务式回退、SSA、数值覆盖与输入边界见 [LANGUAGE_CONTRACT.md](tests/vk_hw/LANGUAGE_CONTRACT.md)，性能修正见 [BOUNDARY_TESTS.md](tests/vk_hw/BOUNDARY_TESTS.md)。下文旧验证统计保留为历史记录。
+
 > 本文档聚焦 pass 的**架构设计与执行流程**，与 [`hw_lower_to_standard_supported_features.md`](hw_lower_to_standard_supported_features.md)（功能规格说明）互补。功能细节、支持矩阵和边界条件请参阅功能规格文档。
 
 ## 1. 概述
@@ -146,7 +148,7 @@ flowchart TD
 ### 调度不变量
 
 - 每个阶段只处理**尚未被降级**的 HW opcode——已被 fusion 或 direct 替换的指令不会出现在后续阶段的 worklist 中。
-- Direct 路径的失败不修改 IR——条件验证在 IR 修改之前完成，不满足条件则跳过，指令留给 generic worklist。
+- Direct 路径不匹配时跳过，指令留给 generic worklist；代码生成失败可留下局部修改，因此整个尝试使用独立 IR context，恢复从原始模块开始。
 - Generic worklist 中每条指令的降级是独立的——一条指令的降级失败会立即报错，不会污染后续指令。
 
 ## 4. 类型物化流程

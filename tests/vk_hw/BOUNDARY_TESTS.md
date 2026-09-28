@@ -1,7 +1,7 @@
 # Inference lowering boundaries
 
 `runner/boundary_cases.h` is the shared case table for the GLSL GoogleTests and
-the Vulkan functional/performance driver. It contains 46 source configurations,
+the Vulkan functional/performance driver. It contains 52 source configurations,
 not a dimension/type Cartesian product. `Test/spv.hw_boundary.comp` is the HW
 source; `shaders/boundary/baseline.comp` is independently written standard GLSL.
 The runner's CPU oracle uses deterministic typed inputs and the existing
@@ -11,8 +11,8 @@ reference arithmetic, with separate exact witnesses for rounding and contraction
 | --- | --- |
 | `head`, `channels` | Single-channel prediction, odd channel tails, vec2 packing; tail-only inputs make the final reduction term observable. |
 | `batch` | Batch sizes 1/2/3 and partial 2x2 matrix tiles. Each row differs. |
-| `direct_f32`, `mac_f16` | 256/2048/4096 MAC direct-helper thresholds, plus 4095/4096/4097 configurable limits at fixed work. |
-| `activation` | Residual/scale/ReLU at 63/64/65 elements, including the scalar unroll boundary. |
+| `direct_f32`, `mac_f16` | 256/1024/4096 MAC helper thresholds, the former 2048-MAC spill cases, and 4095/4096/4097 configurable limits at fixed work. |
+| `activation` | Residual/scale/ReLU at 63/64/65 and 127/128/129 elements, including explicit unroll-elements=128 boundary modes. |
 | `slice` | Padded row/column-major parameter allocations; constant 0/1/last and runtime first/last offsets, all within allocation bounds. Offsets follow this branch's element/coordinate API. |
 | `snapshot`, `mutation` | Loaded parameter snapshots versus modifications of cooperative values. The first/last component updates and the source SSBO writes are checked independently. |
 | `route` | Two genuinely different experts, 0/1/2 iterations, struct argument/return transport, and a final prediction head. All six host controls execute. |
@@ -70,7 +70,7 @@ source, baseline and output arguments shown by `ctest -N -V`, adding
 the same output directory. `--list-boundary-cases` on `vk_hw_runner` lists the
 shared definitions without initializing Vulkan.
 
-## Measured performance failures (2026-09-23)
+## Original measured performance failures (2026-09-23)
 
 On AMD Radeon Graphics (RADV RENOIR), reported driver version 104865800,
 all 46 cases passed functional verification: 242 module executions and 846
@@ -129,3 +129,25 @@ These findings leave follow-up optimizer work: reduce unrolled live ranges,
 avoid unnecessary scalar matrix staging, and fuse or otherwise optimize
 non-packed elementwise processing. Keep the new failing cases when making
 those changes, and rerun the complete valid-input and runtime pipeline.
+
+## Corrections (2026-09-28)
+
+Scalar and packed floating-point vector arithmetic now use the configured
+element-unroll budget, avoiding the additional scalar 64-element cutoff and
+packed dynamic-array loops inside small activation chains.
+Explicit small budgets still exercise rolled lowering. FP32 matrix expansion
+has a 1024-MAC internal ceiling, which also applies to generic scalar matmul;
+the public unroll default remains 4096. Large same-component FP16 vector
+matmul can stream movable buffer sources with scalar arithmetic, avoiding the
+weight-sized Function array. This path requires closed transport chains, no
+intervening memory hazards and a bounded output width. `no-direct` disables it;
+the transactional scalar recovery attempt always disables direct and fusion.
+The existing precise, snapshot, mutation and shared-source checks remain gates.
+
+The original 46-case performance gate passed after the first corrections (92
+measured mode/case pairs; maximum ratio 3.136). The added 128-element packed
+activation initially exposed the same dynamic-array issue (ratio 10.93); the
+packed expansion path was corrected as well, retaining the new test. The six additional cases retain the new
+FP32 threshold and explicit element-unroll boundary as regressions. Current
+full results are written to `build/tests/vk_hw/boundary/perf.json`; historical
+failures above are retained to explain the changes, not accepted exceptions.
