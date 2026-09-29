@@ -143,3 +143,22 @@ extraction to remain unchanged and packed arithmetic to survive default and
 is also validated. Both input and output validation receive the same validator
 options; the scalar fixture requires them because its `vec3` member starts at
 offset 8. These two source configurations add six raw lowering runs.
+
+## Integer dependency chain scaling
+
+`Glsl/HwIntegerChainTest.SmallIntegerOperationsStayUnrolled/*` expands
+`spv.hw_extfree_integer_chain.comp` into signed and unsigned width-4/5 chains
+of 32 and 512 statements. Each statement adds and XORs an integer cooperative
+vector, and the final value is stored to an SSBO. The test requires exactly
+two HW-typed operations per statement in the validated frontend module;
+there are no source loops, and longer cases contain more actual instructions.
+These generated inputs use structural assertions instead of large goldens.
+
+Default, scalar and `no-direct,no-fusion` raw lowering must preserve the scalar
+integer arithmetic, produce valid extension-free output without recovery
+diagnostics, and introduce no loops while the vector fits the unroll limit.
+The 32-statement cases additionally run default/scalar `unroll-elements=2`;
+they require rolled add/XOR operations, so the optimization cannot ignore the
+configured limit. The eight source configurations cover 32 raw lowering runs.
+This regression protects the output structure responsible for integer-chain
+compile-time scaling without depending on a machine-specific timing limit.

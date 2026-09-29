@@ -881,6 +881,121 @@ INSTANTIATE_TEST_SUITE_P(Glsl, HwArrayCollisionTest, ::testing::Values(false, tr
                             return info.param ? "ScalarLayout" : "StandardLayout";
                         });
 
+struct HwIntegerChainCase {
+    unsigned width;
+    unsigned statements;
+    bool signedValues;
+};
+
+using HwIntegerChainTest = GlslangTest<::testing::TestWithParam<HwIntegerChainCase>>;
+
+TEST_P(HwIntegerChainTest, SmallIntegerOperationsStayUnrolled)
+{
+#if !ENABLE_OPT
+    GTEST_SKIP() << "SPIRV-Tools is required for HW lowering";
+#else
+    const auto& test = GetParam();
+    const std::string file = "spv.hw_extfree_integer_chain.comp";
+    std::string source;
+    tryLoadFile(GlobalTestSettings.testRoot + "/" + file, "integer chain GLSL", &source);
+    ASSERT_FALSE(source.empty());
+    source.insert(source.find('\n') + 1, "#define WIDTH " + std::to_string(test.width) +
+                                            "\n#define SIGNED_VALUES " + (test.signedValues ? "1\n" : "0\n"));
+    const std::string marker = "    x = (x + V(T(1))) ^ V(T(1013904223)); // GENERATED_INTEGER_CHAIN";
+    const auto insertion = source.find(marker);
+    ASSERT_NE(std::string::npos, insertion);
+    std::string chain;
+    for (unsigned i = 0; i < test.statements; ++i) {
+        // Keep literals representable in both scalar types. Each result feeds
+        // the next statement and eventually reaches observable SSBO storage.
+        const uint32_t mask = (1013904223u + i * 1664525u) & 0x7fffffffu;
+        chain += "    x = (x + V(T(" + std::to_string(2 * i + 1) + "))) ^ V(T(" + std::to_string(mask) + "));\n";
+    }
+    source.replace(insertion, marker.size(), chain);
+    const auto controls = DeriveOptions(Source::GLSL, Semantics::Vulkan, Target::Spv);
+    const auto compiled =
+        compileAndLink(file, source, "", controls, glslang::EShTargetVulkan_1_3, glslang::EShTargetSpv_1_6);
+    std::ostringstream diagnostics;
+    outputResultToStream(&diagnostics, compiled, controls);
+    ASSERT_FALSE(compiled.spirvBinary.empty()) << diagnostics.str();
+    diagnostics.str("");
+    const auto consumer = [&](spv_message_level_t, const char*, const spv_position_t&, const char* message) {
+        diagnostics << message << '\n';
+    };
+    spvtools::SpirvTools tools(SPV_ENV_VULKAN_1_3);
+    tools.SetMessageConsumer(consumer);
+    ASSERT_TRUE(tools.Validate(compiled.spirvBinary)) << "Invalid frontend input:\n" << diagnostics.str();
+    const HwModule input(compiled.spirvBinary);
+    ASSERT_EQ(0u, input.count("OpLoopMerge"));
+    for (const char* op : {"OpIAdd", "OpBitwiseXor"}) {
+        ASSERT_EQ(test.statements, input.hwCount(op)) << op;
+        ASSERT_EQ(test.statements, input.count(op, [&](const HwInstruction& inst) {
+            const auto* vector = input.definition(inst.type);
+            if (!vector || vector->op != "OpTypeCooperativeVectorHW")
+                return false;
+            const auto* component = input.definition(vector->words[2]);
+            return component && component->op == "OpTypeInt" && component->words[2] == 32 &&
+                   component->words[3] == uint32_t(test.signedValues);
+        })) << op;
+    }
+
+    std::vector<std::string> modes = {"", "=scalar", "=no-direct,no-fusion"};
+    if (test.statements == 32) {
+        modes.push_back("=unroll-elements=2");
+        modes.push_back("=scalar,unroll-elements=2");
+    }
+    for (const auto& mode : modes) {
+        SCOPED_TRACE(mode);
+        diagnostics.str("");
+        spvtools::Optimizer optimizer(SPV_ENV_VULKAN_1_3);
+        optimizer.SetMessageConsumer(consumer);
+        ASSERT_TRUE(optimizer.RegisterPassFromFlag("--hw-lower-to-standard-extension-free" + mode));
+        std::vector<uint32_t> lowered;
+        ASSERT_TRUE(optimizer.Run(compiled.spirvBinary.data(), compiled.spirvBinary.size(), &lowered))
+            << diagnostics.str();
+        EXPECT_TRUE(diagnostics.str().empty()) << "A scalar retry must not conceal a failed path:\n" << diagnostics.str();
+        ASSERT_TRUE(tools.Validate(lowered)) << "Invalid lowered output:\n" << diagnostics.str();
+        std::string assembly;
+        ASSERT_TRUE(tools.Disassemble(lowered, &assembly));
+        const HwModule output(lowered);
+        output.expectNoHw(assembly);
+        const bool rolled = mode.find("unroll-elements=2") != std::string::npos;
+        if (rolled) {
+            // Both arithmetic operations must still honor the configured limit.
+            // Memory loops alone are insufficient to establish this path.
+            EXPECT_GE(output.count("OpLoopMerge"), 2u * test.statements);
+        } else {
+            EXPECT_EQ(0u, output.count("OpLoopMerge"));
+        }
+        const size_t arithmeticCount = test.statements * (rolled ? 1u : test.width);
+        for (const char* op : {"OpIAdd", "OpBitwiseXor"}) {
+            const size_t count = output.count(op, [&](const HwInstruction& inst) {
+                const auto* component = output.definition(inst.type);
+                return component && component->op == "OpTypeInt" && component->words[2] == 32 &&
+                       component->words[3] == uint32_t(test.signedValues);
+            });
+            // Unsigned address/index arithmetic can add unrelated OpIAdd values.
+            if (std::string(op) == "OpIAdd")
+                EXPECT_GE(count, arithmeticCount);
+            else
+                EXPECT_EQ(count, arithmeticCount);
+            EXPECT_EQ(0u, output.mathCount(op, "OpTypeVector"));
+        }
+    }
+#endif
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Glsl, HwIntegerChainTest,
+    ::testing::Values(HwIntegerChainCase{4, 32, false}, HwIntegerChainCase{5, 32, false},
+                      HwIntegerChainCase{4, 32, true}, HwIntegerChainCase{5, 32, true},
+                      HwIntegerChainCase{4, 512, false}, HwIntegerChainCase{5, 512, false},
+                      HwIntegerChainCase{4, 512, true}, HwIntegerChainCase{5, 512, true}),
+    [](const ::testing::TestParamInfo<HwIntegerChainCase>& info) {
+        return std::string(info.param.signedValues ? "Signed" : "Unsigned") + "_" + std::to_string(info.param.width) +
+               "_" + std::to_string(info.param.statements);
+    });
+
 using HwBoundaryTest = GlslangTest<::testing::TestWithParam<vk_hw::BoundaryCase>>;
 
 TEST_P(HwBoundaryTest, ValidatedInferenceBoundary)

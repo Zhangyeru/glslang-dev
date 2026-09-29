@@ -1,0 +1,29 @@
+#version 460
+#extension GL_HW_neural_shader : require
+
+#ifndef WIDTH
+#define WIDTH 4
+#endif
+#ifndef SIGNED_VALUES
+#define SIGNED_VALUES 0
+#endif
+#if SIGNED_VALUES
+#define T int
+#else
+#define T uint
+#endif
+#define V coopvecHW<T, WIDTH>
+
+layout(local_size_x = 1) in;
+layout(set = 0, binding = 0) readonly buffer Input { T data[]; } A;
+layout(set = 0, binding = 1) writeonly buffer Output { T data[]; } D;
+
+void main()
+{
+    V x;
+    coopVecLoadHW(x, A.data, 0u);
+    // The test replaces the following statement with a straight-line dependency
+    // chain. Its source length and HW instruction count grow together.
+    x = (x + V(T(1))) ^ V(T(1013904223)); // GENERATED_INTEGER_CHAIN
+    coopVecStoreHW(x, D.data, 0u);
+}

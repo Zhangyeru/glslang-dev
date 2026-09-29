@@ -229,6 +229,18 @@ def cases():
     result[-1]["required"].append("OpInBoundsAccessChain")
     for name in ("ordinary_array_extract", "ordinary_nested_array_extract"):
         result.append(dict(name=name, dtype="float", context=name, required=["OpCooperativeVectorLoadHW", "OpFAdd"]))
+    for dtype, operations in (
+        ("uint", ["IMul", "IAdd", "BitwiseXor", "ShiftRightLogical", "ShiftLeftLogical"]),
+        ("int", ["IMul", "BitwiseXor", "ShiftRightArithmetic", "SNegate"]),
+    ):
+        result.append(
+            dict(
+                name="integer_chain_" + dtype,
+                dtype=dtype,
+                integer_chain=32,
+                required=["OpCooperativeVectorLoadHW"] + ["Op" + op for op in operations],
+            )
+        )
     add("fragment_add", "float", "x+y", "OpFAdd", lambda x, y: x + y, graphics=True)
     add("multi_entry", "float", "x+y", "OpFAdd", lambda x, y: x + y, multi_entry=True)
     return result
@@ -373,6 +385,17 @@ void main() {{
         else ("coopVecLoadHW(x,A.data,1u); coopVecLoadHW(y,B.data,1u);")
     )
     store = f"coopMatStoreHW(z,D.data,ivec2(1,{width+2}),ivec2(0,1),0);" if matrix else "coopVecStoreHW(z,D.data,1u);"
+    if case.get("integer_chain"):
+        # Emit actual dependent HW operations, rather than a source loop whose
+        # trip count changes without increasing the input IR size.
+        step = (
+            "x=x*y+V(0x9e3779b9u); x=(x^(x>>V(13u)))+V(0x7f4a7c15u); x=x^(x<<V(7u));"
+            if t == "uint"
+            else "x=x>>V(13); x=x*V(4093); x=x^y; x=-x;"
+        )
+        body = "\n".join([step] * case["integer_chain"]) + "\nR z=x;"
+    else:
+        body = f"R z={case['expression']};"
     return f"""#version 460
 #extension GL_HW_neural_shader : require
 #extension GL_EXT_shader_explicit_arithmetic_types : require
@@ -384,7 +407,7 @@ layout(local_size_x=1) in;
 layout(set=0,binding=0) buffer AA {{ {leaf} data[]; }} A;
 layout(set=0,binding=1) buffer BB {{ {leaf} data[]; }} B;
 layout(set=0,binding=2) buffer DD {{ {out} data[]; }} D;
-void main() {{ V x,y; {load} R z={case['expression']}; {store} }}
+void main() {{ V x,y; {load} {body} {store} }}
 """
 
 
@@ -451,6 +474,8 @@ def execute_case(args, case, width, folder):
     record = {"case": case["name"], "width": width, "stage": "compile", "modes": {}}
     if case.get("fuzz") is not None:
         record.update(seed=case["seed"], operations=case["fuzz"])
+    if case.get("integer_chain"):
+        record["chain_steps"] = case["integer_chain"]
     try:
         source = folder / ("input.frag" if case.get("graphics") else "input.comp")
         source_text = shader(case, width)
@@ -521,6 +546,41 @@ def execute_case(args, case, width, folder):
         out = case.get("out", case.get("result", dtype))
         datasets = []
         for dataset in range(3):
+            if case.get("integer_chain"):
+                if dtype == "uint":
+                    xs = [0xFFFFFFFF, 0x80000000, 0x7FFFFFFF, 0x10000, 0x12345678, 0, 1, 0xCAFEBABE]
+                    ys = [0xFFFFFFFF, 0x80000001, 0x10001, 0x7FFFFFFF, 0xDEADBEEF, 0x1010101, 3]
+                else:
+                    xs = [-2147483648, 2147483647, -1, 0, -1073741825, 1073741824, 123456789, -987654321]
+                    ys = [0x12345, -0x54321, 0x34567, -0x13579, 0x76543, -0x23457, 1]
+                av = [xs[(i + 2 * dataset) % len(xs)] for i in range(width)]
+                bv = [ys[(i + dataset) % len(ys)] for i in range(width)]
+                expected = []
+                for x, y in zip(av, bv):
+                    for _ in range(case["integer_chain"]):
+                        if dtype == "uint":
+                            # Python integers are unbounded: reduce after each
+                            # arithmetic operation, including the shifted value.
+                            x = (x * y) & 0xFFFFFFFF
+                            x = (x + 0x9E3779B9) & 0xFFFFFFFF
+                            x = (x ^ (x >> 13)) & 0xFFFFFFFF
+                            x = (x + 0x7F4A7C15) & 0xFFFFFFFF
+                            x = (x ^ ((x << 7) & 0xFFFFFFFF)) & 0xFFFFFFFF
+                        else:
+                            # The right shift bounds the product; small signed
+                            # XOR operands keep the negation away from INT_MIN.
+                            x >>= 13
+                            x *= 4093
+                            x ^= y
+                            x = -x
+                            assert -2147483648 <= x <= 2147483647
+                    expected.append(x)
+                a = pack([17] + av + [19], dtype)
+                b = pack([23] + bv + [29], dtype)
+                initial = pack([31] * (width + 2), dtype)
+                expected = pack([31] + expected + [31], dtype)
+                datasets.append((a, b, initial, expected, a))
+                continue
             if case.get("fuzz") is not None:
                 values = [(i + dataset - 2) * 0.25 for i in range(width)]
                 expected = values.copy()

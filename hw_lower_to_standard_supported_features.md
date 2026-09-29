@@ -70,7 +70,7 @@ specialization-constant shape，但必须先按 4.2 节执行 freeze/fold normal
 | Vector matmul-add | `Input[K] * Matrix[K×N] + Bias[N] -> Result[N]` | 与 vector matmul 相同；`Bias` 必须为 `[N]` |
 | Reduce、conversion 和逐元素操作 | 输入输出保持相同的 vector length 或 matrix rows/cols | 每个 cooperative type 分别满足上述 element limit |
 
-默认 `max_unrolled_elements` 和 `max_unrolled_matmul_macs` 都是 `4,096`。受这些阈值控制且具有 loop fallback 的 load/store、reduce 和 generic matmul，在超过 unroll threshold、但没有超过 hard limit 时会改用结构化循环，而不是因 shape 过大而失败。force-scalar 模式下不超过 `max_unrolled_elements` 的 f16/f32 逐元素操作静态展开，其他逐元素路径使用结构化循环。matrix/vector direct 也在 unrolled 和 runtime structured-loop helper 之间分流；f32 accumulator 另外使用 matrix `1,024` MAC、vector `256` MAC 的内部上限，避免指令和寄存器压力。两种形式都保留 direct pointer streaming，并继续受总体 element/MAC hard limit 约束。常量和 composite 构造仍受 4.2 节单独列出的 constituent 规则约束。
+默认 `max_unrolled_elements` 和 `max_unrolled_matmul_macs` 都是 `4,096`。受这些阈值控制且具有 loop fallback 的 load/store、reduce 和 generic matmul，在超过 unroll threshold、但没有超过 hard limit 时会改用结构化循环，而不是因 shape 过大而失败。scalar 表示的 cooperative vector（包括整数）以及 force-scalar 模式的 matrix，在不超过 `max_unrolled_elements` 时逐分量静态展开，避免每条小运算都生成独立循环；超过阈值仍使用结构化循环。matrix/vector direct 也在 unrolled 和 runtime structured-loop helper 之间分流；f32 accumulator 另外使用 matrix `1,024` MAC、vector `256` MAC 的内部上限，避免指令和寄存器压力。两种形式都保留 direct pointer streaming，并继续受总体 element/MAC hard limit 约束。常量和 composite 构造仍受 4.2 节单独列出的 constituent 规则约束。
 
 默认 packed 模式不会改变通用 shape 支持范围：
 

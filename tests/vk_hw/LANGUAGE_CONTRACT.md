@@ -81,7 +81,12 @@ leaves the original module intact. Resource exhaustion is diagnosed without repe
 retries. Fault-injection unit tests exercise both successful and failed recovery.
 
 `no-direct` and `no-fusion` independently disable those optimizations without
-disabling packed generic lowering. Source-derived tests must check the actual
+disabling packed generic lowering. Small scalar-vector elementwise operations,
+including integer arithmetic and conversions, use static component extraction
+within `unroll-elements`; force-scalar matrices use the same budget. Larger
+values retain structured loops. This avoids a separate loop and Function-array
+staging for each operation in a long integer chain without changing component
+width, signedness or arithmetic semantics. Source-derived tests must check the actual
 HW-typed input operations; ordinary scalar Phi/loop instructions are insufficient.
 Numerical oracles compare the same source and data across default, generic,
 scalar and rolled configurations, using exact comparisons where semantics allow.
