@@ -1,0 +1,243 @@
+#version 460 core
+// Copyright (C) 2026 The Khronos Group Inc.
+// SPDX-License-Identifier: BSD-3-Clause
+#extension GL_HW_neural_shader : require
+#extension GL_EXT_shader_8bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_int8 : require
+
+// Eight dense stages with packed parameters and observable intermediate activations.
+// Binding 0: input features followed by runtime activation controls.
+// Binding 1: row-major weights followed by bias, with each matrix row-aligned.
+// Row padding for the 48/64-column transitions is part of the flat layout.
+// The complete parameter buffer has 18048 elements (including tail padding).
+// Binding 2: a leading guard, all eight stage checkpoints, a trailing guard.
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(set = 0, binding = 0, std430) readonly buffer InputFeatures { int data[]; } A;
+layout(set = 0, binding = 1, std430) readonly buffer PackedParameters { int8_t data[]; } B;
+layout(set = 0, binding = 2, std430) buffer Checkpoints { int data[]; } D;
+
+struct Features8
+{
+    coopvecHW<int, 8> value;
+};
+
+struct Features16
+{
+    coopvecHW<int, 16> value;
+};
+
+struct Features32
+{
+    coopvecHW<int, 32> value;
+};
+
+struct Features48
+{
+    coopvecHW<int, 48> value;
+};
+
+struct Features64
+{
+    coopvecHW<int, 64> value;
+};
+
+Features32 prepareFeatures()
+{
+    Features32 result;
+    coopVecLoadHW(result.value, A.data, 0u);
+    // Quantized log-mel bins are bounded before narrowing to signed bytes.
+    result.value = clamp(result.value, coopvecHW<int, 32>(-96), coopvecHW<int, 32>(95));
+    return result;
+}
+
+// Stage 0: feature expansion; 2048 multiply-accumulates.
+Features64 project0(Features32 inputFeatures)
+{
+    Features64 result;
+    coopmatHW<int8_t, 32, 64> weights;
+    coopvecHW<int8_t, 64> packedBias;
+    coopvecHW<int, 64> bias;
+    coopMatLoadHW(weights, B.data, ivec2(282, 64), ivec2(0, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(packedBias, B.data, 2048u);
+    bias = coopvecHW<int, 64>(packedBias);
+    coopvecHW<int8_t, 32> quantizedInput = coopvecHW<int8_t, 32>(inputFeatures.value);
+    coopVecMatMulAddHW(result.value, quantizedInput, weights, bias);
+    // Arithmetic shift implements floor((accumulator + half) / 2^shift).
+    int shift = A.data[32];
+    int halfStep = 1 << (shift - 1);
+    result.value = (result.value + coopvecHW<int, 64>(halfStep)) >> coopvecHW<int, 64>(shift);
+    int lower = A.data[33] != 0 ? 0 : -96;
+    result.value = clamp(result.value, coopvecHW<int, 64>(lower), coopvecHW<int, 64>(95));
+    coopVecStoreHW(result.value, D.data, 1u);
+    return result;
+}
+
+// Stage 1: residual refinement; 4096 multiply-accumulates.
+Features64 project1(Features64 inputFeatures)
+{
+    Features64 result;
+    coopmatHW<int8_t, 64, 64> weights;
+    coopvecHW<int8_t, 64> packedBias;
+    coopvecHW<int, 64> bias;
+    coopMatLoadHW(weights, B.data, ivec2(282, 64), ivec2(33, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(packedBias, B.data, 6208u);
+    bias = coopvecHW<int, 64>(packedBias);
+    coopvecHW<int8_t, 64> quantizedInput = coopvecHW<int8_t, 64>(inputFeatures.value);
+    coopVecMatMulAddHW(result.value, quantizedInput, weights, bias);
+    result.value = result.value + inputFeatures.value * coopvecHW<int, 64>(2);
+    // Arithmetic shift implements floor((accumulator + half) / 2^shift).
+    int shift = A.data[32];
+    int halfStep = 1 << (shift - 1);
+    result.value = (result.value + coopvecHW<int, 64>(halfStep)) >> coopvecHW<int, 64>(shift);
+    int lower = A.data[33] != 0 ? 0 : -96;
+    result.value = clamp(result.value, coopvecHW<int, 64>(lower), coopvecHW<int, 64>(95));
+    coopVecStoreHW(result.value, D.data, 65u);
+    return result;
+}
+
+// Stage 2: bottleneck projection; 3072 multiply-accumulates.
+Features48 project2(Features64 inputFeatures)
+{
+    Features48 result;
+    coopmatHW<int8_t, 64, 48> weights;
+    coopvecHW<int8_t, 48> packedBias;
+    coopvecHW<int, 48> bias;
+    coopMatLoadHW(weights, B.data, ivec2(376, 48), ivec2(131, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(packedBias, B.data, 9360u);
+    bias = coopvecHW<int, 48>(packedBias);
+    coopvecHW<int8_t, 64> quantizedInput = coopvecHW<int8_t, 64>(inputFeatures.value);
+    coopVecMatMulAddHW(result.value, quantizedInput, weights, bias);
+    // Arithmetic shift implements floor((accumulator + half) / 2^shift).
+    int shift = A.data[32];
+    int halfStep = 1 << (shift - 1);
+    result.value = (result.value + coopvecHW<int, 48>(halfStep)) >> coopvecHW<int, 48>(shift);
+    int lower = A.data[33] != 0 ? 0 : -96;
+    result.value = clamp(result.value, coopvecHW<int, 48>(lower), coopvecHW<int, 48>(95));
+    coopVecStoreHW(result.value, D.data, 129u);
+    return result;
+}
+
+// Stage 3: context expansion; 3072 multiply-accumulates.
+Features64 project3(Features48 inputFeatures)
+{
+    Features64 result;
+    coopmatHW<int8_t, 48, 64> weights;
+    coopvecHW<int8_t, 64> packedBias;
+    coopvecHW<int, 64> bias;
+    coopMatLoadHW(weights, B.data, ivec2(282, 64), ivec2(147, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(packedBias, B.data, 12480u);
+    bias = coopvecHW<int, 64>(packedBias);
+    coopvecHW<int8_t, 48> quantizedInput = coopvecHW<int8_t, 48>(inputFeatures.value);
+    coopVecMatMulAddHW(result.value, quantizedInput, weights, bias);
+    // Arithmetic shift implements floor((accumulator + half) / 2^shift).
+    int shift = A.data[32];
+    int halfStep = 1 << (shift - 1);
+    result.value = (result.value + coopvecHW<int, 64>(halfStep)) >> coopvecHW<int, 64>(shift);
+    int lower = A.data[33] != 0 ? 0 : -96;
+    result.value = clamp(result.value, coopvecHW<int, 64>(lower), coopvecHW<int, 64>(95));
+    coopVecStoreHW(result.value, D.data, 177u);
+    return result;
+}
+
+// Stage 4: context compression; 3072 multiply-accumulates.
+Features48 project4(Features64 inputFeatures)
+{
+    Features48 result;
+    coopmatHW<int8_t, 64, 48> weights;
+    coopvecHW<int8_t, 48> packedBias;
+    coopvecHW<int, 48> bias;
+    coopMatLoadHW(weights, B.data, ivec2(376, 48), ivec2(262, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(packedBias, B.data, 15648u);
+    bias = coopvecHW<int, 48>(packedBias);
+    coopvecHW<int8_t, 64> quantizedInput = coopvecHW<int8_t, 64>(inputFeatures.value);
+    coopVecMatMulAddHW(result.value, quantizedInput, weights, bias);
+    // Arithmetic shift implements floor((accumulator + half) / 2^shift).
+    int shift = A.data[32];
+    int halfStep = 1 << (shift - 1);
+    result.value = (result.value + coopvecHW<int, 48>(halfStep)) >> coopvecHW<int, 48>(shift);
+    int lower = A.data[33] != 0 ? 0 : -96;
+    result.value = clamp(result.value, coopvecHW<int, 48>(lower), coopvecHW<int, 48>(95));
+    coopVecStoreHW(result.value, D.data, 241u);
+    return result;
+}
+
+// Stage 5: latent projection; 1536 multiply-accumulates.
+Features32 project5(Features48 inputFeatures)
+{
+    Features32 result;
+    coopmatHW<int8_t, 48, 32> weights;
+    coopvecHW<int8_t, 32> packedBias;
+    coopvecHW<int, 32> bias;
+    coopMatLoadHW(weights, B.data, ivec2(564, 32), ivec2(491, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(packedBias, B.data, 17248u);
+    bias = coopvecHW<int, 32>(packedBias);
+    coopvecHW<int8_t, 48> quantizedInput = coopvecHW<int8_t, 48>(inputFeatures.value);
+    coopVecMatMulAddHW(result.value, quantizedInput, weights, bias);
+    // Arithmetic shift implements floor((accumulator + half) / 2^shift).
+    int shift = A.data[32];
+    int halfStep = 1 << (shift - 1);
+    result.value = (result.value + coopvecHW<int, 32>(halfStep)) >> coopvecHW<int, 32>(shift);
+    int lower = A.data[33] != 0 ? 0 : -96;
+    result.value = clamp(result.value, coopvecHW<int, 32>(lower), coopvecHW<int, 32>(95));
+    coopVecStoreHW(result.value, D.data, 289u);
+    return result;
+}
+
+// Stage 6: head bottleneck; 512 multiply-accumulates.
+Features16 project6(Features32 inputFeatures)
+{
+    Features16 result;
+    coopmatHW<int8_t, 32, 16> weights;
+    coopvecHW<int8_t, 16> packedBias;
+    coopvecHW<int, 16> bias;
+    coopMatLoadHW(weights, B.data, ivec2(1128, 16), ivec2(1080, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(packedBias, B.data, 17792u);
+    bias = coopvecHW<int, 16>(packedBias);
+    coopvecHW<int8_t, 32> quantizedInput = coopvecHW<int8_t, 32>(inputFeatures.value);
+    coopVecMatMulAddHW(result.value, quantizedInput, weights, bias);
+    // Arithmetic shift implements floor((accumulator + half) / 2^shift).
+    int shift = A.data[32];
+    int halfStep = 1 << (shift - 1);
+    result.value = (result.value + coopvecHW<int, 16>(halfStep)) >> coopvecHW<int, 16>(shift);
+    int lower = A.data[33] != 0 ? 0 : -96;
+    result.value = clamp(result.value, coopvecHW<int, 16>(lower), coopvecHW<int, 16>(95));
+    coopVecStoreHW(result.value, D.data, 321u);
+    return result;
+}
+
+// Stage 7: output head; 128 multiply-accumulates.
+Features8 project7(Features16 inputFeatures)
+{
+    Features8 result;
+    coopmatHW<int8_t, 16, 8> weights;
+    coopvecHW<int8_t, 8> packedBias;
+    coopvecHW<int, 8> bias;
+    coopMatLoadHW(weights, B.data, ivec2(2256, 8), ivec2(2226, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(packedBias, B.data, 17936u);
+    bias = coopvecHW<int, 8>(packedBias);
+    coopvecHW<int8_t, 16> quantizedInput = coopvecHW<int8_t, 16>(inputFeatures.value);
+    coopVecMatMulAddHW(result.value, quantizedInput, weights, bias);
+    coopVecStoreHW(result.value, D.data, 337u);
+    return result;
+}
+
+void main()
+{
+    Features32 features = prepareFeatures();
+    Features64 stage0 = project0(features);
+    Features64 stage1 = project1(stage0);
+    Features48 stage2 = project2(stage1);
+    Features64 stage3 = project3(stage2);
+    Features48 stage4 = project4(stage3);
+    Features32 stage5 = project5(stage4);
+    Features16 stage6 = project6(stage5);
+    Features8 stage7 = project7(stage6);
+}

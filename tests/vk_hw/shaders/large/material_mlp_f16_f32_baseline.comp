@@ -1,0 +1,244 @@
+#version 460 core
+// Copyright (C) 2026 The Khronos Group Inc.
+// SPDX-License-Identifier: BSD-3-Clause
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+
+// Eight dense stages with packed parameters and observable intermediate activations.
+// Binding 0: input features followed by runtime activation controls.
+// Binding 1: row-major weights followed by bias, with each matrix row-aligned.
+// Row padding for the 48/64-column transitions is part of the flat layout.
+// The complete parameter buffer has 19008 elements (including tail padding).
+// Binding 2: a leading guard, all eight stage checkpoints, a trailing guard.
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(set = 0, binding = 0, std430) readonly buffer InputFeatures { float data[]; } A;
+layout(set = 0, binding = 1, std430) readonly buffer PackedParameters { float16_t data[]; } B;
+layout(set = 0, binding = 2, std430) buffer Checkpoints { float data[]; } D;
+
+struct Features8
+{
+    float value[8];
+};
+
+struct Features16
+{
+    float value[16];
+};
+
+struct Features32
+{
+    float value[32];
+};
+
+struct Features48
+{
+    float value[48];
+};
+
+struct Features64
+{
+    float value[64];
+};
+
+Features48 prepareFeatures()
+{
+    Features48 result;
+    for (int lane = 0; lane < 48; ++lane) {
+        float scaled = A.data[lane] * A.data[48];
+        result.value[lane] = clamp(scaled + A.data[49], -2.0, 2.0);
+    }
+    return result;
+}
+
+// Stage 0: feature expansion; 3072 multiply-accumulates.
+Features64 project0(Features48 inputFeatures)
+{
+    Features64 result;
+    for (int column = 0; column < 64; ++column) {
+        float accumulator = float(B.data[3072 + column]);
+        for (int row = 0; row < 48; ++row) {
+            float weight = float(B.data[0 + row * 64 + column]);
+            float product = inputFeatures.value[row] * weight;
+            accumulator = accumulator + product;
+        }
+        if (A.data[50] > 0.0) {
+            accumulator = max(accumulator, 0.0);
+        } else {
+            accumulator = max(accumulator, accumulator * 0.125);
+        }
+        accumulator = clamp(accumulator, -2.0, 2.0);
+        result.value[column] = accumulator;
+        D.data[1 + column] = accumulator;
+    }
+    return result;
+}
+
+// Stage 1: residual refinement; 4096 multiply-accumulates.
+Features64 project1(Features64 inputFeatures)
+{
+    Features64 result;
+    for (int column = 0; column < 64; ++column) {
+        float accumulator = float(B.data[7232 + column]);
+        for (int row = 0; row < 64; ++row) {
+            float weight = float(B.data[3136 + row * 64 + column]);
+            float product = inputFeatures.value[row] * weight;
+            accumulator = accumulator + product;
+        }
+        accumulator = accumulator + inputFeatures.value[column] * 0.25;
+        if (A.data[50] > 0.0) {
+            accumulator = max(accumulator, 0.0);
+        } else {
+            accumulator = max(accumulator, accumulator * 0.125);
+        }
+        accumulator = clamp(accumulator, -2.0, 2.0);
+        result.value[column] = accumulator;
+        D.data[65 + column] = accumulator;
+    }
+    return result;
+}
+
+// Stage 2: bottleneck projection; 3072 multiply-accumulates.
+Features48 project2(Features64 inputFeatures)
+{
+    Features48 result;
+    for (int column = 0; column < 48; ++column) {
+        float accumulator = float(B.data[10368 + column]);
+        for (int row = 0; row < 64; ++row) {
+            float weight = float(B.data[7296 + row * 48 + column]);
+            float product = inputFeatures.value[row] * weight;
+            accumulator = accumulator + product;
+        }
+        if (A.data[50] > 0.0) {
+            accumulator = max(accumulator, 0.0);
+        } else {
+            accumulator = max(accumulator, accumulator * 0.125);
+        }
+        accumulator = clamp(accumulator, -2.0, 2.0);
+        result.value[column] = accumulator;
+        D.data[129 + column] = accumulator;
+    }
+    return result;
+}
+
+// Stage 3: context expansion; 3072 multiply-accumulates.
+Features64 project3(Features48 inputFeatures)
+{
+    Features64 result;
+    for (int column = 0; column < 64; ++column) {
+        float accumulator = float(B.data[13504 + column]);
+        for (int row = 0; row < 48; ++row) {
+            float weight = float(B.data[10432 + row * 64 + column]);
+            float product = inputFeatures.value[row] * weight;
+            accumulator = accumulator + product;
+        }
+        if (A.data[50] > 0.0) {
+            accumulator = max(accumulator, 0.0);
+        } else {
+            accumulator = max(accumulator, accumulator * 0.125);
+        }
+        accumulator = clamp(accumulator, -2.0, 2.0);
+        result.value[column] = accumulator;
+        D.data[177 + column] = accumulator;
+    }
+    return result;
+}
+
+// Stage 4: context compression; 3072 multiply-accumulates.
+Features48 project4(Features64 inputFeatures)
+{
+    Features48 result;
+    for (int column = 0; column < 48; ++column) {
+        float accumulator = float(B.data[16656 + column]);
+        for (int row = 0; row < 64; ++row) {
+            float weight = float(B.data[13584 + row * 48 + column]);
+            float product = inputFeatures.value[row] * weight;
+            accumulator = accumulator + product;
+        }
+        if (A.data[50] > 0.0) {
+            accumulator = max(accumulator, 0.0);
+        } else {
+            accumulator = max(accumulator, accumulator * 0.125);
+        }
+        accumulator = clamp(accumulator, -2.0, 2.0);
+        result.value[column] = accumulator;
+        D.data[241 + column] = accumulator;
+    }
+    return result;
+}
+
+// Stage 5: latent projection; 1536 multiply-accumulates.
+Features32 project5(Features48 inputFeatures)
+{
+    Features32 result;
+    for (int column = 0; column < 32; ++column) {
+        float accumulator = float(B.data[18240 + column]);
+        for (int row = 0; row < 48; ++row) {
+            float weight = float(B.data[16704 + row * 32 + column]);
+            float product = inputFeatures.value[row] * weight;
+            accumulator = accumulator + product;
+        }
+        if (A.data[50] > 0.0) {
+            accumulator = max(accumulator, 0.0);
+        } else {
+            accumulator = max(accumulator, accumulator * 0.125);
+        }
+        accumulator = clamp(accumulator, -2.0, 2.0);
+        result.value[column] = accumulator;
+        D.data[289 + column] = accumulator;
+    }
+    return result;
+}
+
+// Stage 6: head bottleneck; 512 multiply-accumulates.
+Features16 project6(Features32 inputFeatures)
+{
+    Features16 result;
+    for (int column = 0; column < 16; ++column) {
+        float accumulator = float(B.data[18784 + column]);
+        for (int row = 0; row < 32; ++row) {
+            float weight = float(B.data[18272 + row * 16 + column]);
+            float product = inputFeatures.value[row] * weight;
+            accumulator = accumulator + product;
+        }
+        if (A.data[50] > 0.0) {
+            accumulator = max(accumulator, 0.0);
+        } else {
+            accumulator = max(accumulator, accumulator * 0.125);
+        }
+        accumulator = clamp(accumulator, -2.0, 2.0);
+        result.value[column] = accumulator;
+        D.data[321 + column] = accumulator;
+    }
+    return result;
+}
+
+// Stage 7: output head; 128 multiply-accumulates.
+Features8 project7(Features16 inputFeatures)
+{
+    Features8 result;
+    for (int column = 0; column < 8; ++column) {
+        float accumulator = float(B.data[18928 + column]);
+        for (int row = 0; row < 16; ++row) {
+            float weight = float(B.data[18800 + row * 8 + column]);
+            float product = inputFeatures.value[row] * weight;
+            accumulator = accumulator + product;
+        }
+        accumulator = clamp(accumulator * 0.5 + 0.5, 0.0, 1.0);
+        result.value[column] = accumulator;
+        D.data[337 + column] = accumulator;
+    }
+    return result;
+}
+
+void main()
+{
+    Features48 features = prepareFeatures();
+    Features64 stage0 = project0(features);
+    Features64 stage1 = project1(stage0);
+    Features48 stage2 = project2(stage1);
+    Features64 stage3 = project3(stage2);
+    Features48 stage4 = project4(stage3);
+    Features32 stage5 = project5(stage4);
+    Features16 stage6 = project6(stage5);
+    Features8 stage7 = project7(stage6);
+}

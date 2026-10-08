@@ -1,0 +1,162 @@
+#version 450 core
+#extension GL_HW_neural_shader : require
+
+// Routed restoration experts with runtime selection, iterative refinement, and a learned head.
+// A: controls[4], current[32], history[32]. B: packed learned parameters.
+// D: guard, result[32], initial[32], two refinement checkpoints[32], route and iteration metadata, guard.
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(set = 0, binding = 0, std430) readonly buffer Inputs { float data[]; } A;
+layout(set = 0, binding = 1, std430) readonly buffer Parameters { float data[]; } B;
+layout(set = 0, binding = 2, std430) buffer Outputs { float data[]; } D;
+
+struct Features
+{
+    coopvecHW<float, 32> value;
+    float confidence;
+};
+
+// Expert 0: a separate 32 -> 48 -> 32 learned model.
+Features restoreExpert0(Features previous)
+{
+    Features result;
+    coopmatHW<float, 32, 48> expansionWeights;
+    coopmatHW<float, 48, 32> projectionWeights;
+    coopvecHW<float, 48> expansionBias;
+    coopvecHW<float, 32> projectionBias;
+    coopvecHW<float, 48> expanded;
+    coopvecHW<float, 32> correction;
+    coopMatLoadHW(expansionWeights, B.data, ivec2(220, 48), ivec2(0, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(expansionBias, B.data, 10240u);
+    coopVecMatMulAddHW(expanded, previous.value, expansionWeights, expansionBias);
+    expanded = max(expanded, coopvecHW<float, 48>(0.0));
+    coopMatLoadHW(projectionWeights, B.data, ivec2(330, 32), ivec2(144, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(projectionBias, B.data, 10384u);
+    coopVecMatMulAddHW(correction, expanded, projectionWeights, projectionBias);
+    correction = clamp(correction, coopvecHW<float, 32>(-0.5), coopvecHW<float, 32>(0.5));
+    float strength;
+    if (previous.confidence > 0.375)
+        strength = 0.5;
+    else
+        strength = 0.25;
+    result.value = clamp(previous.value + correction * strength,
+                         coopvecHW<float, 32>(-2.0), coopvecHW<float, 32>(2.0));
+    result.confidence = clamp(previous.confidence + correction[0] * 0.125, 0.0, 1.0);
+    return result;
+}
+
+// Expert 1: a separate 32 -> 48 -> 32 learned model.
+Features restoreExpert1(Features previous)
+{
+    Features result;
+    coopmatHW<float, 32, 48> expansionWeights;
+    coopmatHW<float, 48, 32> projectionWeights;
+    coopvecHW<float, 48> expansionBias;
+    coopvecHW<float, 32> projectionBias;
+    coopvecHW<float, 48> expanded;
+    coopvecHW<float, 32> correction;
+    coopMatLoadHW(expansionWeights, B.data, ivec2(220, 48), ivec2(32, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(expansionBias, B.data, 10288u);
+    coopVecMatMulAddHW(expanded, previous.value, expansionWeights, expansionBias);
+    expanded = max(expanded, coopvecHW<float, 48>(0.0));
+    coopMatLoadHW(projectionWeights, B.data, ivec2(330, 32), ivec2(192, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(projectionBias, B.data, 10416u);
+    coopVecMatMulAddHW(correction, expanded, projectionWeights, projectionBias);
+    correction = clamp(correction, coopvecHW<float, 32>(-0.5), coopvecHW<float, 32>(0.5));
+    float strength;
+    if (previous.confidence > 0.5)
+        strength = 0.5;
+    else
+        strength = 0.25;
+    result.value = clamp(previous.value + correction * strength,
+                         coopvecHW<float, 32>(-2.0), coopvecHW<float, 32>(2.0));
+    result.confidence = clamp(previous.confidence + correction[7] * 0.125, 0.0, 1.0);
+    return result;
+}
+
+// Expert 2: a separate 32 -> 48 -> 32 learned model.
+Features restoreExpert2(Features previous)
+{
+    Features result;
+    coopmatHW<float, 32, 48> expansionWeights;
+    coopmatHW<float, 48, 32> projectionWeights;
+    coopvecHW<float, 48> expansionBias;
+    coopvecHW<float, 32> projectionBias;
+    coopvecHW<float, 48> expanded;
+    coopvecHW<float, 32> correction;
+    coopMatLoadHW(expansionWeights, B.data, ivec2(220, 48), ivec2(64, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(expansionBias, B.data, 10336u);
+    coopVecMatMulAddHW(expanded, previous.value, expansionWeights, expansionBias);
+    expanded = max(expanded, coopvecHW<float, 48>(0.0));
+    coopMatLoadHW(projectionWeights, B.data, ivec2(330, 32), ivec2(240, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(projectionBias, B.data, 10448u);
+    coopVecMatMulAddHW(correction, expanded, projectionWeights, projectionBias);
+    correction = clamp(correction, coopvecHW<float, 32>(-0.5), coopvecHW<float, 32>(0.5));
+    float strength;
+    if (previous.confidence > 0.625)
+        strength = 0.5;
+    else
+        strength = 0.25;
+    result.value = clamp(previous.value + correction * strength,
+                         coopvecHW<float, 32>(-2.0), coopvecHW<float, 32>(2.0));
+    result.confidence = clamp(previous.confidence + correction[14] * 0.125, 0.0, 1.0);
+    return result;
+}
+
+// All experts share the final learned readout, but the route changes its input.
+Features reconstructionHead(Features previous)
+{
+    Features result;
+    coopmatHW<float, 32, 32> weights;
+    coopvecHW<float, 32> bias;
+    coopvecHW<float, 32> projected;
+    coopMatLoadHW(weights, B.data, ivec2(330, 32), ivec2(288, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(bias, B.data, 10480u);
+    coopVecMatMulAddHW(projected, previous.value, weights, bias);
+    result.value = projected + previous.value * 0.5;
+    result.confidence = previous.confidence;
+    return result;
+}
+
+Features dispatchExpert(Features previous, int route)
+{
+    Features result;
+    if (route == 0)
+        result = restoreExpert0(previous);
+    else if (route == 1)
+        result = restoreExpert1(previous);
+    else
+        result = restoreExpert2(previous);
+    return result;
+}
+
+void main()
+{
+    int route = clamp(int(A.data[0]), 0, 2);
+    int iterations = clamp(int(A.data[1]), 1, 2);
+    float historyWeight = clamp(A.data[2], 0.0, 1.0);
+    Features state;
+    state.confidence = A.data[3];
+    coopvecHW<float, 32> current;
+    coopvecHW<float, 32> history;
+    coopVecLoadHW(current, A.data, 4u);
+    coopVecLoadHW(history, A.data, 36u);
+    state.value = current * (1.0 - historyWeight) + history * historyWeight;
+    coopVecStoreHW(state.value, D.data, 33u);
+    for (int iteration = 0; iteration < iterations; ++iteration)
+    {
+        state = dispatchExpert(state, route);
+        coopVecStoreHW(state.value, D.data, uint(65 + iteration * 32));
+    }
+    state = reconstructionHead(state);
+    coopVecStoreHW(state.value, D.data, 1u);
+    D.data[129] = float(route);
+    D.data[130] = float(iterations);
+    D.data[131] = state.confidence;
+}

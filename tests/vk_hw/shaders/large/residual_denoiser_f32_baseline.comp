@@ -1,0 +1,269 @@
+#version 450 core
+
+
+// Eight learned residual denoising blocks with temporal history and confidence gating.
+// A: controls[4], current[32], history[32]. B: packed learned parameters.
+// D: guard, result[32], stage checkpoints, metadata, guard.
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(set = 0, binding = 0, std430) readonly buffer Inputs { float data[]; } A;
+layout(set = 0, binding = 1, std430) readonly buffer Parameters { float data[]; } B;
+layout(set = 0, binding = 2, std430) buffer Outputs { float data[]; } D;
+
+struct Features
+{
+    float value[32];
+    float confidence;
+};
+
+// Block 0: independent 32 x 32 weights and biases at parameter element 0.
+Features denoiseBlock0(Features previous)
+{
+    Features result;
+    float detail[32];
+    float correction[32];
+    for (int outChannel = 0; outChannel < 32; ++outChannel)
+    {
+        float sum = 0.0;
+        for (int inChannel = 0; inChannel < 32; ++inChannel)
+            sum += previous.value[inChannel] * B.data[0 + inChannel * 32 + outChannel];
+        detail[outChannel] = max(sum + B.data[1024 + outChannel], 0.0);
+    }
+    for (int outChannel = 0; outChannel < 32; ++outChannel)
+    {
+        float sum = 0.0;
+        for (int inChannel = 0; inChannel < 32; ++inChannel)
+            sum += detail[inChannel] * B.data[1056 + inChannel * 32 + outChannel];
+        correction[outChannel] = clamp(sum + B.data[2080 + outChannel], -1.0, 1.0);
+    }
+    float gain = previous.confidence > 0.25 ? 0.25 : 0.125;
+    for (int channel = 0; channel < 32; ++channel)
+        result.value[channel] = clamp(previous.value[channel] + correction[channel] * gain, -2.0, 2.0);
+    result.confidence = clamp(previous.confidence + correction[0] * 0.0625, 0.0, 1.0);
+    return result;
+}
+
+// Block 1: independent 32 x 32 weights and biases at parameter element 2112.
+Features denoiseBlock1(Features previous)
+{
+    Features result;
+    float detail[32];
+    float correction[32];
+    for (int outChannel = 0; outChannel < 32; ++outChannel)
+    {
+        float sum = 0.0;
+        for (int inChannel = 0; inChannel < 32; ++inChannel)
+            sum += previous.value[inChannel] * B.data[2112 + inChannel * 32 + outChannel];
+        detail[outChannel] = max(sum + B.data[3136 + outChannel], 0.0);
+    }
+    for (int outChannel = 0; outChannel < 32; ++outChannel)
+    {
+        float sum = 0.0;
+        for (int inChannel = 0; inChannel < 32; ++inChannel)
+            sum += detail[inChannel] * B.data[3168 + inChannel * 32 + outChannel];
+        correction[outChannel] = clamp(sum + B.data[4192 + outChannel], -1.0, 1.0);
+    }
+    float gain = previous.confidence > 0.375 ? 0.25 : 0.125;
+    for (int channel = 0; channel < 32; ++channel)
+        result.value[channel] = clamp(previous.value[channel] + correction[channel] * gain, -2.0, 2.0);
+    result.confidence = clamp(previous.confidence + correction[3] * 0.0625, 0.0, 1.0);
+    return result;
+}
+
+// Block 2: independent 32 x 32 weights and biases at parameter element 4224.
+Features denoiseBlock2(Features previous)
+{
+    Features result;
+    float detail[32];
+    float correction[32];
+    for (int outChannel = 0; outChannel < 32; ++outChannel)
+    {
+        float sum = 0.0;
+        for (int inChannel = 0; inChannel < 32; ++inChannel)
+            sum += previous.value[inChannel] * B.data[4224 + inChannel * 32 + outChannel];
+        detail[outChannel] = max(sum + B.data[5248 + outChannel], 0.0);
+    }
+    for (int outChannel = 0; outChannel < 32; ++outChannel)
+    {
+        float sum = 0.0;
+        for (int inChannel = 0; inChannel < 32; ++inChannel)
+            sum += detail[inChannel] * B.data[5280 + inChannel * 32 + outChannel];
+        correction[outChannel] = clamp(sum + B.data[6304 + outChannel], -1.0, 1.0);
+    }
+    float gain = previous.confidence > 0.5 ? 0.25 : 0.125;
+    for (int channel = 0; channel < 32; ++channel)
+        result.value[channel] = clamp(previous.value[channel] + correction[channel] * gain, -2.0, 2.0);
+    result.confidence = clamp(previous.confidence + correction[6] * 0.0625, 0.0, 1.0);
+    return result;
+}
+
+// Block 3: independent 32 x 32 weights and biases at parameter element 6336.
+Features denoiseBlock3(Features previous)
+{
+    Features result;
+    float detail[32];
+    float correction[32];
+    for (int outChannel = 0; outChannel < 32; ++outChannel)
+    {
+        float sum = 0.0;
+        for (int inChannel = 0; inChannel < 32; ++inChannel)
+            sum += previous.value[inChannel] * B.data[6336 + inChannel * 32 + outChannel];
+        detail[outChannel] = max(sum + B.data[7360 + outChannel], 0.0);
+    }
+    for (int outChannel = 0; outChannel < 32; ++outChannel)
+    {
+        float sum = 0.0;
+        for (int inChannel = 0; inChannel < 32; ++inChannel)
+            sum += detail[inChannel] * B.data[7392 + inChannel * 32 + outChannel];
+        correction[outChannel] = clamp(sum + B.data[8416 + outChannel], -1.0, 1.0);
+    }
+    float gain = previous.confidence > 0.25 ? 0.25 : 0.125;
+    for (int channel = 0; channel < 32; ++channel)
+        result.value[channel] = clamp(previous.value[channel] + correction[channel] * gain, -2.0, 2.0);
+    result.confidence = clamp(previous.confidence + correction[9] * 0.0625, 0.0, 1.0);
+    return result;
+}
+
+// Block 4: independent 32 x 32 weights and biases at parameter element 8448.
+Features denoiseBlock4(Features previous)
+{
+    Features result;
+    float detail[32];
+    float correction[32];
+    for (int outChannel = 0; outChannel < 32; ++outChannel)
+    {
+        float sum = 0.0;
+        for (int inChannel = 0; inChannel < 32; ++inChannel)
+            sum += previous.value[inChannel] * B.data[8448 + inChannel * 32 + outChannel];
+        detail[outChannel] = max(sum + B.data[9472 + outChannel], 0.0);
+    }
+    for (int outChannel = 0; outChannel < 32; ++outChannel)
+    {
+        float sum = 0.0;
+        for (int inChannel = 0; inChannel < 32; ++inChannel)
+            sum += detail[inChannel] * B.data[9504 + inChannel * 32 + outChannel];
+        correction[outChannel] = clamp(sum + B.data[10528 + outChannel], -1.0, 1.0);
+    }
+    float gain = previous.confidence > 0.375 ? 0.25 : 0.125;
+    for (int channel = 0; channel < 32; ++channel)
+        result.value[channel] = clamp(previous.value[channel] + correction[channel] * gain, -2.0, 2.0);
+    result.confidence = clamp(previous.confidence + correction[12] * 0.0625, 0.0, 1.0);
+    return result;
+}
+
+// Block 5: independent 32 x 32 weights and biases at parameter element 10560.
+Features denoiseBlock5(Features previous)
+{
+    Features result;
+    float detail[32];
+    float correction[32];
+    for (int outChannel = 0; outChannel < 32; ++outChannel)
+    {
+        float sum = 0.0;
+        for (int inChannel = 0; inChannel < 32; ++inChannel)
+            sum += previous.value[inChannel] * B.data[10560 + inChannel * 32 + outChannel];
+        detail[outChannel] = max(sum + B.data[11584 + outChannel], 0.0);
+    }
+    for (int outChannel = 0; outChannel < 32; ++outChannel)
+    {
+        float sum = 0.0;
+        for (int inChannel = 0; inChannel < 32; ++inChannel)
+            sum += detail[inChannel] * B.data[11616 + inChannel * 32 + outChannel];
+        correction[outChannel] = clamp(sum + B.data[12640 + outChannel], -1.0, 1.0);
+    }
+    float gain = previous.confidence > 0.5 ? 0.25 : 0.125;
+    for (int channel = 0; channel < 32; ++channel)
+        result.value[channel] = clamp(previous.value[channel] + correction[channel] * gain, -2.0, 2.0);
+    result.confidence = clamp(previous.confidence + correction[15] * 0.0625, 0.0, 1.0);
+    return result;
+}
+
+// Block 6: independent 32 x 32 weights and biases at parameter element 12672.
+Features denoiseBlock6(Features previous)
+{
+    Features result;
+    float detail[32];
+    float correction[32];
+    for (int outChannel = 0; outChannel < 32; ++outChannel)
+    {
+        float sum = 0.0;
+        for (int inChannel = 0; inChannel < 32; ++inChannel)
+            sum += previous.value[inChannel] * B.data[12672 + inChannel * 32 + outChannel];
+        detail[outChannel] = max(sum + B.data[13696 + outChannel], 0.0);
+    }
+    for (int outChannel = 0; outChannel < 32; ++outChannel)
+    {
+        float sum = 0.0;
+        for (int inChannel = 0; inChannel < 32; ++inChannel)
+            sum += detail[inChannel] * B.data[13728 + inChannel * 32 + outChannel];
+        correction[outChannel] = clamp(sum + B.data[14752 + outChannel], -1.0, 1.0);
+    }
+    float gain = previous.confidence > 0.25 ? 0.25 : 0.125;
+    for (int channel = 0; channel < 32; ++channel)
+        result.value[channel] = clamp(previous.value[channel] + correction[channel] * gain, -2.0, 2.0);
+    result.confidence = clamp(previous.confidence + correction[18] * 0.0625, 0.0, 1.0);
+    return result;
+}
+
+// Block 7: independent 32 x 32 weights and biases at parameter element 14784.
+Features denoiseBlock7(Features previous)
+{
+    Features result;
+    float detail[32];
+    float correction[32];
+    for (int outChannel = 0; outChannel < 32; ++outChannel)
+    {
+        float sum = 0.0;
+        for (int inChannel = 0; inChannel < 32; ++inChannel)
+            sum += previous.value[inChannel] * B.data[14784 + inChannel * 32 + outChannel];
+        detail[outChannel] = max(sum + B.data[15808 + outChannel], 0.0);
+    }
+    for (int outChannel = 0; outChannel < 32; ++outChannel)
+    {
+        float sum = 0.0;
+        for (int inChannel = 0; inChannel < 32; ++inChannel)
+            sum += detail[inChannel] * B.data[15840 + inChannel * 32 + outChannel];
+        correction[outChannel] = clamp(sum + B.data[16864 + outChannel], -1.0, 1.0);
+    }
+    float gain = previous.confidence > 0.375 ? 0.25 : 0.125;
+    for (int channel = 0; channel < 32; ++channel)
+        result.value[channel] = clamp(previous.value[channel] + correction[channel] * gain, -2.0, 2.0);
+    result.confidence = clamp(previous.confidence + correction[21] * 0.0625, 0.0, 1.0);
+    return result;
+}
+
+void main()
+{
+    Features state;
+    state.confidence = A.data[1];
+    float historyWeight = clamp(A.data[0], 0.0, 1.0);
+    for (int channel = 0; channel < 32; ++channel)
+        state.value[channel] = A.data[4 + channel] * (1.0 - historyWeight)
+                             + A.data[36 + channel] * historyWeight;
+    state = denoiseBlock0(state);
+    for (int channel = 0; channel < 32; ++channel)
+        D.data[33 + channel] = state.value[channel];
+    state = denoiseBlock1(state);
+    for (int channel = 0; channel < 32; ++channel)
+        D.data[65 + channel] = state.value[channel];
+    state = denoiseBlock2(state);
+    for (int channel = 0; channel < 32; ++channel)
+        D.data[97 + channel] = state.value[channel];
+    state = denoiseBlock3(state);
+    for (int channel = 0; channel < 32; ++channel)
+        D.data[129 + channel] = state.value[channel];
+    state = denoiseBlock4(state);
+    for (int channel = 0; channel < 32; ++channel)
+        D.data[161 + channel] = state.value[channel];
+    state = denoiseBlock5(state);
+    for (int channel = 0; channel < 32; ++channel)
+        D.data[193 + channel] = state.value[channel];
+    state = denoiseBlock6(state);
+    for (int channel = 0; channel < 32; ++channel)
+        D.data[225 + channel] = state.value[channel];
+    state = denoiseBlock7(state);
+    for (int channel = 0; channel < 32; ++channel)
+        D.data[257 + channel] = state.value[channel];
+    for (int channel = 0; channel < 32; ++channel)
+        D.data[1 + channel] = state.value[channel] * 0.75 + A.data[4 + channel] * 0.25;
+    D.data[289] = state.confidence;
+}

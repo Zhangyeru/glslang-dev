@@ -27,6 +27,9 @@ if(Python3_Interpreter_FOUND)
     set_tests_properties(vk_hw_build_shaders_script_tests PROPERTIES
         LABELS "hw"
     )
+    add_test(NAME vk_hw_large_reference_tests
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/test_large_cases.py)
+    set_tests_properties(vk_hw_large_reference_tests PROPERTIES LABELS "hw")
     add_test(NAME vk_hw_case_parsing_tests
         COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_CURRENT_SOURCE_DIR}/scripts/test_case_parsing.py
@@ -138,6 +141,24 @@ if(Python3_Interpreter_FOUND AND TARGET glslang-standalone AND TARGET spirv-opt
                 --out-dir ${CMAKE_BINARY_DIR}/tests/vk_hw/semantics)
         set_tests_properties(vk_hw_semantics PROPERTIES LABELS "hw;vulkan" TIMEOUT 1800)
     endif()
+    set(_large_args
+        --glslang $<TARGET_FILE:glslang-standalone>
+        --spirv-opt $<TARGET_FILE:spirv-opt>
+        --spirv-val $<TARGET_FILE:spirv-val>
+        --spirv-dis $<TARGET_FILE:spirv-dis>
+        --runner $<TARGET_FILE:vk_hw_language_tests>
+        --source-dir ${CMAKE_CURRENT_SOURCE_DIR}/shaders/large
+        --out-dir ${CMAKE_BINARY_DIR}/tests/vk_hw/large
+    )
+    add_test(NAME vk_hw_large
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_large_tests.py ${_large_args})
+    set_tests_properties(vk_hw_large PROPERTIES LABELS "hw;vulkan" TIMEOUT 1800
+        FIXTURES_SETUP vk_hw_large_spv)
+    add_test(NAME vk_hw_large_perf
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_large_tests.py
+            ${_large_args} --perf --max-ratio 5.0)
+    set_tests_properties(vk_hw_large_perf PROPERTIES LABELS "hw;vulkan" TIMEOUT 1800
+        FIXTURES_REQUIRED vk_hw_large_spv RUN_SERIAL TRUE)
     add_test(NAME vk_hw_boundary
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run_boundary_tests.py ${_boundary_args})
     set_tests_properties(vk_hw_boundary PROPERTIES LABELS "hw;vulkan" TIMEOUT 1800

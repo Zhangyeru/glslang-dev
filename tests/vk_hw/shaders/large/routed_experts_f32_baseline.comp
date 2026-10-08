@@ -1,0 +1,151 @@
+#version 450 core
+
+
+// Routed restoration experts with runtime selection, iterative refinement, and a learned head.
+// A: controls[4], current[32], history[32]. B: packed learned parameters.
+// D: guard, result[32], initial[32], two refinement checkpoints[32], route and iteration metadata, guard.
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(set = 0, binding = 0, std430) readonly buffer Inputs { float data[]; } A;
+layout(set = 0, binding = 1, std430) readonly buffer Parameters { float data[]; } B;
+layout(set = 0, binding = 2, std430) buffer Outputs { float data[]; } D;
+
+struct Features
+{
+    float value[32];
+    float confidence;
+};
+
+// Expert 0: a separate 32 -> 48 -> 32 learned model.
+Features restoreExpert0(Features previous)
+{
+    Features result;
+    float hidden[48];
+    float residual[32];
+    for (int column = 0; column < 48; ++column)
+    {
+        float sum = 0.0;
+        for (int row = 0; row < 32; ++row)
+            sum += previous.value[row] * B.data[0 + row * 48 + column];
+        hidden[column] = max(sum + B.data[10240 + column], 0.0);
+    }
+    for (int column = 0; column < 32; ++column)
+    {
+        float sum = 0.0;
+        for (int row = 0; row < 48; ++row)
+            sum += hidden[row] * B.data[4608 + row * 32 + column];
+        residual[column] = clamp(sum + B.data[10384 + column], -0.5, 0.5);
+    }
+    float strength = previous.confidence > 0.375 ? 0.5 : 0.25;
+    for (int channel = 0; channel < 32; ++channel)
+        result.value[channel] = clamp(previous.value[channel] + residual[channel] * strength, -2.0, 2.0);
+    result.confidence = clamp(previous.confidence + residual[0] * 0.125, 0.0, 1.0);
+    return result;
+}
+
+// Expert 1: a separate 32 -> 48 -> 32 learned model.
+Features restoreExpert1(Features previous)
+{
+    Features result;
+    float hidden[48];
+    float residual[32];
+    for (int column = 0; column < 48; ++column)
+    {
+        float sum = 0.0;
+        for (int row = 0; row < 32; ++row)
+            sum += previous.value[row] * B.data[1536 + row * 48 + column];
+        hidden[column] = max(sum + B.data[10288 + column], 0.0);
+    }
+    for (int column = 0; column < 32; ++column)
+    {
+        float sum = 0.0;
+        for (int row = 0; row < 48; ++row)
+            sum += hidden[row] * B.data[6144 + row * 32 + column];
+        residual[column] = clamp(sum + B.data[10416 + column], -0.5, 0.5);
+    }
+    float strength = previous.confidence > 0.5 ? 0.5 : 0.25;
+    for (int channel = 0; channel < 32; ++channel)
+        result.value[channel] = clamp(previous.value[channel] + residual[channel] * strength, -2.0, 2.0);
+    result.confidence = clamp(previous.confidence + residual[7] * 0.125, 0.0, 1.0);
+    return result;
+}
+
+// Expert 2: a separate 32 -> 48 -> 32 learned model.
+Features restoreExpert2(Features previous)
+{
+    Features result;
+    float hidden[48];
+    float residual[32];
+    for (int column = 0; column < 48; ++column)
+    {
+        float sum = 0.0;
+        for (int row = 0; row < 32; ++row)
+            sum += previous.value[row] * B.data[3072 + row * 48 + column];
+        hidden[column] = max(sum + B.data[10336 + column], 0.0);
+    }
+    for (int column = 0; column < 32; ++column)
+    {
+        float sum = 0.0;
+        for (int row = 0; row < 48; ++row)
+            sum += hidden[row] * B.data[7680 + row * 32 + column];
+        residual[column] = clamp(sum + B.data[10448 + column], -0.5, 0.5);
+    }
+    float strength = previous.confidence > 0.625 ? 0.5 : 0.25;
+    for (int channel = 0; channel < 32; ++channel)
+        result.value[channel] = clamp(previous.value[channel] + residual[channel] * strength, -2.0, 2.0);
+    result.confidence = clamp(previous.confidence + residual[14] * 0.125, 0.0, 1.0);
+    return result;
+}
+
+// All experts share the final learned readout, but the route changes its input.
+Features reconstructionHead(Features previous)
+{
+    Features result;
+    for (int column = 0; column < 32; ++column)
+    {
+        float sum = 0.0;
+        for (int row = 0; row < 32; ++row)
+            sum += previous.value[row] * B.data[9216 + row * 32 + column];
+        result.value[column] = (sum + B.data[10480 + column]) + previous.value[column] * 0.5;
+    }
+    result.confidence = previous.confidence;
+    return result;
+}
+
+Features dispatchExpert(Features previous, int route)
+{
+    Features result;
+    if (route == 0)
+        result = restoreExpert0(previous);
+    else if (route == 1)
+        result = restoreExpert1(previous);
+    else
+        result = restoreExpert2(previous);
+    return result;
+}
+
+void main()
+{
+    int route = clamp(int(A.data[0]), 0, 2);
+    int iterations = clamp(int(A.data[1]), 1, 2);
+    float historyWeight = clamp(A.data[2], 0.0, 1.0);
+    Features state;
+    state.confidence = A.data[3];
+    for (int channel = 0; channel < 32; ++channel)
+    {
+        state.value[channel] = A.data[4 + channel] * (1.0 - historyWeight)
+                             + A.data[36 + channel] * historyWeight;
+        D.data[33 + channel] = state.value[channel];
+    }
+    for (int iteration = 0; iteration < iterations; ++iteration)
+    {
+        state = dispatchExpert(state, route);
+        for (int channel = 0; channel < 32; ++channel)
+            D.data[65 + iteration * 32 + channel] = state.value[channel];
+    }
+    state = reconstructionHead(state);
+    for (int channel = 0; channel < 32; ++channel)
+        D.data[1 + channel] = state.value[channel];
+    D.data[129] = float(route);
+    D.data[130] = float(iterations);
+    D.data[131] = state.confidence;
+}

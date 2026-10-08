@@ -1,0 +1,240 @@
+#version 460 core
+// Copyright (C) 2026 The Khronos Group Inc.
+// SPDX-License-Identifier: BSD-3-Clause
+#extension GL_HW_neural_shader : require
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
+
+// Eight dense stages with packed parameters and observable intermediate activations.
+// Binding 0: input features followed by runtime activation controls.
+// Binding 1: row-major weights followed by bias, with each matrix row-aligned.
+// Row padding for the 48/64-column transitions is part of the flat layout.
+// The complete parameter buffer has 19008 elements (including tail padding).
+// Binding 2: a leading guard, all eight stage checkpoints, a trailing guard.
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(set = 0, binding = 0, std430) readonly buffer InputFeatures { float data[]; } A;
+layout(set = 0, binding = 1, std430) readonly buffer PackedParameters { float16_t data[]; } B;
+layout(set = 0, binding = 2, std430) buffer Checkpoints { float data[]; } D;
+
+struct Features8
+{
+    coopvecHW<float, 8> value;
+};
+
+struct Features16
+{
+    coopvecHW<float, 16> value;
+};
+
+struct Features32
+{
+    coopvecHW<float, 32> value;
+};
+
+struct Features48
+{
+    coopvecHW<float, 48> value;
+};
+
+struct Features64
+{
+    coopvecHW<float, 64> value;
+};
+
+Features48 prepareFeatures()
+{
+    Features48 result;
+    coopVecLoadHW(result.value, A.data, 0u);
+    // Exposure normalization of the material feature encoding.
+    result.value = result.value * coopvecHW<float, 48>(A.data[48]);
+    result.value = result.value + coopvecHW<float, 48>(A.data[49]);
+    result.value = clamp(result.value, coopvecHW<float, 48>(-2.0), coopvecHW<float, 48>(2.0));
+    return result;
+}
+
+// Stage 0: feature expansion; 3072 multiply-accumulates.
+Features64 project0(Features48 inputFeatures)
+{
+    Features64 result;
+    coopmatHW<float16_t, 48, 64> weights;
+    coopvecHW<float16_t, 64> packedBias;
+    coopvecHW<float, 64> bias;
+    coopMatLoadHW(weights, B.data, ivec2(297, 64), ivec2(0, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(packedBias, B.data, 3072u);
+    bias = coopvecHW<float, 64>(packedBias);
+    coopVecMatMulAddHW(result.value, inputFeatures.value, weights, bias);
+    if (A.data[50] > 0.0) {
+        result.value = max(result.value, coopvecHW<float, 64>(0.0));
+    } else {
+        result.value = max(result.value, result.value * coopvecHW<float, 64>(0.125));
+    }
+    result.value = clamp(result.value, coopvecHW<float, 64>(-2.0), coopvecHW<float, 64>(2.0));
+    coopVecStoreHW(result.value, D.data, 1u);
+    return result;
+}
+
+// Stage 1: residual refinement; 4096 multiply-accumulates.
+Features64 project1(Features64 inputFeatures)
+{
+    Features64 result;
+    coopmatHW<float16_t, 64, 64> weights;
+    coopvecHW<float16_t, 64> packedBias;
+    coopvecHW<float, 64> bias;
+    coopMatLoadHW(weights, B.data, ivec2(297, 64), ivec2(49, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(packedBias, B.data, 7232u);
+    bias = coopvecHW<float, 64>(packedBias);
+    coopVecMatMulAddHW(result.value, inputFeatures.value, weights, bias);
+    result.value = result.value + inputFeatures.value * coopvecHW<float, 64>(0.25);
+    if (A.data[50] > 0.0) {
+        result.value = max(result.value, coopvecHW<float, 64>(0.0));
+    } else {
+        result.value = max(result.value, result.value * coopvecHW<float, 64>(0.125));
+    }
+    result.value = clamp(result.value, coopvecHW<float, 64>(-2.0), coopvecHW<float, 64>(2.0));
+    coopVecStoreHW(result.value, D.data, 65u);
+    return result;
+}
+
+// Stage 2: bottleneck projection; 3072 multiply-accumulates.
+Features48 project2(Features64 inputFeatures)
+{
+    Features48 result;
+    coopmatHW<float16_t, 64, 48> weights;
+    coopvecHW<float16_t, 48> packedBias;
+    coopvecHW<float, 48> bias;
+    coopMatLoadHW(weights, B.data, ivec2(396, 48), ivec2(152, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(packedBias, B.data, 10368u);
+    bias = coopvecHW<float, 48>(packedBias);
+    coopVecMatMulAddHW(result.value, inputFeatures.value, weights, bias);
+    if (A.data[50] > 0.0) {
+        result.value = max(result.value, coopvecHW<float, 48>(0.0));
+    } else {
+        result.value = max(result.value, result.value * coopvecHW<float, 48>(0.125));
+    }
+    result.value = clamp(result.value, coopvecHW<float, 48>(-2.0), coopvecHW<float, 48>(2.0));
+    coopVecStoreHW(result.value, D.data, 129u);
+    return result;
+}
+
+// Stage 3: context expansion; 3072 multiply-accumulates.
+Features64 project3(Features48 inputFeatures)
+{
+    Features64 result;
+    coopmatHW<float16_t, 48, 64> weights;
+    coopvecHW<float16_t, 64> packedBias;
+    coopvecHW<float, 64> bias;
+    coopMatLoadHW(weights, B.data, ivec2(297, 64), ivec2(163, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(packedBias, B.data, 13504u);
+    bias = coopvecHW<float, 64>(packedBias);
+    coopVecMatMulAddHW(result.value, inputFeatures.value, weights, bias);
+    if (A.data[50] > 0.0) {
+        result.value = max(result.value, coopvecHW<float, 64>(0.0));
+    } else {
+        result.value = max(result.value, result.value * coopvecHW<float, 64>(0.125));
+    }
+    result.value = clamp(result.value, coopvecHW<float, 64>(-2.0), coopvecHW<float, 64>(2.0));
+    coopVecStoreHW(result.value, D.data, 177u);
+    return result;
+}
+
+// Stage 4: context compression; 3072 multiply-accumulates.
+Features48 project4(Features64 inputFeatures)
+{
+    Features48 result;
+    coopmatHW<float16_t, 64, 48> weights;
+    coopvecHW<float16_t, 48> packedBias;
+    coopvecHW<float, 48> bias;
+    coopMatLoadHW(weights, B.data, ivec2(396, 48), ivec2(283, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(packedBias, B.data, 16656u);
+    bias = coopvecHW<float, 48>(packedBias);
+    coopVecMatMulAddHW(result.value, inputFeatures.value, weights, bias);
+    if (A.data[50] > 0.0) {
+        result.value = max(result.value, coopvecHW<float, 48>(0.0));
+    } else {
+        result.value = max(result.value, result.value * coopvecHW<float, 48>(0.125));
+    }
+    result.value = clamp(result.value, coopvecHW<float, 48>(-2.0), coopvecHW<float, 48>(2.0));
+    coopVecStoreHW(result.value, D.data, 241u);
+    return result;
+}
+
+// Stage 5: latent projection; 1536 multiply-accumulates.
+Features32 project5(Features48 inputFeatures)
+{
+    Features32 result;
+    coopmatHW<float16_t, 48, 32> weights;
+    coopvecHW<float16_t, 32> packedBias;
+    coopvecHW<float, 32> bias;
+    coopMatLoadHW(weights, B.data, ivec2(594, 32), ivec2(522, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(packedBias, B.data, 18240u);
+    bias = coopvecHW<float, 32>(packedBias);
+    coopVecMatMulAddHW(result.value, inputFeatures.value, weights, bias);
+    if (A.data[50] > 0.0) {
+        result.value = max(result.value, coopvecHW<float, 32>(0.0));
+    } else {
+        result.value = max(result.value, result.value * coopvecHW<float, 32>(0.125));
+    }
+    result.value = clamp(result.value, coopvecHW<float, 32>(-2.0), coopvecHW<float, 32>(2.0));
+    coopVecStoreHW(result.value, D.data, 289u);
+    return result;
+}
+
+// Stage 6: head bottleneck; 512 multiply-accumulates.
+Features16 project6(Features32 inputFeatures)
+{
+    Features16 result;
+    coopmatHW<float16_t, 32, 16> weights;
+    coopvecHW<float16_t, 16> packedBias;
+    coopvecHW<float, 16> bias;
+    coopMatLoadHW(weights, B.data, ivec2(1188, 16), ivec2(1142, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(packedBias, B.data, 18784u);
+    bias = coopvecHW<float, 16>(packedBias);
+    coopVecMatMulAddHW(result.value, inputFeatures.value, weights, bias);
+    if (A.data[50] > 0.0) {
+        result.value = max(result.value, coopvecHW<float, 16>(0.0));
+    } else {
+        result.value = max(result.value, result.value * coopvecHW<float, 16>(0.125));
+    }
+    result.value = clamp(result.value, coopvecHW<float, 16>(-2.0), coopvecHW<float, 16>(2.0));
+    coopVecStoreHW(result.value, D.data, 321u);
+    return result;
+}
+
+// Stage 7: output head; 128 multiply-accumulates.
+Features8 project7(Features16 inputFeatures)
+{
+    Features8 result;
+    coopmatHW<float16_t, 16, 8> weights;
+    coopvecHW<float16_t, 8> packedBias;
+    coopvecHW<float, 8> bias;
+    coopMatLoadHW(weights, B.data, ivec2(2376, 8), ivec2(2350, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(packedBias, B.data, 18928u);
+    bias = coopvecHW<float, 8>(packedBias);
+    coopVecMatMulAddHW(result.value, inputFeatures.value, weights, bias);
+    // Map decoded material coefficients to their physical unit interval.
+    result.value = result.value * coopvecHW<float, 8>(0.5) + coopvecHW<float, 8>(0.5);
+    result.value = clamp(result.value, coopvecHW<float, 8>(0.0), coopvecHW<float, 8>(1.0));
+    coopVecStoreHW(result.value, D.data, 337u);
+    return result;
+}
+
+void main()
+{
+    Features48 features = prepareFeatures();
+    Features64 stage0 = project0(features);
+    Features64 stage1 = project1(stage0);
+    Features48 stage2 = project2(stage1);
+    Features64 stage3 = project3(stage2);
+    Features48 stage4 = project4(stage3);
+    Features32 stage5 = project5(stage4);
+    Features16 stage6 = project6(stage5);
+    Features8 stage7 = project7(stage6);
+}

@@ -1,0 +1,295 @@
+#version 450 core
+#extension GL_HW_neural_shader : require
+
+// Eight learned residual denoising blocks with temporal history and confidence gating.
+// A: controls[4], current[32], history[32]. B: packed learned parameters.
+// D: guard, result[32], stage checkpoints, metadata, guard.
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(set = 0, binding = 0, std430) readonly buffer Inputs { float data[]; } A;
+layout(set = 0, binding = 1, std430) readonly buffer Parameters { float data[]; } B;
+layout(set = 0, binding = 2, std430) buffer Outputs { float data[]; } D;
+
+struct Features
+{
+    coopvecHW<float, 32> value;
+    float confidence;
+};
+
+// Block 0: independent 32 x 32 weights and biases at parameter element 0.
+Features denoiseBlock0(Features previous)
+{
+    Features result;
+    coopmatHW<float, 32, 32> analysisWeights;
+    coopmatHW<float, 32, 32> synthesisWeights;
+    coopvecHW<float, 32> analysisBias;
+    coopvecHW<float, 32> synthesisBias;
+    coopvecHW<float, 32> detail;
+    coopvecHW<float, 32> correction;
+    coopMatLoadHW(analysisWeights, B.data, ivec2(528, 32), ivec2(0, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(analysisBias, B.data, 1024u);
+    coopVecMatMulAddHW(detail, previous.value, analysisWeights, analysisBias);
+    detail = max(detail, coopvecHW<float, 32>(0.0));
+    coopMatLoadHW(synthesisWeights, B.data, ivec2(528, 32), ivec2(33, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(synthesisBias, B.data, 2080u);
+    coopVecMatMulAddHW(correction, detail, synthesisWeights, synthesisBias);
+    correction = clamp(correction, coopvecHW<float, 32>(-1.0), coopvecHW<float, 32>(1.0));
+    float gain;
+    if (previous.confidence > 0.25)
+        gain = 0.25;
+    else
+        gain = 0.125;
+    result.value = clamp(previous.value + correction * gain,
+                         coopvecHW<float, 32>(-2.0), coopvecHW<float, 32>(2.0));
+    result.confidence = clamp(previous.confidence + correction[0] * 0.0625, 0.0, 1.0);
+    return result;
+}
+
+// Block 1: independent 32 x 32 weights and biases at parameter element 2112.
+Features denoiseBlock1(Features previous)
+{
+    Features result;
+    coopmatHW<float, 32, 32> analysisWeights;
+    coopmatHW<float, 32, 32> synthesisWeights;
+    coopvecHW<float, 32> analysisBias;
+    coopvecHW<float, 32> synthesisBias;
+    coopvecHW<float, 32> detail;
+    coopvecHW<float, 32> correction;
+    coopMatLoadHW(analysisWeights, B.data, ivec2(528, 32), ivec2(66, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(analysisBias, B.data, 3136u);
+    coopVecMatMulAddHW(detail, previous.value, analysisWeights, analysisBias);
+    detail = max(detail, coopvecHW<float, 32>(0.0));
+    coopMatLoadHW(synthesisWeights, B.data, ivec2(528, 32), ivec2(99, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(synthesisBias, B.data, 4192u);
+    coopVecMatMulAddHW(correction, detail, synthesisWeights, synthesisBias);
+    correction = clamp(correction, coopvecHW<float, 32>(-1.0), coopvecHW<float, 32>(1.0));
+    float gain;
+    if (previous.confidence > 0.375)
+        gain = 0.25;
+    else
+        gain = 0.125;
+    result.value = clamp(previous.value + correction * gain,
+                         coopvecHW<float, 32>(-2.0), coopvecHW<float, 32>(2.0));
+    result.confidence = clamp(previous.confidence + correction[3] * 0.0625, 0.0, 1.0);
+    return result;
+}
+
+// Block 2: independent 32 x 32 weights and biases at parameter element 4224.
+Features denoiseBlock2(Features previous)
+{
+    Features result;
+    coopmatHW<float, 32, 32> analysisWeights;
+    coopmatHW<float, 32, 32> synthesisWeights;
+    coopvecHW<float, 32> analysisBias;
+    coopvecHW<float, 32> synthesisBias;
+    coopvecHW<float, 32> detail;
+    coopvecHW<float, 32> correction;
+    coopMatLoadHW(analysisWeights, B.data, ivec2(528, 32), ivec2(132, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(analysisBias, B.data, 5248u);
+    coopVecMatMulAddHW(detail, previous.value, analysisWeights, analysisBias);
+    detail = max(detail, coopvecHW<float, 32>(0.0));
+    coopMatLoadHW(synthesisWeights, B.data, ivec2(528, 32), ivec2(165, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(synthesisBias, B.data, 6304u);
+    coopVecMatMulAddHW(correction, detail, synthesisWeights, synthesisBias);
+    correction = clamp(correction, coopvecHW<float, 32>(-1.0), coopvecHW<float, 32>(1.0));
+    float gain;
+    if (previous.confidence > 0.5)
+        gain = 0.25;
+    else
+        gain = 0.125;
+    result.value = clamp(previous.value + correction * gain,
+                         coopvecHW<float, 32>(-2.0), coopvecHW<float, 32>(2.0));
+    result.confidence = clamp(previous.confidence + correction[6] * 0.0625, 0.0, 1.0);
+    return result;
+}
+
+// Block 3: independent 32 x 32 weights and biases at parameter element 6336.
+Features denoiseBlock3(Features previous)
+{
+    Features result;
+    coopmatHW<float, 32, 32> analysisWeights;
+    coopmatHW<float, 32, 32> synthesisWeights;
+    coopvecHW<float, 32> analysisBias;
+    coopvecHW<float, 32> synthesisBias;
+    coopvecHW<float, 32> detail;
+    coopvecHW<float, 32> correction;
+    coopMatLoadHW(analysisWeights, B.data, ivec2(528, 32), ivec2(198, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(analysisBias, B.data, 7360u);
+    coopVecMatMulAddHW(detail, previous.value, analysisWeights, analysisBias);
+    detail = max(detail, coopvecHW<float, 32>(0.0));
+    coopMatLoadHW(synthesisWeights, B.data, ivec2(528, 32), ivec2(231, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(synthesisBias, B.data, 8416u);
+    coopVecMatMulAddHW(correction, detail, synthesisWeights, synthesisBias);
+    correction = clamp(correction, coopvecHW<float, 32>(-1.0), coopvecHW<float, 32>(1.0));
+    float gain;
+    if (previous.confidence > 0.25)
+        gain = 0.25;
+    else
+        gain = 0.125;
+    result.value = clamp(previous.value + correction * gain,
+                         coopvecHW<float, 32>(-2.0), coopvecHW<float, 32>(2.0));
+    result.confidence = clamp(previous.confidence + correction[9] * 0.0625, 0.0, 1.0);
+    return result;
+}
+
+// Block 4: independent 32 x 32 weights and biases at parameter element 8448.
+Features denoiseBlock4(Features previous)
+{
+    Features result;
+    coopmatHW<float, 32, 32> analysisWeights;
+    coopmatHW<float, 32, 32> synthesisWeights;
+    coopvecHW<float, 32> analysisBias;
+    coopvecHW<float, 32> synthesisBias;
+    coopvecHW<float, 32> detail;
+    coopvecHW<float, 32> correction;
+    coopMatLoadHW(analysisWeights, B.data, ivec2(528, 32), ivec2(264, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(analysisBias, B.data, 9472u);
+    coopVecMatMulAddHW(detail, previous.value, analysisWeights, analysisBias);
+    detail = max(detail, coopvecHW<float, 32>(0.0));
+    coopMatLoadHW(synthesisWeights, B.data, ivec2(528, 32), ivec2(297, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(synthesisBias, B.data, 10528u);
+    coopVecMatMulAddHW(correction, detail, synthesisWeights, synthesisBias);
+    correction = clamp(correction, coopvecHW<float, 32>(-1.0), coopvecHW<float, 32>(1.0));
+    float gain;
+    if (previous.confidence > 0.375)
+        gain = 0.25;
+    else
+        gain = 0.125;
+    result.value = clamp(previous.value + correction * gain,
+                         coopvecHW<float, 32>(-2.0), coopvecHW<float, 32>(2.0));
+    result.confidence = clamp(previous.confidence + correction[12] * 0.0625, 0.0, 1.0);
+    return result;
+}
+
+// Block 5: independent 32 x 32 weights and biases at parameter element 10560.
+Features denoiseBlock5(Features previous)
+{
+    Features result;
+    coopmatHW<float, 32, 32> analysisWeights;
+    coopmatHW<float, 32, 32> synthesisWeights;
+    coopvecHW<float, 32> analysisBias;
+    coopvecHW<float, 32> synthesisBias;
+    coopvecHW<float, 32> detail;
+    coopvecHW<float, 32> correction;
+    coopMatLoadHW(analysisWeights, B.data, ivec2(528, 32), ivec2(330, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(analysisBias, B.data, 11584u);
+    coopVecMatMulAddHW(detail, previous.value, analysisWeights, analysisBias);
+    detail = max(detail, coopvecHW<float, 32>(0.0));
+    coopMatLoadHW(synthesisWeights, B.data, ivec2(528, 32), ivec2(363, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(synthesisBias, B.data, 12640u);
+    coopVecMatMulAddHW(correction, detail, synthesisWeights, synthesisBias);
+    correction = clamp(correction, coopvecHW<float, 32>(-1.0), coopvecHW<float, 32>(1.0));
+    float gain;
+    if (previous.confidence > 0.5)
+        gain = 0.25;
+    else
+        gain = 0.125;
+    result.value = clamp(previous.value + correction * gain,
+                         coopvecHW<float, 32>(-2.0), coopvecHW<float, 32>(2.0));
+    result.confidence = clamp(previous.confidence + correction[15] * 0.0625, 0.0, 1.0);
+    return result;
+}
+
+// Block 6: independent 32 x 32 weights and biases at parameter element 12672.
+Features denoiseBlock6(Features previous)
+{
+    Features result;
+    coopmatHW<float, 32, 32> analysisWeights;
+    coopmatHW<float, 32, 32> synthesisWeights;
+    coopvecHW<float, 32> analysisBias;
+    coopvecHW<float, 32> synthesisBias;
+    coopvecHW<float, 32> detail;
+    coopvecHW<float, 32> correction;
+    coopMatLoadHW(analysisWeights, B.data, ivec2(528, 32), ivec2(396, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(analysisBias, B.data, 13696u);
+    coopVecMatMulAddHW(detail, previous.value, analysisWeights, analysisBias);
+    detail = max(detail, coopvecHW<float, 32>(0.0));
+    coopMatLoadHW(synthesisWeights, B.data, ivec2(528, 32), ivec2(429, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(synthesisBias, B.data, 14752u);
+    coopVecMatMulAddHW(correction, detail, synthesisWeights, synthesisBias);
+    correction = clamp(correction, coopvecHW<float, 32>(-1.0), coopvecHW<float, 32>(1.0));
+    float gain;
+    if (previous.confidence > 0.25)
+        gain = 0.25;
+    else
+        gain = 0.125;
+    result.value = clamp(previous.value + correction * gain,
+                         coopvecHW<float, 32>(-2.0), coopvecHW<float, 32>(2.0));
+    result.confidence = clamp(previous.confidence + correction[18] * 0.0625, 0.0, 1.0);
+    return result;
+}
+
+// Block 7: independent 32 x 32 weights and biases at parameter element 14784.
+Features denoiseBlock7(Features previous)
+{
+    Features result;
+    coopmatHW<float, 32, 32> analysisWeights;
+    coopmatHW<float, 32, 32> synthesisWeights;
+    coopvecHW<float, 32> analysisBias;
+    coopvecHW<float, 32> synthesisBias;
+    coopvecHW<float, 32> detail;
+    coopvecHW<float, 32> correction;
+    coopMatLoadHW(analysisWeights, B.data, ivec2(528, 32), ivec2(462, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(analysisBias, B.data, 15808u);
+    coopVecMatMulAddHW(detail, previous.value, analysisWeights, analysisBias);
+    detail = max(detail, coopvecHW<float, 32>(0.0));
+    coopMatLoadHW(synthesisWeights, B.data, ivec2(528, 32), ivec2(495, 0),
+                  gl_CooperativeMatrixLayoutRowMajorHW);
+    coopVecLoadHW(synthesisBias, B.data, 16864u);
+    coopVecMatMulAddHW(correction, detail, synthesisWeights, synthesisBias);
+    correction = clamp(correction, coopvecHW<float, 32>(-1.0), coopvecHW<float, 32>(1.0));
+    float gain;
+    if (previous.confidence > 0.375)
+        gain = 0.25;
+    else
+        gain = 0.125;
+    result.value = clamp(previous.value + correction * gain,
+                         coopvecHW<float, 32>(-2.0), coopvecHW<float, 32>(2.0));
+    result.confidence = clamp(previous.confidence + correction[21] * 0.0625, 0.0, 1.0);
+    return result;
+}
+
+void main()
+{
+    Features state;
+    state.confidence = A.data[1];
+    float historyWeight = clamp(A.data[0], 0.0, 1.0);
+    coopvecHW<float, 32> current;
+    coopvecHW<float, 32> history;
+    coopVecLoadHW(current, A.data, 4u);
+    coopVecLoadHW(history, A.data, 36u);
+    state.value = current * (1.0 - historyWeight) + history * historyWeight;
+    state = denoiseBlock0(state);
+    coopVecStoreHW(state.value, D.data, 33u);
+    state = denoiseBlock1(state);
+    coopVecStoreHW(state.value, D.data, 65u);
+    state = denoiseBlock2(state);
+    coopVecStoreHW(state.value, D.data, 97u);
+    state = denoiseBlock3(state);
+    coopVecStoreHW(state.value, D.data, 129u);
+    state = denoiseBlock4(state);
+    coopVecStoreHW(state.value, D.data, 161u);
+    state = denoiseBlock5(state);
+    coopVecStoreHW(state.value, D.data, 193u);
+    state = denoiseBlock6(state);
+    coopVecStoreHW(state.value, D.data, 225u);
+    state = denoiseBlock7(state);
+    coopVecStoreHW(state.value, D.data, 257u);
+    state.value = state.value * 0.75 + current * 0.25;
+    coopVecStoreHW(state.value, D.data, 1u);
+    D.data[289] = state.confidence;
+}
